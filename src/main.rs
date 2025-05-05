@@ -57,7 +57,7 @@ lto = true
     let output = tokio::process::Command::new("docker")
         .args(&[
             "run", "--rm",
-            "--memory=1G", "--cpus=0.5",
+            "--memory=1G", "--cpus=2",
             "-v", &format!("{}:/workspace/project", project.display()),
             "wasm_sandbox:latest",
             "bash", "-c",
