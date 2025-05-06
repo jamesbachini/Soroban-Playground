@@ -18,14 +18,17 @@
       <div class="sidebar-icon active" data-panel="create" title="Create">
         <i class="fas fa-file-code fa-lg"></i>
       </div>
-      <div class="sidebar-icon" data-panel="build" title="Build">
-        <i class="fas fa-hammer fa-lg"></i>
-      </div>
       <div class="sidebar-icon" data-panel="test" title="Test">
         <i class="fas fa-vial fa-lg"></i>
       </div>
+      <div class="sidebar-icon" data-panel="build" title="Build">
+        <i class="fas fa-hammer fa-lg"></i>
+      </div>
       <div class="sidebar-icon" data-panel="deploy" title="Deploy">
         <i class="fas fa-rocket fa-lg"></i>
+      </div>
+      <div class="sidebar-icon" data-panel="integrate" title="Integrate">
+        <i class="fas fa-laptop-code fa-lg"></i>
       </div>
       <div class="sidebar-icon" data-panel="github" title="Github">
         <i class="fa-brands fa-github fa-lg"></i>
@@ -40,7 +43,7 @@
         <a href="https://jamesbachini.github.io/Soroban-Dev-Tools/" target="_blank">TOOLS</a>
         <a href="https://developers.stellar.org/" target="_blank">DOCS</a>
         -
-        <a href="/" target="_blank">SoroPG v0.1.0</a>
+        <a href="/" target="_blank">SoroPG v0.1.2</a>
       </div>
       <!-- Editor -->
       <div id="editor-container">
@@ -48,7 +51,7 @@
       </div>
       
 <!-- Panels -->
-<div class="panel-container">
+<div id="panel-container">
   <div class="panel active" id="create-panel">
     <h1><i class="fas fa-file-code accent"></i> Create</h1>
     <div class="panel-content">
@@ -56,7 +59,9 @@
         <h2 class="accent">Welcome To The Soroban Playground</h2>
         <p>This IDE allows you to write, build, test, and deploy Soroban smart contracts directly in your browser.</p>
       </div>
-      
+      <button onclick="resetCode()" class="primary-button">
+        <i class="fas fa-rotate-left"></i> Reset Editor
+      </button>
       <div class="info-card">
         <h3>Getting Started</h3>
         <p>Use the editor above to write your Rust smart contract. The template already includes a basic contract structure to help you get started.</p>
@@ -82,6 +87,37 @@
         <div class="tip">
           <i class="fas fa-lightbulb"></i>
           <span>The <code>#[contract]</code> and <code>#[contractimpl]</code> macros are used to define your contract structure and implementation.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="test-panel">
+    <h1><i class="fas fa-vial accent"></i> Test Your Smart Contract</h1>
+    <div class="panel-content">
+      <div class="info-card">
+        <p>In this section, you can run "cargo test" to check your smart contract functionality before deployment.</p>
+      </div>
+      
+      <div class="build-controls">
+        <button onclick="runTests()"><i class="fas fa-play"></i> Run Unit Tests</button>
+        <span id="test-status" class="status"></span>
+      </div>
+      <div id="test-console" class="console"></div>
+      
+      <div class="test-tips">
+        <h3>Testing Best Practices</h3>
+        <div class="tip">
+          <i class="fas fa-check-circle"></i>
+          <span>Test each function individually to isolate potential issues.</span>
+        </div>
+        <div class="tip">
+          <i class="fas fa-check-circle"></i>
+          <span>Include edge cases and boundary conditions in your tests.</span>
+        </div>
+        <div class="tip">
+          <i class="fas fa-check-circle"></i>
+          <span>Verify that your contract handles errors gracefully.</span>
         </div>
       </div>
     </div>
@@ -122,53 +158,14 @@
     </div>
   </div>
 
-  <div class="panel" id="test-panel">
-    <h1><i class="fas fa-vial accent"></i> Test</h1>
-    <div class="panel-content">
-      <div class="info-card">
-        <h3>Testing Your Smart Contract</h3>
-        <p>In this section, you can test your smart contract functionality before deployment. Writing tests helps ensure your contract behaves as expected under various conditions.</p>
-      </div>
-      
-      <div class="build-controls">
-        <button onclick="runTests()"><i class="fas fa-play"></i> Run Unit Tests</button>
-        <span id="test-status" class="status"></span>
-      </div>
-      <div id="test-console" class="console"></div>
-      
-      <div class="test-tips">
-        <h3>Testing Best Practices</h3>
-        <div class="tip">
-          <i class="fas fa-check-circle"></i>
-          <span>Test each function individually to isolate potential issues.</span>
-        </div>
-        <div class="tip">
-          <i class="fas fa-check-circle"></i>
-          <span>Include edge cases and boundary conditions in your tests.</span>
-        </div>
-        <div class="tip">
-          <i class="fas fa-check-circle"></i>
-          <span>Verify that your contract handles errors gracefully.</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="panel" id="deploy-panel">
     <h1><i class="fas fa-rocket accent"></i> Deploy</h1>
     <div class="panel-content">
       <div class="info-card">
-        <h3>Deploy Your Contract</h3>
-        <p>After successfully building and testing your smart contract, you can deploy it to the Soroban network. Deployment makes your contract accessible to users and other contracts.</p>
+        <p>Deploy your compiled WASM file to the Soroban network.</p>
       </div>
       
       <div class="deploy-controls">
-        <label for="network">Select Network:</label>
-        <select id="network">
-          <option value="TESTNET" selected>Testnet</option>
-          <option value="PUBLIC">Mainnet</option>
-        </select>
-        <br/>
         <button id="connect-freighter">Connect Freighter Wallet</button>
         <button id="connect-testnet">Generate Testnet Wallet</button>
         <button id="connect-secret">Load Secret Key</button>
@@ -181,8 +178,20 @@
           </div>
         </div>
         <br />
-        <button id="deploy-button" disabled>Deploy WASM</button>
-      
+        
+        <div class="box">
+          <div>
+            <label for="network">Select Network:</label>
+            <select id="network">
+              <option value="TESTNET" selected>Testnet</option>
+              <option value="PUBLIC">Mainnet</option>
+            </select>
+          </div>
+          <div>
+            <button id="deploy-button" disabled>Deploy WASM</button>
+          </div>
+        </div>
+
         <div id="deploy-console" class="console"></div>
       </div>
       
@@ -201,9 +210,20 @@
           <span>Once deployed, contract code cannot be changed, only upgraded through specified mechanisms.</span>
         </div>
       </div>
-    
     </div>
   </div>
+
+  <div class="panel" id="integrate-panel">
+    <h1><i class="fas fa-laptop-code accent"></i> Integrate</h1>
+    <div class="panel-content">
+      <div class="info-card">
+        <p>In this section you can test your latest contract using your web browser and the <a href="https://stellar.github.io/js-stellar-sdk/" target="_blank">js-stellar-sdk</a></p>
+      </div>
+      <button id="eval-button">Eval</button>
+      <textarea id="integrate-editor"></textarea>
+    </div>
+  </div>
+
 
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
   <script>
@@ -218,33 +238,7 @@
     require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
     require(['vs/editor/editor.main'], function () {
       editor = monaco.editor.create(document.getElementById('editor'), {
-        value: `#![no_std]
-
-use soroban_sdk::{contract, contractimpl, Env};
-
-#[contract]
-pub struct ExampleContract;
-
-#[contractimpl]
-impl ExampleContract {
-    pub fn add(_env: Env, a: i32, b: i32) -> i32 {
-        a + b
-    }
-}
-
-#[cfg(test)]
-
-#[test]
-fn example_unit_test() {
-    let env = Env::default();
-    let contract_id = env.register(ExampleContract, ());
-    let client = ExampleContractClient::new(&env, &contract_id);
-    let a = 5_i32;
-    let b = 7_i32;
-    let result = client.add(&a, &b);
-    assert_eq!(result, 12);
-}
-`,
+        value: ``,
         language: 'rust',
         theme: 'vs-dark',
         automaticLayout: true,
@@ -253,6 +247,7 @@ fn example_unit_test() {
           enabled: true
         }
       });
+      init();
     });
 
     async function compileCode() {
@@ -507,6 +502,11 @@ fn example_unit_test() {
     }
     
     document.getElementById('deploy-button').addEventListener('click', async () => {
+      document.getElementById('panel-container').scrollTo({
+        top: document.getElementById('deploy-console').offsetTop,
+        left: document.getElementById('panel-container').scrollLeft,
+        behavior: 'smooth'
+      });
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.wasm';
@@ -601,13 +601,80 @@ fn example_unit_test() {
       };
     });
 
-    const keyStore = localStorage.getItem('secretKey');
-    if (keyStore) {
-      keypair = StellarSdk.Keypair.fromSecret(keyStore);
-      publicKey = keypair.publicKey();
-      document.getElementById('deploy-console').innerHTML += `Keypair Loaded. Public Key: ${publicKey}<br />`;
-      document.getElementById('wallet-info').innerHTML = `Connected: ${publicKey}`;
-      document.getElementById('deploy-button').disabled = false;
+    document.getElementById('eval-button').addEventListener('click', async () => {
+      const jsCode = document.getElementById('integrate-editor').value;
+      eval(jsCode);
+    });
+
+    function resetCode() {
+      editor.setValue(`#![no_std]
+
+use soroban_sdk::{contract, contractimpl, Env};
+
+#[contract]
+pub struct ExampleContract;
+
+#[contractimpl]
+impl ExampleContract {
+    pub fn add(_env: Env, a: i32, b: i32) -> i32 {
+        a + b
+    }
+}
+
+#[cfg(test)]
+
+#[test]
+fn example_unit_test() {
+    let env = Env::default();
+    let contract_id = env.register(ExampleContract, ());
+    let client = ExampleContractClient::new(&env, &contract_id);
+    let a = 5_i32;
+    let b = 7_i32;
+    let result = client.add(&a, &b);
+    assert_eq!(result, 12);
+}
+`);
+document.getElementById('integrate-editor').value = `const func = async () => {
+  const contractId='CBNVO6SFH2BZVAJ6QYRMYJNVUO47PMAGGLTMGFYECN45B7YTEEIKU773';
+  const functionName = 'add';
+  const args = [toScVal(8,'i32'), toScVal(23,'i32')];
+  let sourceAccount = await rpc.getAccount(publicKey);
+  const contract = new StellarSdk.Contract(contractId);
+  const tx = new StellarSdk.TransactionBuilder(sourceAccount, { fee: StellarSdk.BASE_FEE, networkPassphrase }).addOperation(contract.call(functionName, ...args)).setTimeout(30).build();
+  const preparedTx = await rpc.prepareTransaction(tx);
+  preparedTx.sign(keypair);
+  //const txResult = await rpc.sendTransaction(preparedTx);
+  const simulationResult = await rpc.simulateTransaction(preparedTx);
+  alert(simulationResult.result.retval['_value']);
+}
+func();
+`;
+    }
+
+    async function init() {
+      const keyStore = localStorage.getItem('secretKey');
+      if (keyStore) {
+        keypair = StellarSdk.Keypair.fromSecret(keyStore);
+        publicKey = keypair.publicKey();
+        document.getElementById('deploy-console').innerHTML += `Keypair Loaded. Public Key: ${publicKey}<br />`;
+        document.getElementById('wallet-info').innerHTML = `Connected: ${publicKey}`;
+        document.getElementById('deploy-button').disabled = false;
+      }
+      const contractCode = localStorage.getItem('contractCode');
+      if (!contractCode) {
+        resetCode();
+      } else {
+        editor.setValue(contractCode);
+        const integrateCode = localStorage.getItem('integrateCode');
+        document.getElementById('integrate-editor').value = integrateCode;
+      }
+      editor.onDidChangeModelContent(() => {
+        const currentCode = editor.getValue();
+        localStorage.setItem('contractCode', currentCode);
+      });
+      document.getElementById('integrate-editor').addEventListener('input', () => {
+        localStorage.setItem('integrateCode', document.getElementById('integrate-editor').value);
+      });
     }
 
     document.querySelectorAll('.sidebar-icon').forEach(icon => {
@@ -619,6 +686,11 @@ fn example_unit_test() {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         this.classList.add('active');
         document.getElementById(panelId).classList.add('active');
+        if (panelId == 'integrate-panel') {
+
+        } else {
+
+        }
       });
     });
 
@@ -649,10 +721,20 @@ fn example_unit_test() {
       color: var(--text-light);
       overflow: hidden;
     }
+
+    a {
+      color: var(--accent-color);
+    }
     
     .container {
       display: flex;
       height: 100%;
+    }
+
+    .box {
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
     }
 
     .accent {
@@ -705,7 +787,6 @@ fn example_unit_test() {
 
     #header-container a {
         font-size: 0.6em;
-        color: #AAA;
         text-decoration: none;
         padding: 3px 8px;
     }
@@ -720,7 +801,7 @@ fn example_unit_test() {
       width: 100%;
     }
     
-    .panel-container {
+    #panel-container {
       height: 38%;
       background-color: var(--section-bg);
       overflow-y: auto;
@@ -791,6 +872,18 @@ fn example_unit_test() {
       margin-bottom: 1.5rem;
       border: 1px solid #ccc;
       border-radius: 5px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 230px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      font-size: 14px;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      resize: vertical;
     }
     
   </style>
