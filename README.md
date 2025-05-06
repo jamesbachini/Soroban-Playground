@@ -1,6 +1,6 @@
 # Soroban Playground
 
-An online IDE for soroban developers
+An online IDE for Stellar Soroban developers
 
 ## Architecture
 
@@ -8,16 +8,16 @@ An online IDE for soroban developers
 - Frontend uses Stellar SDK and Freighter API
 
 ## Testing
-
+```bash
 sudo usermod -aG docker $USER
 sudo systemctl start docker
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
 cargo run
-
+```
 Open up a browser on http://127.0.0.1:8080
 
 ## Production
-
+```bash
 sudo usermod -aG docker $USER
 sudo systemctl enable docker
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
@@ -25,3 +25,4 @@ docker build -f Dockerfile.sandbox -t wasm_sandbox .
 crontab -e
 // Add this line
 @reboot cd /project/directory && cargo run
+```
