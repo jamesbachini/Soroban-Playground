@@ -14,15 +14,17 @@ It's simple but capable with the ability to create soroban contracts, run unit t
 
 - soroban-sdk = "22.0.7"
 - sep-41-token = "1.2.0"
-- stellar-constants = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- stellar-default-impl-macro = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- stellar-event-assertion = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- stellar-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- stellar-non-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- soroban-fixed-point-math = "1.3.0"
+- blend-contract-sdk = "2.22.0"
+- openzeppelin_constants = { package = "stellar-constants", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- openzeppelin_default_imp_macro = { package = "stellar-default-impl-macro", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- openzeppelin_event_assertion = { package = "stellar-event-assertion", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- openzeppelin_fungible_token = { package = "stellar-fungible", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- openzeppelin_non_fungible_token = { package = "stellar-non-fungible", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- openzeppelin_pausable = { package = "stellar-pausable", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- openzeppelin_pausable_macros = { package = "stellar-pausable-macros", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- openzeppelin_upgradeable = { package = "stellar-upgradeable", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- openzeppelin_upgradeable_macros = { package = "stellar-upgradeable-macros", git = "https://github.com/OpenZeppelin/stellar-contracts" }
 
 If you want something else submit a pull request (preferably with a link to a 3rd party audit)
 

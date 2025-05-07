@@ -7,9 +7,7 @@ let networkPassphrase;
 let network = 'TESTNET';
 
 require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-console.log('test2')
-require(['vs/editor/editor.main'], function () {
-    
+require(['vs/editor/editor.main'], function () { 
   editor = monaco.editor.create(document.getElementById('editor'), {
     value: ``,
     language: 'rust',
@@ -92,8 +90,7 @@ function updateNetwork(value) {
 
 function fundAddress(pubKey) {
   const url = `https://friendbot.stellar.org/?addr=${pubKey}`;
-  fetch(url)
-    .then(response => {
+  fetch(url).then(response => {
       if (!response.ok) {
         throw new Error('Failed to fund account, status ' + response.status);
       }
@@ -447,7 +444,6 @@ async function init() {
   document.getElementById('integrate-editor').addEventListener('input', () => {
     localStorage.setItem('integrateCode', document.getElementById('integrate-editor').value);
   });
-  console.log('t1')
   document.getElementById('reset-code').onclick = () => { resetCode() };
   document.getElementById('run-tests').onclick = () => runTests();
   document.getElementById('compile-code').onclick = () => compileCode();
