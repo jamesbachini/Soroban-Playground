@@ -35,7 +35,7 @@
         </div>
       </div>
 
-      <div class="main-content">
+      <div id="main-content">
         <div id="header-container">
           <a href="https://lab.stellar.org/" target="_blank">LAB</a>
           <a href="https://stellar.expert/" target="_blank">EXPLORER</a>
@@ -48,7 +48,7 @@
         <div id="editor-container">
           <div id="editor"></div>
         </div>
-
+        <div id="resizer"></div>
         <div id="panel-container">
 
           <div class="panel active" id="create-panel">
@@ -66,26 +66,27 @@
                 <p>Use the editor above to write your Rust smart contract. The template already includes a basic contract structure to help you get started.</p>
                 <p>Navigate between different stages of development using the icons in the left sidebar:</p>
                 <ul>
-                  <li><i class="fas fa-file-code"></i> <strong>Create</strong> - Write your smart contract code</li>
-                  <li><i class="fas fa-hammer"></i> <strong>Build</strong> - Compile your contract to WASM</li>
-                  <li><i class="fas fa-vial"></i> <strong>Test</strong> - Verify your contract functionality</li>
-                  <li><i class="fas fa-rocket"></i> <strong>Deploy</strong> - Deploy your contract to the network</li>
+                  <li><i class="fas fa-file-code accent"></i> <strong>Create</strong> - Write your smart contract code</li>
+                  <li><i class="fas fa-hammer accent"></i> <strong>Build</strong> - Compile your contract to WASM</li>
+                  <li><i class="fas fa-vial accent"></i> <strong>Test</strong> - Run unit tests and debug contract</li>
+                  <li><i class="fas fa-rocket accent"></i> <strong>Deploy</strong> - Deploy WASM file to testnet/mainnet</li>
+                  <li><i class="fas fa-laptop-code accent"></i> <strong>Integrate</strong> - Invoke contract functions using Javascript</li>
                 </ul>
               </div>
               
               <div class="quick-tips dim">
-                <h3>Quick Tips</h3>
+                <h3>Resources</h3>
                 <div class="tip">
                   <i class="fas fa-lightbulb"></i>
-                  <span>Use <code>#![no_std]</code> at the beginning of your contract to indicate that the Rust standard library is not available in the WASM environment.</span>
+                  <a href="https://github.com/stellar/soroban-examples/" target="_blank">Soroban Examples</a>
                 </div>
                 <div class="tip">
                   <i class="fas fa-lightbulb"></i>
-                  <span>Import the Soroban SDK with <code>use soroban_sdk::{contract, contractimpl, Env};</code> to access the contract development tools.</span>
+                  <a href="https://developers.stellar.org/" target="_blank">Stellar Developer Docs</a>
                 </div>
                 <div class="tip">
                   <i class="fas fa-lightbulb"></i>
-                  <span>The <code>#[contract]</code> and <code>#[contractimpl]</code> macros are used to define your contract structure and implementation.</span>
+                  <a href="https://wizard.openzeppelin.com/stellar" target="_blank">OpenZeppelin Contract Wizard</a>
                 </div>
               </div>
             </div>
@@ -140,6 +141,7 @@
                 </button>
                 <span id="build-status" class="status"></span>
               </div>
+              <br />
               <div class="build-tips dim">
                 <div class="tip">
                   <i class="fas fa-info-circle"></i>
@@ -161,7 +163,7 @@
               </div>
               <div class="deploy-controls">
                 <button id="connect-freighter">Connect Freighter Wallet</button>
-                <button id="connect-testnet">Generate Testnet Wallet</button>
+                <button id="connect-testnet">Generate Wallet</button>
                 <button id="connect-secret">Load Secret Key</button>
                 <div id="wallet-info"></div>
                 <br/>
@@ -194,11 +196,11 @@
                 </div>
                 <div class="tip">
                   <i class="fas fa-server"></i>
-                  <span>Consider deploying to testnet first for additional verification.</span>
+                  <span>Consider deploying to testnet first, when you generate a wallet it will automatically receive testnet XLM.</span>
                 </div>
                 <div class="tip">
                   <i class="fas fa-shield-alt"></i>
-                  <span>Once deployed, contract code cannot be changed, only upgraded through specified mechanisms.</span>
+                  <span>Friends don't let friends test in production</span>
                 </div>
               </div>
             </div>
