@@ -12,17 +12,17 @@ It's simple but capable with the ability to create soroban contracts, run unit t
 
 ## Crates Available
 
-soroban-sdk = "22.0.7"
-sep-41-token = "1.2.0"
-stellar-constants = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-stellar-default-impl-macro = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-stellar-event-assertion = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-stellar-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-stellar-non-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
-stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- soroban-sdk = "22.0.7"
+- sep-41-token = "1.2.0"
+- stellar-constants = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- stellar-default-impl-macro = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- stellar-event-assertion = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- stellar-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- stellar-non-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 
 If you want something else submit a pull request (preferably with a link to a 3rd party audit)
 
