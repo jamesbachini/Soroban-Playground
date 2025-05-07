@@ -12,7 +12,7 @@
 html, body { 
   margin: 0; 
   height: 100%; 
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: Consolas, "Courier New", monospace, sans-serif;
   background-color: var(--bg-dark);
   color: var(--text-light);
   overflow: hidden;
@@ -130,7 +130,7 @@ a {
   background-color: var(--section-bg);
   overflow-y: auto;
   flex-grow: 1;
-  min-height: 100px;
+  min-height: 20px;
 }
 
 .panel {
