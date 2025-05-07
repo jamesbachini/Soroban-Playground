@@ -33,10 +33,28 @@ crate-type = ["cdylib"]
 [dependencies]
 soroban-sdk = "22.0.7"
 sep-41-token = "1.2.0"
+stellar-constants = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-default-impl-macro = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-event-assertion = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-non-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 
 [dev-dependencies]
 soroban-sdk = { version = "22.0.7", features = ["testutils"] }
 sep-41-token = "1.2.0"
+stellar-constants = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-default-impl-macro = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-event-assertion = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-non-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 
 [profile.release]
 opt-level = "z"
@@ -57,7 +75,7 @@ lto = true
     let output = tokio::process::Command::new("docker")
         .args(&[
             "run", "--rm",
-            "--memory=1G", "--cpus=2",
+            "--memory=1G", "--cpus=1",
             "-v", &format!("{}:/workspace/project", project.display()),
             "wasm_sandbox:latest",
             "bash", "-c",

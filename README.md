@@ -10,6 +10,22 @@ It's simple but capable with the ability to create soroban contracts, run unit t
 - API and frontend are delivered via a Rust app
 - Frontend uses Stellar SDK and Freighter API
 
+## Crates Available
+
+soroban-sdk = "22.0.7"
+sep-41-token = "1.2.0"
+stellar-constants = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-default-impl-macro = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-event-assertion = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-non-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+
+If you want something else send in a pull request or message me.
+
 ## Requirements
 
 Docker & Rust
@@ -45,6 +61,9 @@ crontab -e
 - Split contracts and tests
 - Export integration to HTML/JS
 - WASM hash > file cache for common contracts
+- CustomGPT Chatbot integration
+- Rust linter
+
 
 ## License
 
