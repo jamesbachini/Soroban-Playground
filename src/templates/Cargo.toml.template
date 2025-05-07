@@ -1,0 +1,43 @@
+[package]
+name = "project"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+soroban-sdk = "22.0.7"
+sep-41-token = "1.2.0"
+stellar-constants = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-default-impl-macro = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-event-assertion = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-non-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+
+[dev-dependencies]
+soroban-sdk = { version = "22.0.7", features = ["testutils"] }
+sep-41-token = "1.2.0"
+stellar-constants = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-default-impl-macro = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-event-assertion = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-non-fungible = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true

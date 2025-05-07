@@ -24,7 +24,7 @@ stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contr
 stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 
-If you want something else send in a pull request or message me.
+If you want something else submit a pull request (preferably with a link to a 3rd party audit)
 
 ## Requirements
 
@@ -64,11 +64,10 @@ crontab -e
 - CustomGPT Chatbot integration
 - Rust linter
 
-
 ## License
 
 MIT
 
 ## Contributing
 
-Yes please :)
+Yes please 💗♥️❤️
