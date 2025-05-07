@@ -68,6 +68,10 @@ a {
   border-left: 3px solid var(--accent-color);
 }
 
+.github-icon {
+    margin-top: auto;
+}
+
 .logo {
     width: 30px;
 }

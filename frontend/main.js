@@ -21,6 +21,18 @@ require(['vs/editor/editor.main'], function () {
   init();
 });
 
+function extractContractName(code) {
+  try {
+    const codeWithoutComments = code.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, ''); // Remove comments
+    const regex = /#\[\s*contract\s*\]\s*pub\s+struct\s+([A-Za-z0-9_]+)\s*;/m;
+    const match = codeWithoutComments.match(regex); 
+    if (match && match[1]) return match[1];
+  } catch (e) {
+    console.error(e);
+  }
+  return "project";
+}
+
 async function compileCode() {
   const code = editor.getValue();
   document.getElementById('build-status').innerText = 'Compiling... (Estimated build time 30s)';
@@ -34,11 +46,12 @@ async function compileCode() {
     body: JSON.stringify({ code })
   });
   if (response.ok) {
+    const contractName = extractContractName(code);
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'project.wasm';
+    a.download = `${contractName}.wasm`;
     a.click();
     document.getElementById('build-status').innerText = 'Compilation successful!';
   } else {
