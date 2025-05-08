@@ -194,6 +194,7 @@ const funnyMessages = [
   '(who would write code like this?)',
   '(so many bugs, so little time)',
   '(searching for a blockchain use case)',
+  '(not enough caffeine in the world)',
   '(trying to merge master again)',
   '(asking ChatGPT to save me)',
   '(blaming it on the intern)',
@@ -283,6 +284,7 @@ async function signTransaction(preparedTx) {
 }
 
 document.getElementById('deploy-button').addEventListener('click', async () => {
+  document.getElementById('deploy-button').disabled = true;
   document.getElementById('panel-container').scrollTo({
     top: document.getElementById('deploy-console').offsetTop,
     left: document.getElementById('panel-container').scrollLeft,
@@ -380,6 +382,7 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
       document.getElementById('deploy-console').innerHTML += 'Error: ' + err.message;
     }
   };
+  document.getElementById('deploy-button').disabled = false;
 });
 
 document.getElementById('eval-button').addEventListener('click', async () => {

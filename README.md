@@ -12,19 +12,21 @@ It's simple but capable with the ability to create soroban contracts, run unit t
 
 ## Crates Available
 
-- soroban-sdk = "22.0.7"
-- sep-41-token = "1.2.0"
-- soroban-fixed-point-math = "1.3.0"
-- blend-contract-sdk = "2.22.0"
-- openzeppelin_constants = { package = "stellar-constants", git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- openzeppelin_default_imp_macro = { package = "stellar-default-impl-macro", git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- openzeppelin_event_assertion = { package = "stellar-event-assertion", git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- openzeppelin_fungible_token = { package = "stellar-fungible", git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- openzeppelin_non_fungible_token = { package = "stellar-non-fungible", git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- openzeppelin_pausable = { package = "stellar-pausable", git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- openzeppelin_pausable_macros = { package = "stellar-pausable-macros", git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- openzeppelin_upgradeable = { package = "stellar-upgradeable", git = "https://github.com/OpenZeppelin/stellar-contracts" }
-- openzeppelin_upgradeable_macros = { package = "stellar-upgradeable-macros", git = "https://github.com/OpenZeppelin/stellar-contracts" }
+- soroban-sdk
+- sep-41-token
+- soroban-fixed-point-math
+- blend-contract-sdk
+- openzeppelin_constants
+- openzeppelin_default_imp_macro
+- openzeppelin_event_assertion
+- openzeppelin_fungible_token
+- openzeppelin_non_fungible_token
+- openzeppelin_pausable
+- openzeppelin_pausable_macros
+- openzeppelin_upgradeable
+- openzeppelin_upgradeable_macros
+
+Full versions available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
 
 If you want something else submit a pull request (preferably with a link to a 3rd party audit)
 
@@ -37,22 +39,30 @@ https://www.docker.com/
 https://www.rust-lang.org/
 
 
-## Testing
+## Local Testing
+Follow these commands to install locally
+
 ```bash
+# Install docker and rust
+sudo curl --proto '=https' --tlsv1.2 -sSf https://get.docker.com | sh
+sudo curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Add permissinos and start docker
 sudo usermod -aG docker $USER
 sudo systemctl start docker
+
+# Download and run repo
+git clone https://github.com/jamesbachini/Soroban-Playground.git
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
 cargo run
-```
-Open up a browser on http://127.0.0.1:8080
 
+# Open up a browser on http://127.0.0.1:8080
+```
 
 ## Production
-```bash
-sudo usermod -aG docker $USER
-sudo systemctl enable docker
-docker build -f Dockerfile.sandbox -t wasm_sandbox .
+As above but add a crontab to restart the app on reboot. Also need to change the port number to 80 and setup https redirect using something like cloudflare. Currently setup to handle 4 concurrent sandboxed builds, using 1 cpu and 1G ram each. This is configurable and may require optimisation. App doesn't require session info so would be well suited to auto-scaling via additional instances behind a load balancer.
 
+```bash
 crontab -e
 // Add this line
 @reboot cd /project/directory && cargo run
@@ -65,10 +75,13 @@ crontab -e
 - WASM hash > file cache for common contracts
 - CustomGPT Chatbot integration
 - Rust linter
+- More wallets supported
+
 
 ## License
 
 MIT
+
 
 ## Contributing
 
