@@ -2,13 +2,13 @@
 
 An online IDE for Stellar Soroban developers
 
-It's simple but capable with the ability to create soroban contracts, run unit tests, deploy contracts to testnet/mainnet and there's an integration section for invoking contract functions with the js-stellar-sdk.
+It's simple but capable with the ability to create soroban contracts, all the openzeppelin stuff works (can copy and paste from the contract wizard), can use it to run unit tests, deploy contracts to testnet/mainnet and there's an integration section for invoking contract functions with the js-stellar-sdk. All point and click functionality to make it as easy as possible.
 
 ## Architecture
 
 - Building and testing contracts takes place in a sandboxed docker container.
 - API and frontend are delivered via a Rust app
-- Frontend uses Stellar SDK and Freighter API
+- Frontend uses Stellar SDK and Freighter API currently
 
 ## Crates Available
 
@@ -26,9 +26,10 @@ It's simple but capable with the ability to create soroban contracts, run unit t
 - openzeppelin_upgradeable
 - openzeppelin_upgradeable_macros
 
-Full versions available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
+Full version info available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
 
 If you want something else submit a pull request (preferably with a link to a 3rd party audit)
+
 
 ## Requirements
 
@@ -43,11 +44,11 @@ https://www.rust-lang.org/
 Follow these commands to install locally
 
 ```bash
-# Install docker and rust
-sudo curl --proto '=https' --tlsv1.2 -sSf https://get.docker.com | sh
+# Install rust & docker
 sudo curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+sudo curl --proto '=https' --tlsv1.2 -sSf https://get.docker.com | sh
 
-# Add permissinos and start docker
+# Add permissions and start docker, change $USER to whoever is running it
 sudo usermod -aG docker $USER
 sudo systemctl start docker
 
@@ -59,6 +60,7 @@ cargo run
 # Open up a browser on http://127.0.0.1:8080
 ```
 
+
 ## Production
 As above but add a crontab to restart the app on reboot. Also need to change the port number to 80 and setup https redirect using something like cloudflare. Currently setup to handle 4 concurrent sandboxed builds, using 1 cpu and 1G ram each. This is configurable and may require optimisation. App doesn't require session info so would be well suited to auto-scaling via additional instances behind a load balancer.
 
@@ -67,6 +69,7 @@ crontab -e
 // Add this line
 @reboot cd /project/directory && cargo run
 ```
+
 
 ## 2 do
 - Multifile support
