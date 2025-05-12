@@ -15,7 +15,7 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
 
     let output = tokio::process::Command::new("docker")
         .args(&[
-            "run", "--rm", "--memory=1G", "--cpus=1",
+            "run", "--rm", "--memory=2G", "--cpus=2",
             "-v", &format!("{}:/workspace/project", project.display()),
             "wasm_sandbox:latest", "bash", "-c",
             &format!("cd /workspace/project && {}", command),

@@ -55,28 +55,18 @@ sudo apt install build-essential
 sudo usermod -aG docker $USER
 sudo systemctl start docker
 
-# Download and run repo
+# Clone the repo
 git clone https://github.com/jamesbachini/Soroban-Playground.git
+
+# Edit WORKDIR /mnt/c/code/Soroban-Playground to your directory in Dockerfile.sandbox
+cd Soroban-Playground
+nano Dockerfile.sandbox
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
+
+# Run the application
 cargo run
 
 # Open up a browser on http://127.0.0.1
-```
-
-## Updating
-
-Update the cloned github repo to the latest version by pulling in any changes.
-
-```bash
-# Move into the directory
-cd ~/Soroban-Playground/
-
-# Pull latest from remote
-git pull origin main
-
-# Optional reset any local changes
-git fetch origin
-git reset --hard origin/main
 ```
 
 ## Production
@@ -100,6 +90,33 @@ crontab -e
 @reboot cd /home/$USERNAME/Soroban-Playground; /home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground
 ```
 Then turn it off then on again and keep everything crossed 🤞
+
+## Updating
+
+Update the cloned github repo to the latest version by pulling in any changes.
+
+```bash
+# Move into the directory
+cd ~/Soroban-Playground/
+
+# Pull latest from remote
+git pull origin main
+
+# Optional reset any local changes
+git fetch origin
+git reset --hard origin/main
+
+# build a release binary
+cargo build --release
+
+#  Enable that binary to bind to port 80
+sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
+
+```
+
+Restart server
+
+
 
 ## 2 do
 - Multifile support

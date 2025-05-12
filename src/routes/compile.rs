@@ -1,16 +1,22 @@
 use actix_web::{post, web, HttpResponse, Responder};
-use sha2::{Digest, Sha256};
-use tokio::time::{timeout, Duration};
-use tracing::{error, info};
+use bytes::Bytes;
+use futures_util::StreamExt;
+use tokio::{sync::mpsc, time};
+use tokio_stream::wrappers::ReceiverStream;
+use std::time::Duration;
+use tracing::{info, error};
 
 use crate::{docker::run_in_docker, models::CompileRequest, semaphore::SEMAPHORE};
 
 #[post("/compile")]
 pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
-    println!("Compiling to WASM");
-    let mut hasher = Sha256::new();
-    hasher.update(&req.code);
-    let hash = hex::encode(hasher.finalize());
+
+    let hash = {
+        use sha2::{Digest, Sha256};
+        let mut h = Sha256::new();
+        h.update(&req.code);
+        hex::encode(h.finalize())
+    };
 
     let permit = match SEMAPHORE.acquire().await {
         Ok(p) => p,
@@ -20,32 +26,58 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
         }
     };
 
+    let (tx, rx) = mpsc::channel::<Result<Bytes, String>>(10);
     let code = req.code.clone();
-    let compile_future = async move {
-        let (_stdout, tmp) = run_in_docker(code, "cargo build --release --target wasm32-unknown-unknown").await?;
-        let wasm_path = tmp.path().join("project/target/wasm32-unknown-unknown/release/project.wasm");
-        let wasm = std::fs::read(&wasm_path).map_err(|e| e.to_string())?;
-        Ok(wasm)
-    };
 
-    let result = match timeout(Duration::from_secs(300), compile_future).await {
-        Ok(Ok(wasm)) => Ok(wasm),
-        Ok(Err(e)) => Err(e),
-        Err(_) => Err("Compilation timed out".to_string()),
-    };
+    tokio::spawn(async move {
+        let _permit = permit;
+        let mut heartbeat = time::interval(Duration::from_secs(25));
 
-    drop(permit);
+        let compile_fut = run_in_docker(code, "cargo build --release --target wasm32-unknown-unknown");
+        tokio::pin!(compile_fut);
 
-    match result {
-        Ok(wasm) => {
-            info!(hash = %hash, "compiled successfully");
-            HttpResponse::Ok()
-                .content_type("application/wasm")
-                .body(wasm)
+        loop {
+            tokio::select! {
+                _ = heartbeat.tick() => {
+                    if tx.send(Ok(Bytes::from_static(b" "))).await.is_err() {
+                        break;
+                    }
+                }
+                res = &mut compile_fut => {
+                    match res {
+                        Ok((_, tmp)) => {
+                            let path = tmp.path()
+                                         .join("project/target/wasm32-unknown-unknown/release/project.wasm");
+                            match std::fs::read(&path) {
+                                Ok(wasm) => {
+                                    let _ = tx.send(Ok(Bytes::from(wasm))).await;
+                                    info!(hash=%hash, "compiled successfully");
+                                }
+                                Err(e) => {
+                                    let msg = format!("I/O error reading wasm: {}", e);
+                                    let _ = tx.send(Err(msg.clone())).await;
+                                    error!(error=%e, "error reading wasm");
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            let msg = e.to_string();
+                            let _ = tx.send(Err(msg.clone())).await;
+                            error!(error=%msg, "compilation error");
+                        }
+                    }
+                    break;
+                }
+            }
         }
-        Err(e) => {
-            error!(%e, "compilation error");
-            HttpResponse::BadRequest().body(e)
-        }
-    }
+    });
+
+    let stream = ReceiverStream::new(rx)
+        .map(|res: Result<Bytes, String>| {
+            res.map_err(|msg| actix_web::error::ErrorBadRequest(msg))
+        });
+
+    HttpResponse::Ok()
+        .content_type("application/wasm")
+        .streaming(stream)
 }
