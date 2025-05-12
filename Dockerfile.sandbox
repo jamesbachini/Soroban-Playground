@@ -1,16 +1,19 @@
 FROM rust:1.81
 
-# Set working directory
-WORKDIR /mnt/c/code/Soroban-Playground
+# Create workspace
+WORKDIR /workspace
 
 # Install wasm target
 RUN rustup target add wasm32-unknown-unknown
+
+# Copy Cargo.toml and lib.rs templates
 COPY src/templates/Cargo.toml.template ./Cargo.toml
+RUN mkdir src
 COPY src/templates/lib.rs.template ./src/lib.rs
+
+# Prerun cargo commands
 RUN cargo fetch
 RUN cargo test
-
-# Create workspace
-WORKDIR /workspace
+RUN cargo build --release --target wasm32-unknown-unknown
 
 CMD ["bash"]
