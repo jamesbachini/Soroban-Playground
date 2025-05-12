@@ -89,10 +89,8 @@ sudo systemctl enable docker
 
 # Add a shared volume to speed up compilation times, change $USERNAME for working directory
 docker volume create cargo-cache
-cp src/templates/Cargo.toml.template workspace/Cargo.toml
-mkdir workspace/src
-cp src/templates/lib.rs.template workspace/src/lib.rs
-docker run --rm -v cargo-cache:/mnt/cargo -v "/home/$USERNAME/Soroban-Playground/workspace":/workspace wasm_sandbox bash -c "export CARGO_HOME=/mnt/cargo && export CARGO_TARGET_DIR=/mnt/cargo/target && cd /workspace && cargo test"
+echo "." > /tmp/project.wasm
+chmod 777 /tmp/project.wasm
 
 # Add crontab line, change $USERNAME to your home directory
 crontab -e

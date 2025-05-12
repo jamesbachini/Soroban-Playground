@@ -19,9 +19,14 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
         .args(&[
             "run", "--rm", "--memory=2G", "--cpus=2",
             "-v", &format!("{}:/workspace", tmp.path().display()),
-            "-e", "CARGO_TARGET_DIR=/workspace/project/target",
+            //"-e", "CARGO_TARGET_DIR=/workspace/project/target",
+            "-v", "cargo-cache:/mnt/cargo",
+            "-e", "CARGO_HOME=/mnt/cargo",
+            "-e", "CARGO_TARGET_DIR=/mnt/cargo/target",
             "wasm_sandbox:latest", "bash", "-c",
-            &format!("cd /workspace/project && {}", command),
+            //&format!("cd /workspace/project && {}", command),
+            &format!("cd /workspace/project && {} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /tmp/project.wasm", command)
+
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

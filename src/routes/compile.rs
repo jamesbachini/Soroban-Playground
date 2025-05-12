@@ -4,6 +4,7 @@ use futures_util::StreamExt;
 use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::ReceiverStream;
 use std::time::Duration;
+use std::path::PathBuf;
 use tracing::{info, error};
 
 use crate::{docker::run_in_docker, models::CompileRequest, semaphore::SEMAPHORE};
@@ -47,8 +48,10 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
                     match res {
                         Ok((_, tmp)) => {
                             println!("tmp: {}", tmp.path().display());
-                            let path = tmp.path().join("project/target/wasm32-unknown-unknown/release/project.wasm");
+                            //let path = tmp.path().join("project/target/wasm32-unknown-unknown/release/project.wasm");
+                            let path = PathBuf::from("/tmp/project.wasm");
                             println!("path: {}", path.display());
+
                             match std::fs::read(&path) {
                                 Ok(wasm) => {
                                     let _ = tx.send(Ok(Bytes::from(wasm))).await;
