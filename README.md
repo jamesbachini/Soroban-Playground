@@ -2,6 +2,8 @@
 
 An online IDE for Stellar Soroban developers
 
+Available at https://soropg.com
+
 It's simple but capable with the ability to create soroban contracts, all the openzeppelin stuff works (can copy and paste from the contract wizard), can use it to run unit tests, deploy contracts to testnet/mainnet and there's an integration section for invoking contract functions with the js-stellar-sdk. All point and click functionality to make it as easy as possible.
 
 ## Architecture
@@ -87,13 +89,15 @@ usermod -aG docker ubuntu
 # build a release binary
 cargo build --release
 
-#  Enable that binanry to bind to port 80
+#  Enable that binary to bind to port 80
 sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
+
+# Enable docker after reset
+sudo systemctl enable docker
 
 # Add crontab line, change $USERNAME to your home directory
 crontab -e
-@reboot bash -c './home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground' >> /var/log/sandbox.log 2>&1
-
+@reboot cd /home/$USERNAME/Soroban-Playground; /home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground
 ```
 Then turn it off then on again and keep everything crossed 🤞
 
