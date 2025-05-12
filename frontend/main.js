@@ -82,6 +82,7 @@ async function runTests() {
     document.getElementById('test-status').innerText = response.ok ? 'Tests completed' : 'Errors in tests';
   } catch (err) {
     consoleEl.innerText = err.message;
+    console.error(err)
     document.getElementById('test-status').innerText = 'Test runner error';
   }
   document.getElementById('run-tests').disabled = false;
