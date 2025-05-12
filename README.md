@@ -114,7 +114,7 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
 ```
 
-Restart server
+Restart server.
 
 
 

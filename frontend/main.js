@@ -34,6 +34,7 @@ function extractContractName(code) {
 }
 
 async function compileCode() {
+  document.getElementById('compile-code').disabled = true;
   const code = editor.getValue();
   document.getElementById('build-status').innerText = 'Compiling... (Estimated build time 30s)';
   const interval = setInterval(() => {
@@ -58,10 +59,12 @@ async function compileCode() {
     const error = await response.text();
     document.getElementById('build-status').innerText = `Error: ${error}`;
   }
+  document.getElementById('compile-code').disabled = false;
   clearInterval(interval);
 }
 
 async function runTests() {
+  document.getElementById('run-tests').disabled = true;
   const code = editor.getValue();
   document.getElementById('test-status').innerText = 'Running tests... (This may take a minute or two)';
   const interval = setInterval(() => {
@@ -81,6 +84,7 @@ async function runTests() {
     consoleEl.innerText = err.message;
     document.getElementById('test-status').innerText = 'Test runner error';
   }
+  document.getElementById('run-tests').disabled = false;
   clearInterval(interval);
 }
 
@@ -377,12 +381,13 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
       } else {
         document.getElementById('deploy-console').innerHTML += 'Transaction 1/2 failed.<br />';
       }
+      document.getElementById('deploy-button').disabled = false;
     } catch (err) {
       console.error(err);
       document.getElementById('deploy-console').innerHTML += 'Error: ' + err.message;
+      document.getElementById('deploy-button').disabled = false;
     }
   };
-  document.getElementById('deploy-button').disabled = false;
 });
 
 document.getElementById('eval-button').addEventListener('click', async () => {

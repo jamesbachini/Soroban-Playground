@@ -8,6 +8,7 @@ RUN rustup target add wasm32-unknown-unknown
 COPY src/templates/Cargo.toml.template ./Cargo.toml
 COPY src/templates/lib.rs.template ./src/lib.rs
 RUN cargo fetch
+RUN cargo test
 
 # Create workspace
 WORKDIR /workspace
