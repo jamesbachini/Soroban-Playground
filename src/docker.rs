@@ -3,6 +3,8 @@ use tempfile::TempDir;
 
 pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, TempDir), String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
+
+    // Mount the full temp dir, not just /project
     let project = tmp.path().join("project");
     fs::create_dir(&project).map_err(|e| e.to_string())?;
 
@@ -16,7 +18,8 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
     let output = tokio::process::Command::new("docker")
         .args(&[
             "run", "--rm", "--memory=2G", "--cpus=2",
-            "-v", &format!("{}:/workspace/project", project.display()),
+            "-v", &format!("{}:/workspace", tmp.path().display()),
+            "-e", "CARGO_TARGET_DIR=/workspace/project/target",
             "wasm_sandbox:latest", "bash", "-c",
             &format!("cd /workspace/project && {}", command),
         ])

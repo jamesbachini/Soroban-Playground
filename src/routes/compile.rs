@@ -46,8 +46,9 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
                 res = &mut compile_fut => {
                     match res {
                         Ok((_, tmp)) => {
-                            let path = tmp.path()
-                                         .join("project/target/wasm32-unknown-unknown/release/project.wasm");
+                            println!("tmp: {}", tmp.path().display());
+                            let path = tmp.path().join("project/target/wasm32-unknown-unknown/release/project.wasm");
+                            println!("path: {}", path.display());
                             match std::fs::read(&path) {
                                 Ok(wasm) => {
                                     let _ = tx.send(Ok(Bytes::from(wasm))).await;
