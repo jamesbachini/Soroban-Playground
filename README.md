@@ -90,12 +90,12 @@ cargo build --release
 #  Enable that binanry to bind to port 80
 sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
-# Add crontab line
+# Add crontab line, change $USERNAME to your home directory
 crontab -e
-@reboot bash -c 'cd /project/directory && source $HOME/.cargo/env && cargo run' >> /var/log/sandbox.log 2>&1
+@reboot bash -c './home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground' >> /var/log/sandbox.log 2>&1
 
 ```
-
+Then turn it off then on again and keep everything crossed 🤞
 
 ## 2 do
 - Multifile support
