@@ -1,5 +1,9 @@
 FROM rust:1.81
 
+# Set build cache location
+ENV CARGO_HOME=/mnt/cargo
+ENV CARGO_TARGET_DIR=/mnt/cargo/target
+
 # Create workspace
 WORKDIR /workspace
 
