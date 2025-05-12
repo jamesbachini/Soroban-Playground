@@ -396,7 +396,6 @@ document.getElementById('eval-button').addEventListener('click', async () => {
 });
 
 function resetCode() {
-    console.log('Reset')
   editor.setValue(`#![no_std]
 
 use soroban_sdk::{contract, contractimpl, Env};

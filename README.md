@@ -61,6 +61,8 @@ git clone https://github.com/jamesbachini/Soroban-Playground.git
 # Edit WORKDIR /mnt/c/code/Soroban-Playground to your directory in Dockerfile.sandbox
 cd Soroban-Playground
 nano Dockerfile.sandbox
+
+# Might need to log out and log back in before running docker build
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
 
 # Run the application
@@ -74,7 +76,7 @@ Currently setup to handle 4 concurrent sandboxed builds, using 1 cpu and 1G ram 
 
 ```bash
 # Add permissions for ubuntu
-usermod -aG docker ubuntu
+sudo usermod -aG docker ubuntu
 
 # build a release binary
 cargo build --release
@@ -84,6 +86,13 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
 # Enable docker after reset
 sudo systemctl enable docker
+
+# Add a shared volume to speed up compilation times, change $USERNAME for working directory
+docker volume create cargo-cache
+cp src/templates/Cargo.toml.template workspace/Cargo.toml
+mkdir workspace/src
+cp src/templates/lib.rs.template workspace/src/lib.rs
+docker run --rm -v cargo-cache:/mnt/cargo -v "/home/$USERNAME/Soroban-Playground/workspace":/workspace wasm_sandbox bash -c "export CARGO_HOME=/mnt/cargo && export CARGO_TARGET_DIR=/mnt/cargo/target && cd /workspace && cargo test"
 
 # Add crontab line, change $USERNAME to your home directory
 crontab -e
