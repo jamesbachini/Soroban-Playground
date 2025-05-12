@@ -33,20 +33,21 @@ If you want something else submit a pull request (preferably with a link to a 3r
 
 ## Requirements
 
-Docker & Rust
+Docker & Rust and ideally some variation of linux, tested on Ubuntu 25.04 via gcloud instance and WSL on windows.
 
-https://www.docker.com/
-
-https://www.rust-lang.org/
+- https://www.docker.com/
+- https://www.rust-lang.org/
 
 
 ## Local Testing
-Follow these commands to install locally
+Follow these commands to install locally. If on windows I'd recommend using windows subsystem for linux, for mac the commands might need changing for apt/systemctl etc.
 
 ```bash
-# Install rust & docker
+# Install rust, docker & build tools
 sudo curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 sudo curl --proto '=https' --tlsv1.2 -sSf https://get.docker.com | sh
+sudo apt update
+sudo apt install build-essential
 
 # Add permissions and start docker, change $USER to whoever is running it
 sudo usermod -aG docker $USER
@@ -57,17 +58,42 @@ git clone https://github.com/jamesbachini/Soroban-Playground.git
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
 cargo run
 
-# Open up a browser on http://127.0.0.1:8080
+# Open up a browser on http://127.0.0.1
 ```
 
+## Updating
 
-## Production
-As above but add a crontab to restart the app on reboot. Also need to change the port number to 80 and setup https redirect using something like cloudflare. Currently setup to handle 4 concurrent sandboxed builds, using 1 cpu and 1G ram each. This is configurable and may require optimisation. App doesn't require session info so would be well suited to auto-scaling via additional instances behind a load balancer.
+Update the cloned github repo to the latest version by pulling in any changes.
 
 ```bash
+# Move into the directory
+cd ~/Soroban-Playground/
+
+# Pull latest from remote
+git pull origin main
+
+# Optional reset any local changes
+git fetch origin
+git reset --hard origin/main
+```
+
+## Production
+Currently setup to handle 4 concurrent sandboxed builds, using 1 cpu and 1G ram each. This is configurable and may require optimisation. App doesn't require session info so would be well suited to auto-scaling via additional instances behind a load balancer (in theory).
+
+```bash
+# Add permissions for ubuntu
+usermod -aG docker ubuntu
+
+# build a release binary
+cargo build --release
+
+#  Enable that binanry to bind to port 80
+sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
+
+# Add crontab line
 crontab -e
-// Add this line
-@reboot cd /project/directory && cargo run
+@reboot bash -c 'cd /project/directory && source $HOME/.cargo/env && cargo run' >> /var/log/sandbox.log 2>&1
+
 ```
 
 
@@ -79,6 +105,7 @@ crontab -e
 - CustomGPT Chatbot integration
 - Rust linter
 - More wallets supported
+- Load and invoke contract functions form
 
 
 ## License

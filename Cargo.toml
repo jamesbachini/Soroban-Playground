@@ -1,5 +1,5 @@
 [package]
-name = "Rust-WASM-Compiler-API"
+name = "Soroban-Playground"
 version = "0.1.0"
 edition = "2021"
 
