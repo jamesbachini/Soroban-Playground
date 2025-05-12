@@ -500,7 +500,7 @@ document.querySelectorAll('.sidebar-icon').forEach(icon => {
   icon.addEventListener('click', function() {
     const panelId = this.getAttribute('data-panel') + '-panel';
     if (panelId == 'home-panel') window.location = "/";
-    if (panelId == 'github-panel') window.location = "https://github.com/jamesbachini/Soroban-Playground";
+    if (panelId == 'github-panel') window.open("https://github.com/jamesbachini/Soroban-Playground", "_blank");
     document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     this.classList.add('active');
