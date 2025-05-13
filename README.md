@@ -89,8 +89,10 @@ sudo systemctl enable docker
 
 # Add a shared volume to speed up compilation times, change $USERNAME for working directory
 docker volume create cargo-cache
+
+# Add a tmp project.wasm and give global permissions to read and write
 echo "." > /tmp/project.wasm
-chmod 777 /tmp/project.wasm
+chmod 664 /tmp/project.wasm
 
 # Add crontab line, change $USERNAME to your home directory
 crontab -e
