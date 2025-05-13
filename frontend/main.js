@@ -50,8 +50,11 @@ async function compileCode() {
     });
     if (response.ok) {
       const buffer = await response.arrayBuffer();
-      const contractName = extractContractName(code);
-      const blob = new Blob([buffer], { type: 'application/wasm' });
+      let view = new Uint8Array(buffer);
+      let start = 0;
+      while (view[start] === 0x20) start++; // Skip any 0x20 bytes heartbeat
+      const clean = view.subarray(start);
+      const blob = new Blob([clean], { type: 'application/wasm' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
