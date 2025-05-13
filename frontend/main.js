@@ -49,6 +49,7 @@ async function compileCode() {
       body: JSON.stringify({ code }),
     });
     if (response.ok) {
+      const contractName = extractContractName(code);
       const buffer = await response.arrayBuffer();
       let view = new Uint8Array(buffer);
       let start = 0;
