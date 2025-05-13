@@ -51,32 +51,36 @@ sudo curl --proto '=https' --tlsv1.2 -sSf https://get.docker.com | sh
 sudo apt update
 sudo apt install build-essential
 
-# Add permissions and start docker, change $USER to whoever is running it
-sudo usermod -aG docker $USER
-sudo systemctl start docker
-
 # Clone the repo
 git clone https://github.com/jamesbachini/Soroban-Playground.git
-
-# Edit WORKDIR /mnt/c/code/Soroban-Playground to your directory in Dockerfile.sandbox
 cd Soroban-Playground
-nano Dockerfile.sandbox
 
-# Might need to log out and log back in before running docker build
+# Add permissions and start docker, change $USER to whoever is running it
+# Log out and log back in before running docker build
+sudo usermod -aG docker $USER
+sudo systemctl start docker
+exit
+docker volume create cargo-cache
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
 
-# Run the application
-cargo run
+# Run the application (root privilidges required to bind port 80, not suitable for production, see below)
+sudo cargo run
 
 # Open up a browser on http://127.0.0.1
 ```
 
 ## Production
+Additional steps to run it up on a remote server
+
 Currently setup to handle 4 concurrent sandboxed builds, using 1 cpu and 1G ram each. This is configurable and may require optimisation. App doesn't require session info so would be well suited to auto-scaling via additional instances behind a load balancer (in theory).
 
 ```bash
-# Add permissions for ubuntu
-sudo usermod -aG docker ubuntu
+# Enable docker after reset
+sudo systemctl enable docker
+
+# Add a tmp project.wasm and give global permissions to read and write
+echo "." > /tmp/project.wasm
+chmod 664 /tmp/project.wasm
 
 # build a release binary
 cargo build --release
@@ -84,21 +88,12 @@ cargo build --release
 #  Enable that binary to bind to port 80
 sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
-# Enable docker after reset
-sudo systemctl enable docker
-
-# Add a shared volume to speed up compilation times, change $USERNAME for working directory
-docker volume create cargo-cache
-
-# Add a tmp project.wasm and give global permissions to read and write
-echo "." > /tmp/project.wasm
-chmod 664 /tmp/project.wasm
-
 # Add crontab line, change $USERNAME to your home directory
 crontab -e
 @reboot cd /home/$USERNAME/Soroban-Playground; /home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground
 ```
 Then turn it off then on again and keep everything crossed 🤞
+
 
 ## Updating
 

@@ -15,18 +15,23 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
     fs::create_dir(&src).map_err(|e| e.to_string())?;
     fs::write(src.join("lib.rs"), code).map_err(|e| e.to_string())?;
 
+    let mut final_command = format!("cd /workspace/project && {}", command);
+    if command.contains("build") {
+        final_command = format!(
+            "{} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /tmp/project.wasm",
+            final_command
+        );
+    }
+
     let output = tokio::process::Command::new("docker")
         .args(&[
             "run", "--rm", "--memory=2G", "--cpus=2",
             "-v", &format!("{}:/workspace", tmp.path().display()),
-            //"-e", "CARGO_TARGET_DIR=/workspace/project/target",
             "-v", "cargo-cache:/mnt/cargo",
             "-e", "CARGO_HOME=/mnt/cargo",
             "-e", "CARGO_TARGET_DIR=/mnt/cargo/target",
             "wasm_sandbox:latest", "bash", "-c",
-            //&format!("cd /workspace/project && {}", command),
-            &format!("cd /workspace/project && {} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /tmp/project.wasm", command)
-
+            final_command
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
