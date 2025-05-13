@@ -62,6 +62,7 @@ async function compileCode() {
         const resultText = textDecoder.decode(buffer);
         consoleEl.style.display = 'block';
         consoleEl.innerText = resultText;
+        consoleEl.scrollTop = consoleEl.scrollHeight;
         return;
       }
       const blob = new Blob([clean], { type: 'application/wasm' });
@@ -75,6 +76,7 @@ async function compileCode() {
       const resultText = await response.text();
       consoleEl.style.display = 'block';
       consoleEl.innerText = resultText;
+      consoleEl.scrollTop = consoleEl.scrollHeight;
     }
   } catch (err) {
     console.error(err);
@@ -88,13 +90,14 @@ async function compileCode() {
 async function runTests() {
   document.getElementById('run-tests').disabled = true;
   const code = editor.getValue();
-  document.getElementById('test-status').innerText = 'Running tests... (This may take a minute or two)';
+  const statusEl = document.getElementById('test-status');
+  const consoleEl = document.getElementById('test-console');
+  consoleEl.innerText = '';
+  statusEl.innerText = 'Running tests... (This may take a minute or two)';
   const interval = setInterval(() => {
     const msgIndex = Math.floor(Math.random() * funnyMessages.length);
     document.getElementById('test-status').innerText = 'Running tests... '+funnyMessages[msgIndex];
   }, 3000);
-  const consoleEl = document.getElementById('test-console');
-  consoleEl.innerText = '';
   try {
     const response = await fetch('/test', {
       method: 'POST',
@@ -104,15 +107,16 @@ async function runTests() {
     const resultText = await response.text();
     if (response.ok) {
       consoleEl.innerText = resultText;
-      document.getElementById('test-status').innerText = 'Tests completed';
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+      statusEl.innerText = 'Tests completed';
     } else {
       consoleEl.innerText = resultText;
-      document.getElementById('test-status').innerText = 'Errors in tests';
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+      statusEl.innerText = 'Errors in tests';
     }
   } catch (err) {
-    consoleEl.innerText = `Network error: ${err.message}`;
+    statusEl.innerText = `Network error: ${err.message}`;
     console.error(err);
-    document.getElementById('test-status').innerText = 'Test runner error';
   }
   document.getElementById('run-tests').disabled = false;
   clearInterval(interval);
