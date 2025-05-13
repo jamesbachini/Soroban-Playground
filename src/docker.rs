@@ -13,15 +13,16 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
     let mut final_command = format!("cd /workspace/project && {}", command);
     if command.contains("build") {
         final_command = format!(
-            "{} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /tmp/project.wasm",
-            final_command
-        );
+            "set -ex; cd /workspace/project && {} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /host-tmp/project.wasm",
+            command
+        )
     }
     let output = tokio::process::Command::new("docker")
         .args(&[
             "run", "--rm", "--memory=2G", "--cpus=2",
             "-v", &format!("{}:/workspace", tmp.path().display()),
             "-v", "cargo-cache:/mnt/cargo",
+            "-v", "/tmp:/host-tmp",
             "-e", "CARGO_HOME=/mnt/cargo",
             "-e", "CARGO_TARGET_DIR=/mnt/cargo/target",
             "wasm_sandbox:latest", "bash", "-c",
@@ -32,6 +33,12 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
         .output()
         .await
         .map_err(|e| e.to_string())?;
+    /*
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);  
+    println!("Docker stdout:\n{}", stdout);
+    println!("Docker stderr:\n{}", stderr);
+    */
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).to_string());
     }

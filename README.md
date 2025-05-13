@@ -63,8 +63,10 @@ exit
 docker volume create cargo-cache
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
 
-# Run the application (root privilidges required to bind port 80, not suitable for production, see below)
-sudo cargo run
+# Build the app, authorize port 80 using setcap and run the binary
+cargo build --release
+sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
+./target/release/Soroban-Playground
 
 # Open up a browser on http://127.0.0.1
 ```
