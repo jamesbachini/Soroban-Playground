@@ -18,15 +18,15 @@ It's simple but capable with the ability to create soroban contracts, all the op
 - sep-41-token
 - soroban-fixed-point-math
 - blend-contract-sdk
-- openzeppelin_constants
-- openzeppelin_default_imp_macro
-- openzeppelin_event_assertion
-- openzeppelin_fungible_token
-- openzeppelin_non_fungible_token
-- openzeppelin_pausable
-- openzeppelin_pausable_macros
-- openzeppelin_upgradeable
-- openzeppelin_upgradeable_macros
+- stellar-constants
+- stellar-default-impl-macro
+- stellar-event-assertion
+- stellar-fungible
+- stellar-non-fungible
+- stellar-pausable
+- stellar-pausable-macros
+- stellar-upgradeable
+- stellar-upgradeable-macros
 
 Full version info available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
 
@@ -78,10 +78,6 @@ Currently setup to handle 4 concurrent sandboxed builds, using 1 cpu and 1G ram 
 # Enable docker after reset
 sudo systemctl enable docker
 
-# Add a tmp project.wasm and give global permissions to read and write
-echo "." > /tmp/project.wasm
-chmod 664 /tmp/project.wasm
-
 # build a release binary
 cargo build --release
 
@@ -90,7 +86,9 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
 # Add crontab line, change $USERNAME to your home directory
 crontab -e
+@reboot echo "." > /tmp/project.wasm; chmod 664 /tmp/project.wasm
 @reboot cd /home/$USERNAME/Soroban-Playground; /home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground
+
 ```
 Then turn it off then on again and keep everything crossed 🤞
 
