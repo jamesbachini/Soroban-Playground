@@ -31,7 +31,7 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
             "-e", "CARGO_HOME=/mnt/cargo",
             "-e", "CARGO_TARGET_DIR=/mnt/cargo/target",
             "wasm_sandbox:latest", "bash", "-c",
-            final_command
+            &final_command
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
