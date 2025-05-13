@@ -4,7 +4,6 @@ use futures_util::StreamExt;
 use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::ReceiverStream;
 use std::time::Duration;
-use tracing::error;
 
 use crate::{docker::run_in_docker, models::CompileRequest, semaphore::SEMAPHORE};
 
@@ -15,7 +14,6 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
     let permit = match SEMAPHORE.acquire().await {
         Ok(p) => p,
         Err(_) => {
-            error!("Semaphore closed");
             return HttpResponse::ServiceUnavailable().body("Server shutting down");
         }
     };
@@ -41,8 +39,8 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
                             let _ = tx.send(Ok(Bytes::from(stdout))).await;
                         }
                         Err(e) => {
-                            let msg = format!("Test run error: {}", e);
-                            let _ = tx.send(Err(msg.clone())).await;
+                            let msg = format!("Test Errors: \n{}\n", e);
+                            let _ = tx.send(Ok(Bytes::from(msg))).await;
                         }
                     }
                     break;
@@ -51,10 +49,12 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
         }
     });
 
-    let stream = ReceiverStream::new(rx)
-        .map(|res: Result<Bytes, String>| {
-            res.map_err(|msg| actix_web::error::ErrorBadRequest(msg))
-        });
+    let stream = ReceiverStream::new(rx).map(|chunk| {
+        match chunk {
+            Ok(bytes) => Ok::<Bytes, actix_web::Error>(bytes),
+            Err(_)    => unreachable!(),
+        }
+    });
 
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")

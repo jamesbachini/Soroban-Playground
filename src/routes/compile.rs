@@ -46,20 +46,16 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
                 }
                 res = &mut compile_fut => {
                     match res {
-                        Ok((_, tmp)) => {
-                            println!("tmp: {}", tmp.path().display());
-                            //let path = tmp.path().join("project/target/wasm32-unknown-unknown/release/project.wasm");
+                        Ok((_, _tmp)) => {
                             let path = PathBuf::from("/tmp/project.wasm");
-                            println!("path: {}", path.display());
-
                             match std::fs::read(&path) {
                                 Ok(wasm) => {
                                     let _ = tx.send(Ok(Bytes::from(wasm))).await;
                                     info!(hash=%hash, "compiled successfully");
                                 }
                                 Err(e) => {
-                                    let msg = format!("I/O error reading wasm: {}", e);
-                                    let _ = tx.send(Err(msg.clone())).await;
+                                    let msg = format!("Compile Error: {}\n", e);
+                                    let _ = tx.send(Ok(Bytes::from(msg))).await;
                                     error!(error=%e, "error reading wasm");
                                 }
                             }
@@ -77,8 +73,9 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
     });
 
     let stream = ReceiverStream::new(rx)
-        .map(|res: Result<Bytes, String>| {
-            res.map_err(|msg| actix_web::error::ErrorBadRequest(msg))
+        .map(|res| match res {
+            Ok(bytes) => Ok::<Bytes, actix_web::Error>(bytes),
+            Err(_)    => unreachable!(),
         });
 
     HttpResponse::Ok()
