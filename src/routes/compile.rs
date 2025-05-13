@@ -60,8 +60,9 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
                             }
                         }
                         Err(e) => {
-                            let msg = e.to_string();
-                            let _ = tx.send(Err(msg.clone())).await;
+                            let msg = format!("Build Errors: \n{}\n", e);
+                            //let _ = tx.send(Err(msg.clone())).await;
+                            let _ = tx.send(Ok(Bytes::from(msg))).await;
                         }
                     }
                     break;

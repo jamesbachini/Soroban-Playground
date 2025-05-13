@@ -52,7 +52,7 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
     let stream = ReceiverStream::new(rx).map(|chunk| {
         match chunk {
             Ok(bytes) => Ok::<Bytes, actix_web::Error>(bytes),
-            Err(_)    => unreachable!(),
+            Err(_) => unreachable!(),
         }
     });
 

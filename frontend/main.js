@@ -37,6 +37,8 @@ async function compileCode() {
   document.getElementById('compile-code').disabled = true;
   const code = editor.getValue();
   const statusEl = document.getElementById('build-status');
+  const consoleEl = document.getElementById('build-console');
+  consoleEl.innerText = '';
   statusEl.innerText = 'Compiling... (Estimated build time 30s)';
   const interval = setInterval(() => {
     const msg = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
@@ -55,6 +57,13 @@ async function compileCode() {
       let start = 0;
       while (view[start] === 0x20) start++; // Skip any 0x20 bytes heartbeat
       const clean = view.subarray(start);
+      if (!(clean[0] === 0x00 && clean[1] === 0x61 && clean[2] === 0x73 && clean[3] === 0x6d)) {
+        const textDecoder = new TextDecoder('utf-8');
+        const resultText = textDecoder.decode(buffer);
+        consoleEl.style.display = 'block';
+        consoleEl.innerText = resultText;
+        return;
+      }
       const blob = new Blob([clean], { type: 'application/wasm' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -63,17 +72,13 @@ async function compileCode() {
       a.click();
       statusEl.innerText = 'Compilation successful!';
     } else {
-      const text = await response.text();
-      let errorMessage = text;
-      try {
-        const json = JSON.parse(text);
-        errorMessage = json.message ?? JSON.stringify(json, null, 2);
-      } catch {}
-      statusEl.innerText = `Error: ${errorMessage}`;
+      const resultText = await response.text();
+      consoleEl.style.display = 'block';
+      consoleEl.innerText = resultText;
     }
   } catch (err) {
     console.error(err);
-    statusEl.innerText = `Network error: ${err.message}`;
+    statusEl.innerText = 'Build error';
   } finally {
     clearInterval(interval);
     document.getElementById('compile-code').disabled = false;
@@ -101,16 +106,7 @@ async function runTests() {
       consoleEl.innerText = resultText;
       document.getElementById('test-status').innerText = 'Tests completed';
     } else {
-      let errorMessage = resultText;
-      try {
-        const json = JSON.parse(resultText);
-        if (json.message) {
-          errorMessage = json.message;
-        } else {
-          errorMessage = JSON.stringify(json, null, 2);
-        }
-      } catch {}
-      consoleEl.innerText = errorMessage;
+      consoleEl.innerText = resultText;
       document.getElementById('test-status').innerText = 'Errors in tests';
     }
   } catch (err) {

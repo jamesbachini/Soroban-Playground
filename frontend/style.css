@@ -190,6 +190,10 @@ h1 {
   color: #0f0;
 }
 
+#build-console {
+  display: none;
+}
+
 input[type="text"],
 select {
   width: 200px;
