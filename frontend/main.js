@@ -36,32 +36,49 @@ function extractContractName(code) {
 async function compileCode() {
   document.getElementById('compile-code').disabled = true;
   const code = editor.getValue();
-  document.getElementById('build-status').innerText = 'Compiling... (Estimated build time 30s)';
+  const statusEl = document.getElementById('build-status');
+  statusEl.innerText = 'Compiling... (Estimated build time 30s)';
   const interval = setInterval(() => {
     const msgIndex = Math.floor(Math.random() * funnyMessages.length);
-    document.getElementById('build-status').innerText = 'Compiling... '+funnyMessages[msgIndex];
+    statusEl.innerText = 'Compiling... ' + funnyMessages[msgIndex];
   }, 3000);
-  const response = await fetch('/compile', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code })
-  });
-  if (response.ok) {
-    const contractName = extractContractName(code);
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${contractName}.wasm`;
-    a.click();
-    document.getElementById('build-status').innerText = 'Compilation successful!';
-  } else {
-    const error = await response.text();
-    document.getElementById('build-status').innerText = `Error: ${error}`;
+  try {
+    const response = await fetch('/compile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const resultText = await response.text();
+    if (response.ok) {
+      const contractName = extractContractName(code);
+      const blob = new Blob([resultText], { type: 'application/wasm' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${contractName}.wasm`;
+      a.click();
+      statusEl.innerText = 'Compilation successful!';
+    } else {
+      let errorMessage = resultText;
+      try {
+        const json = JSON.parse(resultText);
+        if (json.message) {
+          errorMessage = json.message;
+        } else {
+          errorMessage = JSON.stringify(json, null, 2);
+        }
+      } catch {}
+      statusEl.innerText = `Error: ${errorMessage}`;
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl.innerText = `Network error: ${err.message}`;
+  } finally {
+    document.getElementById('compile-code').disabled = false;
+    clearInterval(interval);
   }
-  document.getElementById('compile-code').disabled = false;
-  clearInterval(interval);
 }
+
 
 async function runTests() {
   document.getElementById('run-tests').disabled = true;
@@ -75,14 +92,30 @@ async function runTests() {
   consoleEl.innerText = '';
   try {
     const response = await fetch('/test', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
     });
-    const result = await response.text();
-    consoleEl.innerText = result;
-    document.getElementById('test-status').innerText = response.ok ? 'Tests completed' : 'Errors in tests';
+    const resultText = await response.text();
+    if (response.ok) {
+      consoleEl.innerText = resultText;
+      document.getElementById('test-status').innerText = 'Tests completed';
+    } else {
+      let errorMessage = resultText;
+      try {
+        const json = JSON.parse(resultText);
+        if (json.message) {
+          errorMessage = json.message;
+        } else {
+          errorMessage = JSON.stringify(json, null, 2);
+        }
+      } catch {}
+      consoleEl.innerText = errorMessage;
+      document.getElementById('test-status').innerText = 'Errors in tests';
+    }
   } catch (err) {
-    consoleEl.innerText = err.message;
-    console.error(err)
+    consoleEl.innerText = `Network error: ${err.message}`;
+    console.error(err);
     document.getElementById('test-status').innerText = 'Test runner error';
   }
   document.getElementById('run-tests').disabled = false;
