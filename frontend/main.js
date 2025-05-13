@@ -39,19 +39,19 @@ async function compileCode() {
   const statusEl = document.getElementById('build-status');
   statusEl.innerText = 'Compiling... (Estimated build time 30s)';
   const interval = setInterval(() => {
-    const msgIndex = Math.floor(Math.random() * funnyMessages.length);
-    statusEl.innerText = 'Compiling... ' + funnyMessages[msgIndex];
+    const msg = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
+    statusEl.innerText = 'Compiling... ' + msg;
   }, 3000);
   try {
     const response = await fetch('/compile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({ code }),
     });
-    const resultText = await response.text();
     if (response.ok) {
+      const buffer = await response.arrayBuffer();
       const contractName = extractContractName(code);
-      const blob = new Blob([resultText], { type: 'application/wasm' });
+      const blob = new Blob([buffer], { type: 'application/wasm' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -59,14 +59,11 @@ async function compileCode() {
       a.click();
       statusEl.innerText = 'Compilation successful!';
     } else {
-      let errorMessage = resultText;
+      const text = await response.text();
+      let errorMessage = text;
       try {
-        const json = JSON.parse(resultText);
-        if (json.message) {
-          errorMessage = json.message;
-        } else {
-          errorMessage = JSON.stringify(json, null, 2);
-        }
+        const json = JSON.parse(text);
+        errorMessage = json.message ?? JSON.stringify(json, null, 2);
       } catch {}
       statusEl.innerText = `Error: ${errorMessage}`;
     }
@@ -74,11 +71,10 @@ async function compileCode() {
     console.error(err);
     statusEl.innerText = `Network error: ${err.message}`;
   } finally {
-    document.getElementById('compile-code').disabled = false;
     clearInterval(interval);
+    document.getElementById('compile-code').disabled = false;
   }
 }
-
 
 async function runTests() {
   document.getElementById('run-tests').disabled = true;
