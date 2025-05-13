@@ -56,14 +56,12 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
                                 Err(e) => {
                                     let msg = format!("Compile Error: {}\n", e);
                                     let _ = tx.send(Ok(Bytes::from(msg))).await;
-                                    error!(error=%e, "error reading wasm");
                                 }
                             }
                         }
                         Err(e) => {
                             let msg = e.to_string();
                             let _ = tx.send(Err(msg.clone())).await;
-                            error!(error=%msg, "compilation error");
                         }
                     }
                     break;
@@ -75,7 +73,7 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
     let stream = ReceiverStream::new(rx)
         .map(|res| match res {
             Ok(bytes) => Ok::<Bytes, actix_web::Error>(bytes),
-            Err(_)    => unreachable!(),
+            Err(_) => unreachable!(),
         });
 
     HttpResponse::Ok()
