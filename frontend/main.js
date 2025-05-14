@@ -16,7 +16,10 @@ require(['vs/editor/editor.main'], function () {
     fontSize: 14,
     minimap: {
       enabled: true
-    }
+    },
+    autoIndent: 'full',
+    contextmenu: true,
+    fontFamily: 'monospace',
   });
   init();
 });

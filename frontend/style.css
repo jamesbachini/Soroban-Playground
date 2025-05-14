@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
+
 :root {
   --bg-dark: #1e1e1e;
   --bg-darker: #121212;
@@ -12,7 +14,7 @@
 html, body { 
   margin: 0; 
   height: 100%; 
-  font-family: Consolas, "Courier New", monospace, sans-serif;
+  font-family: "Noto Sans", monospace, sans-serif;
   background-color: var(--bg-dark);
   color: var(--text-light);
   overflow: hidden;
@@ -130,7 +132,7 @@ a {
   background-color: var(--section-bg);
   overflow-y: auto;
   flex-grow: 1;
-  min-height: 20px;
+  min-height: 170px;
 }
 
 .panel {
