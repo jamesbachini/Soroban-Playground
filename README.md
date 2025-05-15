@@ -120,7 +120,15 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
 Restart server.
 
+## Pruning Docker
 
+After messing with different docker builds it can use a lot of HD
+
+```bash
+docker system prune -a
+docker volume create cargo-cache
+docker build -f Dockerfile.sandbox -t wasm_sandbox .
+```
 
 ## 2 do
 - Multifile support

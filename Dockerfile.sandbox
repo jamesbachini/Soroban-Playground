@@ -11,7 +11,7 @@ WORKDIR /workspace
 RUN rustup target add wasm32-unknown-unknown
 
 # Install stellar cli
-RUN cargo install --locked stellar-cli --features opt
+RUN cargo install --locked stellar-cli
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 
 # Copy Cargo.toml and lib.rs templates
