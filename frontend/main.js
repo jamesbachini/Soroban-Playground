@@ -584,9 +584,10 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
               response2.returnValue.address(),
             ).toBuffer(),
           );
-        document.getElementById('deploy-console').innerHTML += `Contract Deployed!
-        <a href="https://stellar.expert/explorer/${network.toLowerCase()}/contract/${contractAddress}" target="_blank">${contractAddress}</a><br />
-        <a href="#" onclick="loadContract('${contractAddress}'); return false;">Load contract using the explorer</a><br />`;
+        document.getElementById('deploy-console').innerHTML += `Contract Deployed!<br />
+        Contract ID: ${contractAddress}<br />
+        Block Explorer: <a href="https://stellar.expert/explorer/${network.toLowerCase()}/contract/${contractAddress}" target="_blank">Stellar.Expert</a><br />
+        SoroPG Explorer: <a href="#" onclick="loadContract('${contractAddress}'); return false;">Load Contract</a><br />`;
         } else {
           document.getElementById('deploy-console').innerHTML += 'Transaction 2/2 failed.<br />';
         }

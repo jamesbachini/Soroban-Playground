@@ -208,13 +208,13 @@ h1 {
 
 .console {
   background: #000;
-  color: #0f0;
+  color: rgb(0, 204, 0);
   padding: 10px;
   font-family: monospace;
   height: 200px;
   overflow-y: auto;
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: 10px;
   margin-top: 10px;
 }
 
