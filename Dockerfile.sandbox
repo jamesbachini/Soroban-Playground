@@ -1,4 +1,4 @@
-FROM rust:1.81
+FROM rust:1.86
 
 # Set build cache location
 ENV CARGO_HOME=/mnt/cargo
@@ -9,6 +9,10 @@ WORKDIR /workspace
 
 # Install wasm target
 RUN rustup target add wasm32-unknown-unknown
+
+# Install stellar cli
+RUN cargo install --locked stellar-cli --features opt
+RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 
 # Copy Cargo.toml and lib.rs templates
 COPY src/templates/Cargo.toml.template ./Cargo.toml

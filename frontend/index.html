@@ -27,8 +27,8 @@
         <div class="sidebar-icon" data-panel="deploy" title="Deploy">
           <i class="fas fa-rocket fa-lg"></i>
         </div>
-        <div class="sidebar-icon" data-panel="integrate" title="Integrate">
-          <i class="fas fa-laptop-code fa-lg"></i>
+        <div class="sidebar-icon" data-panel="explore" title="Explore" id="explore-sidebar-icon">
+          <i class="fas fa-flask fa-lg"></i>
         </div>
         <div class="sidebar-icon github-icon" data-panel="github" title="Github">
           <i class="fa-brands fa-github fa-lg"></i>
@@ -42,7 +42,7 @@
           <a href="https://jamesbachini.github.io/Soroban-Dev-Tools/" target="_blank">TOOLS</a>
           <a href="https://developers.stellar.org/" target="_blank">DOCS</a>
           -
-          <a href="https://soropg.com" target="_blank">SoroPG.com v0.2.2</a>
+          <a href="https://soropg.com" target="_blank">SoroPG.com v0.2.3</a>
         </div>
 
         <div id="editor-container">
@@ -69,7 +69,7 @@
                   <li><i class="fas fa-hammer accent"></i> <strong>Build</strong> - Compile your contract to WASM</li>
                   <li><i class="fas fa-vial accent"></i> <strong>Test</strong> - Run unit tests and debug contract</li>
                   <li><i class="fas fa-rocket accent"></i> <strong>Deploy</strong> - Deploy WASM file to testnet/mainnet</li>
-                  <li><i class="fas fa-laptop-code accent"></i> <strong>Integrate</strong> - Invoke contract functions using Javascript</li>
+                  <li><i class="fas fa-flask accent"></i> <strong>Explore</strong> - Explore &amp; Invoke contract functions</li>
                 </ul>
               </div>
               
@@ -161,28 +161,27 @@
                 <p>Deploy your compiled WASM file to the Soroban network.</p>
               </div>
               <div class="deploy-controls">
-                <button id="connect-freighter">Connect Freighter Wallet</button>
-                <button id="connect-testnet">Generate Wallet</button>
-                <button id="connect-secret">Load Secret Key</button>
-                <div id="wallet-info"></div>
-                <br/>
-                <div class="form-group">
-                  <div id="args-container"></div>
-                  <div class="add-arg-container">
-                    <button id="add-arg-btn" type="button">Add Constructor Argument</button>
-                  </div>
-                </div>
+                <button class="connect-testnet">Generate Wallet</button>
+                <button class="connect-freighter">Connect Freighter</button>
+                <button class="connect-secret">Load Secret Key</button>
+                <div class="wallet-info"></div>
                 <br />
                 <div class="box">
                   <div>
-                    <label for="network">Select Network:</label>
-                    <select id="network">
+                    <button id="deploy-button" disabled>Deploy WASM</button>
+                  </div>
+                  <div>
+                    <label for="deploy-network">Network: </label>
+                    <select id="deploy-network">
                       <option value="TESTNET" selected>Testnet</option>
                       <option value="PUBLIC">Mainnet</option>
                     </select>
                   </div>
-                  <div>
-                    <button id="deploy-button" disabled>Deploy WASM</button>
+                </div>
+                <div class="form-group">
+                  <div id="args-container"></div>
+                  <div class="add-arg-container">
+                    <button id="add-arg-btn" type="button">Add Constructor Argument</button>
                   </div>
                 </div>
                 <div id="deploy-console" class="console"></div>
@@ -205,14 +204,31 @@
             </div>
           </div>
           
-          <div class="panel" id="integrate-panel">
-            <h1><i class="fas fa-laptop-code accent"></i> Integrate</h1>
+          <div class="panel" id="explore-panel">
+            <h1><i class="fas fa-flask accent"></i> Contract Explorer</h1>
             <div class="panel-content">
               <div class="info-card">
-                <p>In this section you can test your latest contract using your web browser and the <a href="https://stellar.github.io/js-stellar-sdk/" target="_blank">js-stellar-sdk</a></p>
+                <p>In this section you can explore and call Soroban contract functions using your web browser</p>
               </div>
-              <button id="eval-button">Eval</button>
-              <textarea id="integrate-editor"></textarea>
+              <div class="explore-controls">
+                <button class="connect-testnet">Generate Wallet</button>
+                <button class="connect-freighter">Connect Freighter</button>
+                <button class="connect-secret">Load Secret Key</button>
+                <div class="wallet-info"></div>
+                <br />
+                <label for="explore-network">Network: </label>
+                <select id="explore-network">
+                  <option value="TESTNET" selected>Testnet</option>
+                  <option value="PUBLIC">Mainnet</option>
+                </select>
+              </div>
+              <div>
+                <input type="text" id="explore-contract-id" placeholder="Contract ID" />
+                <button type="button" id="load-contract-button">Load</button>
+              </div>
+              <div id="explore-form">
+
+              </div>
             </div>
           </div>
 

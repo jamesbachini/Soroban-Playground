@@ -4,7 +4,7 @@
 |-|          / | \    (/\|/\)   / | \         |-|
 | |---------/--|-voV---\>|</--Vov-|--\--------| |
 | |              '^'   (o o)  '^'             | |
-| |          Soroban Playground v0.2.2        | |
+| |          Soroban Playground v0.2.3        | |
 | |___________________________________________| |
 |-|   /   /\ /         ( (       \ /\   \     |-|
 (@)   | /   V           \ \       V   \ |     (@)
@@ -33,6 +33,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(routes::compile::compile)
             .service(routes::test::test)
+            .service(routes::interface::interface)
             .service(Files::new("/", "./frontend").index_file("index.html"))
     })
     .bind(("0.0.0.0", 80))?

@@ -125,6 +125,120 @@ async function runTests() {
   clearInterval(interval);
 }
 
+function renderContractForm(contractId, interfaceString, divId = 'explore-form') {
+  const container = document.getElementById(divId);
+  container.innerHTML = '';
+  const methodRegex = /fn\s+(\w+)\s*\(\s*env:[^)]*?\)\s*(->\s*[^;{]+)?;?/g;
+  const argsRegex = /(\w+)\s*:\s*([^,\)]+)/g;
+  let match;
+  while ((match = methodRegex.exec(interfaceString)) !== null) {
+    const methodName = match[1];
+    const signature = match[0];
+    const isRead = signature.includes('->');
+    const args = [];
+    const argsPart = signature.substring(signature.indexOf('(') + 1, signature.lastIndexOf(')'));
+    let argMatch;
+    while ((argMatch = argsRegex.exec(argsPart)) !== null) {
+      const [_, argName, rawType] = argMatch;
+      const type = rawType.trim().replace(/soroban_sdk::/g, '');
+      if (argName.trim() !== 'env') {
+        args.push({ name: argName.trim(), type });
+      }
+    }
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('method-box');
+    const left = document.createElement('div');
+    left.classList.add('method-left');
+    const title = document.createElement('h3');
+    title.textContent = methodName;
+    left.appendChild(title);
+    args.forEach(arg => {
+      const row = document.createElement('div');
+      row.classList.add('arg-row');
+      const label = document.createElement('label');
+      label.textContent = `${arg.name}: ${arg.type}`;
+      label.htmlFor = `${methodName}-${arg.name}`;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = `${methodName}-${arg.name}`;
+      row.append(input, label);
+      left.appendChild(row);
+    });
+    const button = document.createElement('button');
+    button.textContent = methodName;
+    left.appendChild(button);
+    const right = document.createElement('div');
+    right.classList.add('method-right');
+    const consoleDiv = document.createElement('div');
+    consoleDiv.classList.add('console');
+    right.appendChild(consoleDiv);
+    button.addEventListener('click', async () => {
+      try {
+        const contract = new StellarSdk.Contract(contractId);
+        const convertedArgs = [];
+        args.forEach(arg => {
+          const value = document.getElementById(`${methodName}-${arg.name}`).value.trim();
+          convertedArgs.push(toScVal(value, arg.type.toLowerCase()));
+        });
+        const sourceAccount = await horizon.loadAccount(publicKey);
+        const op = contract.call(methodName, ...convertedArgs);
+        const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+          fee: StellarSdk.BASE_FEE,
+          networkPassphrase,
+        })
+          .addOperation(op)
+          .setTimeout(30)
+          .build();
+        if (isRead) {
+          const simulationResult = await rpc.simulateTransaction(tx);
+          const decoded = StellarSdk.scValToNative(simulationResult.result?.retval);
+          const safeDecoded = JSON.parse(JSON.stringify(decoded, (key, value) =>
+            typeof value === "bigint" ? value.toString() : value
+          ));
+          consoleDiv.innerHTML = `<pre>${JSON.stringify(safeDecoded, null, 2)}</pre>`;
+        } else {
+          const preparedTx = await rpc.prepareTransaction(tx);
+          const signedTx = await signTransaction(preparedTx);
+          let response = await rpc.sendTransaction(signedTx);
+          const hash = response.hash;
+          consoleDiv.innerHTML = `
+            <p>Transaction Sent! Check block explorer:</p>
+            <a href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a>
+          `;
+        }
+      } catch (err) {
+        consoleDiv.innerHTML = `<pre style="color:red;">${err.message || err}</pre>`;
+        console.error(err);
+      }
+    });
+    wrapper.appendChild(left);
+    wrapper.appendChild(right);
+    container.appendChild(wrapper);
+  }
+}
+
+
+async function loadContract(contractId) {
+  document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('explore-sidebar-icon').classList.add('active');
+  document.getElementById('explore-panel').classList.add('active');
+  document.getElementById('explore-contract-id').value = contractId;
+  try {
+    const response = await fetch('/interface', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contract: contractId, network: network.toLowerCase() })
+    });
+    const resultText = await response.text();
+    console.log(resultText)
+    renderContractForm(contractId, resultText);
+  } catch (err) {
+    exploreForm.innerText = `Failed to load contract: ${err.message}`;
+    console.error(err);
+  }
+}
+
 function updateNetwork(value) {
   network = value;
   let rpcURL;
@@ -154,6 +268,36 @@ function fundAddress(pubKey) {
     });
 }
 
+function resetCode() {
+  editor.setValue(`#![no_std]
+
+use soroban_sdk::{contract, contractimpl, Env};
+
+#[contract]
+pub struct ExampleContract;
+
+#[contractimpl]
+impl ExampleContract {
+    pub fn add(_env: Env, a: i32, b: i32) -> i32 {
+        a + b
+    }
+}
+
+#[cfg(test)]
+
+#[test]
+fn example_unit_test() {
+    let env = Env::default();
+    let contract_id = env.register(ExampleContract, ());
+    let client = ExampleContractClient::new(&env, &contract_id);
+    let a = 5_i32;
+    let b = 7_i32;
+    let result = client.add(&a, &b);
+    assert_eq!(result, 12);
+}
+`);
+}
+
 function toScVal(val, type) {
   switch(type) {
     case 'string':
@@ -172,7 +316,6 @@ function toScVal(val, type) {
       }
       return StellarSdk.nativeToScVal(num, { type });
     }
-    
     case 'bool': {
       if (typeof val === "string") {
         const lower = val.toLowerCase();
@@ -272,50 +415,62 @@ document.getElementById('add-arg-btn').addEventListener('click', () => {
   argsContainer.appendChild(createArgRow());
 });
 
-updateNetwork(document.getElementById('network').value);
-document.getElementById('network').addEventListener('change', (e) => {
+updateNetwork(document.getElementById('deploy-network').value);
+document.getElementById('deploy-network').addEventListener('change', (e) => {
   updateNetwork(e.target.value);
   document.getElementById('deploy-console').innerHTML += `Network switched to ${network}<br />`;
 });
-
-document.getElementById('connect-freighter').addEventListener('click', async () => {
-  if (!window.freighterApi) {
-    alert('Freighter extension is not installed.');
-    return;
-  }
-  const retrievePublicKey = async () => {
-      const accessObj = await window.freighterApi.requestAccess();
-      if (accessObj.error) {
-          throw new Error(accessObj.error.message);
-      } else {
-          return accessObj.address;
-      }
-  };
-  keypair = null;
-  publicKey = await retrievePublicKey();
-  document.getElementById('wallet-info').innerHTML = `Connected: ${publicKey}`;
-  document.getElementById('deploy-button').disabled = false;
+document.getElementById('explore-network').addEventListener('change', (e) => {
+  updateNetwork(e.target.value);
 });
 
-document.getElementById('connect-testnet').addEventListener('click', async () => {
-  keypair = StellarSdk.Keypair.random();
-  localStorage.setItem('secretKey', keypair.secret());
-  publicKey = keypair.publicKey();
-  document.getElementById('deploy-console').innerHTML += `New keypair generated. Public Key: ${publicKey}<br />`;
-  await fundAddress(publicKey);
-  document.getElementById('deploy-console').innerHTML += `Testnet XLM funds added :)<br />`;
-  document.getElementById('wallet-info').innerHTML = `Connected: ${publicKey}`;
-  document.getElementById('deploy-button').disabled = false;
+document.querySelectorAll('.connect-freighter').forEach(button => {
+  button.addEventListener('click', async () => { 
+    if (!window.freighterApi) {
+      alert('Freighter extension is not installed.');
+      return;
+    }
+    const retrievePublicKey = async () => {
+        const accessObj = await window.freighterApi.requestAccess();
+        if (accessObj.error) {
+            throw new Error(accessObj.error.message);
+        } else {
+            return accessObj.address;
+        }
+    };
+    keypair = null;
+    publicKey = await retrievePublicKey();
+    document.querySelectorAll('.wallet-info').forEach(el => {
+      el.innerHTML = `Connected: ${publicKey}`;
+    });
+    document.getElementById('deploy-button').disabled = false;
+  });
 });
 
-document.getElementById('connect-secret').addEventListener('click', async () => {
-  const secretKey = prompt('Enter a secret key (do not use in production): ');
-  localStorage.setItem('secretKey', secretKey);
-  keypair = StellarSdk.Keypair.fromSecret(secretKey);
-  publicKey = keypair.publicKey();
-  document.getElementById('deploy-console').innerHTML += `Keypair Loaded. Public Key: ${publicKey}<br />`;
-  document.getElementById('wallet-info').innerHTML = `Connected: ${publicKey}`;
-  document.getElementById('deploy-button').disabled = false;
+document.querySelectorAll('.connect-testnet').forEach(button => {
+  button.addEventListener('click', async () => {  
+    keypair = StellarSdk.Keypair.random();
+    localStorage.setItem('secretKey', keypair.secret());
+    publicKey = keypair.publicKey();
+    await fundAddress(publicKey);
+    document.querySelectorAll('.wallet-info').forEach(el => {
+      el.innerHTML = `Connected: ${publicKey}`;
+    });
+    document.getElementById('deploy-button').disabled = false;
+  });
+});
+
+document.querySelectorAll('.connect-secret').forEach(button => {
+  button.addEventListener('click', async () => {  
+    const secretKey = prompt('Enter a secret key (do not use in production): ');
+    localStorage.setItem('secretKey', secretKey);
+    keypair = StellarSdk.Keypair.fromSecret(secretKey);
+    publicKey = keypair.publicKey();
+    document.querySelectorAll('.wallet-info').forEach(el => {
+      el.innerHTML = `Connected: ${publicKey}`;
+    });
+    document.getElementById('deploy-button').disabled = false;
+  });
 });
 
 async function signTransaction(preparedTx) {
@@ -429,7 +584,9 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
               response2.returnValue.address(),
             ).toBuffer(),
           );
-        document.getElementById('deploy-console').innerHTML += `Contract Deployed! <a href="https://stellar.expert/explorer/${network.toLowerCase()}/contract/${contractAddress}" target="_blank">${contractAddress}</a><br />`;
+        document.getElementById('deploy-console').innerHTML += `Contract Deployed!
+        <a href="https://stellar.expert/explorer/${network.toLowerCase()}/contract/${contractAddress}" target="_blank">${contractAddress}</a><br />
+        <a href="#" onclick="loadContract('${contractAddress}'); return false;">Load contract using the explorer</a><br />`;
         } else {
           document.getElementById('deploy-console').innerHTML += 'Transaction 2/2 failed.<br />';
         }
@@ -445,63 +602,19 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
   };
 });
 
-document.getElementById('eval-button').addEventListener('click', async () => {
-  const jsCode = document.getElementById('integrate-editor').value;
-  eval(jsCode);
+document.getElementById('load-contract-button').addEventListener('click', async () => {
+  const contractId = document.getElementById('explore-contract-id').value;
+  loadContract(contractId);
 });
-
-function resetCode() {
-  editor.setValue(`#![no_std]
-
-use soroban_sdk::{contract, contractimpl, Env};
-
-#[contract]
-pub struct ExampleContract;
-
-#[contractimpl]
-impl ExampleContract {
-    pub fn add(_env: Env, a: i32, b: i32) -> i32 {
-        a + b
-    }
-}
-
-#[cfg(test)]
-
-#[test]
-fn example_unit_test() {
-    let env = Env::default();
-    let contract_id = env.register(ExampleContract, ());
-    let client = ExampleContractClient::new(&env, &contract_id);
-    let a = 5_i32;
-    let b = 7_i32;
-    let result = client.add(&a, &b);
-    assert_eq!(result, 12);
-}
-`);
-document.getElementById('integrate-editor').value = `const func = async () => {
-  const contractId='CBNVO6SFH2BZVAJ6QYRMYJNVUO47PMAGGLTMGFYECN45B7YTEEIKU773';
-  const functionName = 'add';
-  const args = [toScVal(8,'i32'), toScVal(23,'i32')];
-  let sourceAccount = await rpc.getAccount(publicKey);
-  const contract = new StellarSdk.Contract(contractId);
-  const tx = new StellarSdk.TransactionBuilder(sourceAccount, { fee: StellarSdk.BASE_FEE, networkPassphrase }).addOperation(contract.call(functionName, ...args)).setTimeout(30).build();
-  const preparedTx = await rpc.prepareTransaction(tx);
-  preparedTx.sign(keypair);
-  //const txResult = await rpc.sendTransaction(preparedTx);
-  const simulationResult = await rpc.simulateTransaction(preparedTx);
-  alert(simulationResult.result.retval['_value']);
-}
-func();
-`;
-}
 
 async function init() {
   const keyStore = localStorage.getItem('secretKey');
   if (keyStore) {
     keypair = StellarSdk.Keypair.fromSecret(keyStore);
     publicKey = keypair.publicKey();
-    document.getElementById('deploy-console').innerHTML += `Keypair Loaded. Public Key: ${publicKey}<br />`;
-    document.getElementById('wallet-info').innerHTML = `Connected: ${publicKey}`;
+    document.querySelectorAll('.wallet-info').forEach(el => {
+      el.innerHTML = `Connected: ${publicKey}`;
+    });
     document.getElementById('deploy-button').disabled = false;
   }
   const contractCode = localStorage.getItem('contractCode');
@@ -509,15 +622,10 @@ async function init() {
     resetCode();
   } else {
     editor.setValue(contractCode);
-    const integrateCode = localStorage.getItem('integrateCode');
-    document.getElementById('integrate-editor').value = integrateCode;
   }
   editor.onDidChangeModelContent(() => {
     const currentCode = editor.getValue();
     localStorage.setItem('contractCode', currentCode);
-  });
-  document.getElementById('integrate-editor').addEventListener('input', () => {
-    localStorage.setItem('integrateCode', document.getElementById('integrate-editor').value);
   });
   document.getElementById('reset-code').onclick = () => { resetCode() };
   document.getElementById('run-tests').onclick = () => runTests();
@@ -559,11 +667,6 @@ document.querySelectorAll('.sidebar-icon').forEach(icon => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     this.classList.add('active');
     document.getElementById(panelId).classList.add('active');
-    if (panelId == 'integrate-panel') {
-
-    } else {
-
-    }
   });
 });
 
