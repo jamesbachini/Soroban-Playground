@@ -21,14 +21,16 @@ pub async fn interface(req: web::Json<InterfaceRequest>) -> impl Responder {
     let (tx, rx) = mpsc::channel::<Result<Bytes, String>>(10);
     let network = req.network.clone();
     let contract_id = req.contract.clone();
-
     let blank_code: String = String::new();
     let clean_network: String = network.chars().filter(|c| c.is_alphanumeric()).collect();
     let clean_contract_id: String = contract_id.chars().filter(|c| c.is_alphanumeric()).collect();
-
+    let mut clean_network_string = clean_network.clone();
+    if clean_network_string == "public" {
+        clean_network_string = "mainnet --rpc-url https://mainnet.sorobanrpc.com --network-passphrase \"Public Global Stellar Network ; September 2015\"".to_string();
+    }
     let command = format!(
         "stellar contract info interface --network {} --contract-id {}",
-        clean_network,
+        clean_network_string,
         clean_contract_id
     );
     /*
