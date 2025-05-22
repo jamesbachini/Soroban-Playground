@@ -33,12 +33,8 @@ pub async fn interface(req: web::Json<InterfaceRequest>) -> impl Responder {
         clean_network_string,
         clean_contract_id
     );
-    /*
-    let command = format!(
-        "{}",
-        contract_id
-    );
-    */
+    // let command = format!("{}", contract_id);
+
     tokio::spawn(async move {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
