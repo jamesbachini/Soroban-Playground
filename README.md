@@ -27,6 +27,9 @@ It's simple but capable with the ability to create soroban contracts, all the op
 - stellar-pausable-macros
 - stellar-upgradeable
 - stellar-upgradeable-macros
+- stellar-access-control
+- stellar-access-control-macros
+
 
 Full version info available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
 
