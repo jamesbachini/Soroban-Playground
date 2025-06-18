@@ -20,6 +20,8 @@ stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-access-control = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-access-control-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 
 [dev-dependencies]
 soroban-sdk = { version = "22.0.7", features = ["testutils"] }
@@ -35,6 +37,8 @@ stellar-pausable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 stellar-pausable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 stellar-upgradeable = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 stellar-upgradeable-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-access-control = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
+stellar-access-control-macros = { git = "https://github.com/OpenZeppelin/stellar-contracts" }
 
 [profile.release]
 opt-level = "z"
