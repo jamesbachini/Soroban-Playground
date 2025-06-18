@@ -91,10 +91,14 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
 # Add crontab line, change $USERNAME to your home directory
 crontab -e
+
 @reboot echo "." > /tmp/project.wasm; chmod 664 /tmp/project.wasm
 @reboot cd /home/$USERNAME/Soroban-Playground; /home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground
-
+0 1 * * * cd /home/$USERNAME/Soroban-Playground; docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /cache/target/tmp"
 ```
+
+Replace $USERNAME in the crontab with the user account that has access
+
 Then turn it off then on again and keep everything crossed 🤞
 
 
@@ -129,6 +133,7 @@ After messing with different docker builds it can use a lot of HD
 
 ```bash
 docker system prune -a
+docker volume rm cargo-cache
 docker volume create cargo-cache
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
 ```
