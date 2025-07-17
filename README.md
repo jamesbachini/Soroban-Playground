@@ -145,8 +145,7 @@ docker build -f Dockerfile.sandbox -t wasm_sandbox .
 - WASM hash > file cache for common contracts
 - CustomGPT Chatbot integration
 - Rust linter
-- More wallets supported
-- Load and invoke contract functions form
+- More wallets supported (Creit-Tech Wallet Kit)
 
 
 ## License
