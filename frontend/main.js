@@ -473,6 +473,19 @@ document.querySelectorAll('.connect-secret').forEach(button => {
   });
 });
 
+document.querySelectorAll('.export-keys').forEach(button => {
+  button.addEventListener('click', async () => {
+    const secretKey = localStorage.getItem('secretKey');
+    console.log(secretKey)
+    if (!secretKey) return alert('No secret key found');
+    keypair = StellarSdk.Keypair.fromSecret(secretKey);
+    document.querySelectorAll('.wallet-info').forEach(el => {
+      el.innerHTML = `Public Key: ${publicKey}<br /><br />Secret Key: ${secretKey}`;
+    });
+    document.getElementById('deploy-button').disabled = false;
+  });
+});
+
 async function signTransaction(preparedTx) {
   if (!publicKey) {
     document.getElementById('deploy-console').innerHTML += `Please connect or create a wallet first<br />`;
