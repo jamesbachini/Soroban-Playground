@@ -424,6 +424,15 @@ document.getElementById('explore-network').addEventListener('change', (e) => {
   updateNetwork(e.target.value);
 });
 
+document.getElementById('share-link').onclick = () => {
+  const url = prompt("Paste raw GitHub URL: (e.g. https://raw.githubusercontent.com/user/repo/branch/path/lib.rs):");
+  if (!url) return;
+  const shareUrl = `${window.location.origin}${window.location.pathname}?codeUrl=${encodeURIComponent(url)}`;
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    alert("Shareable link copied to clipboard!");
+  });
+};
+
 document.querySelectorAll('.connect-freighter').forEach(button => {
   button.addEventListener('click', async () => { 
     if (!window.freighterApi) {
@@ -631,11 +640,26 @@ async function init() {
     });
     document.getElementById('deploy-button').disabled = false;
   }
-  const contractCode = localStorage.getItem('contractCode');
-  if (!contractCode) {
-    resetCode();
+  const urlParams = new URLSearchParams(window.location.search);
+  const codeUrl = urlParams.get("codeUrl");
+  if (codeUrl) {
+    try {
+      const resp = await fetch(codeUrl);
+      if (resp.ok) {
+        const code = await resp.text();
+        editor.setValue(code);
+        localStorage.setItem('contractCode', code); // optional: persist
+      }
+    } catch(e) {
+      alert("Failed to fetch shared code:", e);
+    }
   } else {
-    editor.setValue(contractCode);
+    const contractCode = localStorage.getItem('contractCode');
+    if (!contractCode) {
+      resetCode();
+    } else {
+      editor.setValue(contractCode);
+    }
   }
   editor.onDidChangeModelContent(() => {
     const currentCode = editor.getValue();
