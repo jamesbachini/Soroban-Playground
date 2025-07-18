@@ -161,13 +161,14 @@ docker build -f Dockerfile.sandbox -t wasm_sandbox .
 ```
 
 ## 2 do
-- Multifile support
+- Multifile support (tabs along top of editor)
+- Research safe way to edit cargo.toml
 - Split contracts and tests
+- Improve contract explorer
 - Export integration to HTML/JS
-- WASM hash > file cache for common contracts
 - CustomGPT Chatbot integration
 - Rust linter
-- More wallets supported (Creit-Tech Wallet Kit)
+- More wallets supported (Creit-Tech Wallet Kit v2 will support vanilla js, issue & contact: https://github.com/jamesbachini/Soroban-Playground/issues/2)
 
 
 ## License
