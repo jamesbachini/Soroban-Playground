@@ -1,5 +1,5 @@
 # Use official Rust image and install nightly
-FROM rust:nightly
+FROM rustlang/rust:nightly
 
 # Set build cache location
 ENV CARGO_HOME=/mnt/cargo
