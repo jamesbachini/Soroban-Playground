@@ -16,7 +16,7 @@ RUN rustup override set nightly
 RUN rustup target add wasm32v1-none
 
 # Install stellar cli
-RUN cargo install --locked stellar-cli
+RUN cargo install stellar-cli
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 
 # Copy Cargo.toml and lib.rs templates
