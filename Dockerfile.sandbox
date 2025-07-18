@@ -20,7 +20,7 @@ RUN apt-get update
 RUN apt-get install -y pkg-config libdbus-1-dev libudev-dev
 
 # Install stellar cli
-RUN cargo install stellar-cli
+RUN cargo install stellar-cli --features opt
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 
 # Copy Cargo.toml and lib.rs templates
