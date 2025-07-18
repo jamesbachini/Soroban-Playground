@@ -13,7 +13,12 @@ RUN rustup default nightly
 RUN rustup override set nightly
 
 # Install wasm target
+RUN rustup target add wasm32v1-none
 RUN rustup target add wasm32-unknown-unknown
+
+# Libdbus fix / needed if not using wasm32v1-none?
+RUN apt-get update
+RUN apt-get install -y pkg-config libdbus-1-dev libudev-dev
 
 # Install stellar cli
 RUN cargo install stellar-cli
