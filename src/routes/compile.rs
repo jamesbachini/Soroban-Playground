@@ -34,7 +34,7 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
 
-        let compile_fut = run_in_docker(code, "cargo build --release --target wasm32v1-none");
+        let compile_fut = run_in_docker(code, "cargo build --release --target wasm32-unknown-unknown");
         tokio::pin!(compile_fut);
 
         loop {
