@@ -556,7 +556,6 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
         const wasmHash = response.returnValue.bytes();
         const salt = response.returnValue.hash;
         document.getElementById('deploy-console').innerHTML += `Success! WASM hash: ${wasmHash.toString('hex')}<br />`;
-
         const argsContainer = document.getElementById('args-container');
         const argRows = argsContainer.getElementsByClassName('arg-row');      
         const convertedArgs = [];

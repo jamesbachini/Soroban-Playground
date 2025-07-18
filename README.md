@@ -27,8 +27,15 @@ It's simple but capable with the ability to create soroban contracts, all the op
 - stellar-pausable-macros
 - stellar-upgradeable
 - stellar-upgradeable-macros
+- stellar-ownable
+- stellar-ownable-macro
 - stellar-access-control
 - stellar-access-control-macros
+- stellar-crypto
+- stellar-merkle-distributor
+
+
+
 
 
 Full version info available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
@@ -117,6 +124,14 @@ git pull origin main
 git fetch origin
 git reset --hard origin/main
 
+# Optional update OZ or other dependencies in cargo.toml.template
+docker system prune -a
+docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /cache/target/tmp"
+docker volume create cargo-cache
+docker build -f Dockerfile.sandbox -t wasm_sandbox .
+cargo build --release
+sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
+
 # build a release binary
 cargo build --release
 
@@ -136,6 +151,13 @@ docker system prune -a
 docker volume rm cargo-cache
 docker volume create cargo-cache
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
+```
+## Crontab -e
+
+```bash
+@reboot echo "." > /tmp/project.wasm; chmod 666 /tmp/project.wasm
+@reboot cd ~/Soroban-Playground; ~/Soroban-Playground/target/release/Soroban-Playground
+0 1 * * * cd ~/Soroban-Playground; docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /cache/target/tmp"
 ```
 
 ## 2 do
