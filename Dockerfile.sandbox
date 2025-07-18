@@ -8,7 +8,7 @@ ENV CARGO_TARGET_DIR=/mnt/cargo/target
 WORKDIR /workspace
 
 # Install wasm target
-RUN rustup target add wasm32-unknown-unknown
+RUN rustup target add wasm32v1-none
 
 # Install stellar cli
 RUN cargo install --locked stellar-cli
@@ -22,6 +22,6 @@ COPY src/templates/lib.rs.template ./src/lib.rs
 # Prerun cargo commands
 RUN cargo fetch
 RUN cargo test
-RUN cargo build --release --target wasm32-unknown-unknown
+RUN cargo build --release --target wasm32v1-none
 
 CMD ["bash"]

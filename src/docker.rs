@@ -13,7 +13,7 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
     let mut final_command = format!("cd /workspace/project && {}", command);
     if command.contains("build") {
         final_command = format!(
-            "set -ex; cd /workspace/project && {} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /host-tmp/project.wasm",
+            "set -ex; cd /workspace/project && {} && cp /mnt/cargo/target/wasm32v1-none/release/project.wasm /host-tmp/project.wasm",
             command
         )
     }
