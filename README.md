@@ -20,7 +20,6 @@ It's simple but capable with the ability to create soroban contracts, all the op
 - blend-contract-sdk
 - stellar-constants
 - stellar-default-impl-macro
-- stellar-event-assertion
 - stellar-fungible
 - stellar-non-fungible
 - stellar-pausable
@@ -34,9 +33,7 @@ It's simple but capable with the ability to create soroban contracts, all the op
 - stellar-crypto
 - stellar-merkle-distributor
 
-
-
-
+nb. stellar-event-assertion is not supported as it wont compile with wasm32v1-none
 
 Full version info available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
 
