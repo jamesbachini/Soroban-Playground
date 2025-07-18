@@ -129,8 +129,6 @@ docker system prune -a
 docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /cache/target/tmp"
 docker volume create cargo-cache
 docker build -f Dockerfile.sandbox -t wasm_sandbox .
-cargo build --release
-sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
 # build a release binary
 cargo build --release
