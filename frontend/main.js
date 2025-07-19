@@ -519,6 +519,7 @@ async function signTransaction(preparedTx) {
 
 document.getElementById('deploy-button').addEventListener('click', async () => {
   document.getElementById('deploy-button').disabled = true;
+  setTimeout(() => document.getElementById('deploy-button').disabled = false, 3000);
   document.getElementById('panel-container').scrollTo({
     top: document.getElementById('deploy-console').offsetTop,
     left: document.getElementById('panel-container').scrollLeft,
