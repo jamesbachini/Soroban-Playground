@@ -530,7 +530,10 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
   input.click();
   input.onchange = async () => {
     const file = input.files[0];
-    if (!file) return;
+    if (!file) {
+      document.getElementById('deploy-button').disabled = false;
+      return;
+    }
     const wasmBuffer = new Uint8Array(await file.arrayBuffer());
     try {
       const sourceAccount = await horizon.loadAccount(publicKey);
