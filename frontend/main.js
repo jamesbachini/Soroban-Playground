@@ -547,14 +547,19 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
       let response = await rpc.sendTransaction(signedTx);
       const hash = response.hash;
       document.getElementById('deploy-console').innerHTML += `Transaction 1/2 Submitted (hash: ${hash}). Waiting for confirmation...<br />`;
+      console.log('t1')
       while (true) {
         response = await rpc.getTransaction(hash);
+        console.log(response)
         if (response.status !== 'NOT_FOUND') break;
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       if (response.status === 'SUCCESS') {
+        console.log('t2')
         const wasmHash = response.returnValue.bytes();
+        console.log('t3')
         const salt = response.returnValue.hash;
+        console.log('t4')
         document.getElementById('deploy-console').innerHTML += `Success! WASM hash: ${wasmHash.toString('hex')}<br />`;
         const argsContainer = document.getElementById('args-container');
         const argRows = argsContainer.getElementsByClassName('arg-row');      
