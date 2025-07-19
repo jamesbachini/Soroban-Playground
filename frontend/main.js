@@ -548,14 +548,14 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
       const hash = response.hash;
       document.getElementById('deploy-console').innerHTML += `Transaction 1/2 Submitted (hash: ${hash}). Waiting for confirmation...<br />`;
       console.log('t1')
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       while (true) {
         console.log('t1b')
-        response = await rpc.getTransaction(hash);
+        response = await rpc.getTransaction(hash); // violating code
         console.log('t1c')
         console.log(response)
         if (response.status !== 'NOT_FOUND') break;
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
       console.log('t1d')
       console.log(response)
@@ -604,11 +604,11 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
         let response2 = await rpc.sendTransaction(signedTx2);
         const hash2 = response2.hash;
         document.getElementById('deploy-console').innerHTML += `Transaction 2/2 Submitted (hash: ${hash2}). Waiting for confirmation...<br />`;
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         while (true) {
           response2 = await rpc.getTransaction(hash2);
           if (response2.status !== 'NOT_FOUND') break;
-          await new Promise((resolve) => setTimeout(resolve, 5000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
         if (response2.status === 'SUCCESS') {
           const contractAddress = StellarSdk.StrKey.encodeContract(

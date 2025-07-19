@@ -155,6 +155,17 @@ docker build -f Dockerfile.sandbox -t wasm_sandbox .
 0 1 * * * cd ~/Soroban-Playground; docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /cache/target/tmp"
 ```
 
+## Building pre-release js-stellar-sdk
+```bash
+cd frontend/bundles
+git clone https://github.com/stellar/js-stellar-sdk.git
+cd js-stellar-sdk
+git fetch --tags
+git checkout v14.0.0-rc.3
+npm install --save @stellar/stellar-sdk
+npm run build:browser
+```
+
 ## 2 do
 - Multifile support (tabs along top of editor)
 - Research safe way to edit cargo.toml
