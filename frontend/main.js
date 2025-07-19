@@ -549,11 +549,15 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
       document.getElementById('deploy-console').innerHTML += `Transaction 1/2 Submitted (hash: ${hash}). Waiting for confirmation...<br />`;
       console.log('t1')
       while (true) {
+        console.log('t1b')
         response = await rpc.getTransaction(hash);
+        console.log('t1c')
         console.log(response)
         if (response.status !== 'NOT_FOUND') break;
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
+      console.log('t1d')
+      console.log(response)
       if (response.status === 'SUCCESS') {
         console.log('t2')
         const wasmHash = response.returnValue.bytes();
