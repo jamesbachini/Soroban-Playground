@@ -231,7 +231,6 @@ async function loadContract(contractId) {
       body: JSON.stringify({ contract: contractId, network: network.toLowerCase() })
     });
     const resultText = await response.text();
-    console.log(resultText)
     renderContractForm(contractId, resultText);
   } catch (err) {
     exploreForm.innerText = `Failed to load contract: ${err.message}`;
@@ -485,7 +484,6 @@ document.querySelectorAll('.connect-secret').forEach(button => {
 document.querySelectorAll('.export-keys').forEach(button => {
   button.addEventListener('click', async () => {
     const secretKey = localStorage.getItem('secretKey');
-    console.log(secretKey)
     if (!secretKey) return alert('No secret key found');
     keypair = StellarSdk.Keypair.fromSecret(secretKey);
     document.querySelectorAll('.wallet-info').forEach(el => {
@@ -547,24 +545,15 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
       let response = await rpc.sendTransaction(signedTx);
       const hash = response.hash;
       document.getElementById('deploy-console').innerHTML += `Transaction 1/2 Submitted (hash: ${hash}). Waiting for confirmation...<br />`;
-      console.log('t1')
       await new Promise((resolve) => setTimeout(resolve, 2000));
       while (true) {
-        console.log('t1b')
         response = await rpc.getTransaction(hash); // violating code
-        console.log('t1c')
-        console.log(response)
         if (response.status !== 'NOT_FOUND') break;
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
-      console.log('t1d')
-      console.log(response)
       if (response.status === 'SUCCESS') {
-        console.log('t2')
         const wasmHash = response.returnValue.bytes();
-        console.log('t3')
         const salt = response.returnValue.hash;
-        console.log('t4')
         document.getElementById('deploy-console').innerHTML += `Success! WASM hash: ${wasmHash.toString('hex')}<br />`;
         const argsContainer = document.getElementById('args-container');
         const argRows = argsContainer.getElementsByClassName('arg-row');      
