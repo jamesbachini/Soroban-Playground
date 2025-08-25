@@ -426,7 +426,6 @@ document.getElementById('explore-network').addEventListener('change', (e) => {
 document.getElementById('share-link').onclick = () => {
   let url = prompt("Paste GitHub/Gist URL: ");
   if (!url) return;
-  url = toRawUrl(url);
   const shareUrl = `${window.location.origin}${window.location.pathname}?codeUrl=${encodeURIComponent(url)}`;
   navigator.clipboard.writeText(shareUrl).then(() => {
     alert("Shareable link copied to clipboard!");
@@ -670,11 +669,12 @@ async function init() {
   const codeUrl = urlParams.get("codeUrl");
   if (codeUrl) {
     try {
+      codeUrl = toRawUrl(codeUrl);
       const resp = await fetch(codeUrl);
       if (resp.ok) {
         const code = await resp.text();
         editor.setValue(code);
-        localStorage.setItem('contractCode', code); // optional: persist
+        localStorage.setItem('contractCode', code);
       }
     } catch(e) {
       alert("Failed to fetch shared code:", e);
