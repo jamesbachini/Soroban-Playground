@@ -18,10 +18,10 @@ It's simple but capable with the ability to create soroban contracts, all the op
 - sep-41-token = "1.2.0"
 - soroban-fixed-point-math = "1.3.0"
 - blend-contract-sdk = "2.22.0"
-- stellar-tokens = "0.4.2"
-- stellar-access = "0.4.2"
-- stellar-contract-utils = "0.4.2"
-- stellar-macros = "0.4.2"
+- stellar-tokens = "0.4.1"
+- stellar-access = "0.4.1"
+- stellar-contract-utils = "0.4.1"
+- stellar-macros = "0.4.1"
 
 
 Full version info available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
