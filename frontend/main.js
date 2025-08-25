@@ -436,7 +436,7 @@ function toRawUrl(url) {
   try {
     const u = new URL(url);
     if (u.hostname === "gist.github.com") {
-      const parts = u.pathname.split("/").filter(Boolean); // [USER, ID, maybe file]
+      const parts = u.pathname.split("/").filter(Boolean);
       if (parts.length >= 2) {
         return `https://gist.githubusercontent.com/${parts[0]}/${parts[1]}/raw`;
       }
@@ -445,7 +445,7 @@ function toRawUrl(url) {
       const parts = u.pathname.split("/").filter(Boolean); 
       if (parts.length >= 5 && parts[2] === "blob") {
         const [owner, repo, , branch, ...pathParts] = parts;
-        return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${pathParts.join("/")}`;
+        return `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/${pathParts.join("/")}`;
       }
     }
     return url;
