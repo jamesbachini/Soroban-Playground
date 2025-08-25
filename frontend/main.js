@@ -669,7 +669,8 @@ async function init() {
   const codeUrl = urlParams.get("codeUrl");
   if (codeUrl) {
     try {
-      const fixedCodeUrl = toRawUrl(fixedCodeUrl);
+      console.log(`Converting: ${codeUrl}`);
+      const fixedCodeUrl = toRawUrl(codeUrl);
       console.log(`Fetching: ${fixedCodeUrl}`);
       const resp = await fetch(codeUrl);
       if (resp.ok) {
