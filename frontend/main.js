@@ -424,13 +424,36 @@ document.getElementById('explore-network').addEventListener('change', (e) => {
 });
 
 document.getElementById('share-link').onclick = () => {
-  const url = prompt("Paste raw GitHub URL: (e.g. https://raw.githubusercontent.com/user/repo/branch/path/lib.rs):");
+  let url = prompt("Paste GitHub/Gist URL: ");
   if (!url) return;
+  url = toRawUrl(url);
   const shareUrl = `${window.location.origin}${window.location.pathname}?codeUrl=${encodeURIComponent(url)}`;
   navigator.clipboard.writeText(shareUrl).then(() => {
     alert("Shareable link copied to clipboard!");
   });
 };
+
+function toRawUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "gist.github.com") {
+      const parts = u.pathname.split("/").filter(Boolean); // [USER, ID, maybe file]
+      if (parts.length >= 2) {
+        return `https://gist.githubusercontent.com/${parts[0]}/${parts[1]}/raw`;
+      }
+    }
+    if (u.hostname === "github.com") {
+      const parts = u.pathname.split("/").filter(Boolean); 
+      if (parts.length >= 5 && parts[2] === "blob") {
+        const [owner, repo, , branch, ...pathParts] = parts;
+        return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${pathParts.join("/")}`;
+      }
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
 
 document.querySelectorAll('.connect-freighter').forEach(button => {
   button.addEventListener('click', async () => { 
