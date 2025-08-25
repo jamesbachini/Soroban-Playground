@@ -672,7 +672,7 @@ async function init() {
       console.log(`Converting: ${codeUrl}`);
       const fixedCodeUrl = toRawUrl(codeUrl);
       console.log(`Fetching: ${fixedCodeUrl}`);
-      const resp = await fetch(codeUrl);
+      const resp = await fetch(fixedCodeUrl);
       if (resp.ok) {
         const code = await resp.text();
         editor.setValue(code);
