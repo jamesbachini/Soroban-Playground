@@ -99,8 +99,6 @@ Then turn it off then on again and keep everything crossed 🤞
 
 Update the cloned github repo to the latest version by pulling in any changes.
 
-**Note** When updating the Cargo.toml or lib.rs files there is duplicate code in src/templates and frontend/main.js
-
 ```bash
 # Move into the directory
 cd ~/Soroban-Playground/
