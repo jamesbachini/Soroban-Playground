@@ -6,8 +6,277 @@ let horizon;
 let networkPassphrase;
 let network = 'TESTNET';
 
+// Multi-file editor state
+let files = {};
+let currentFile = null; // Start with null so first switchToFile always works
+let isLoadingFile = false;
+
+// Function to load default file templates
+async function loadDefaultFiles() {
+  const defaultFiles = {};
+  const templateFiles = ['Cargo.toml', 'lib.rs', 'test.rs'];
+  try {
+    for (const fileName of templateFiles) {
+      const response = await fetch(`./templates/${fileName}`);
+      if (response.ok) {
+        defaultFiles[fileName] = await response.text();
+      } else {
+        console.error(`Failed to load template ${fileName}: ${response.status}`);
+        // Fallback to empty file if template fails to load
+        defaultFiles[fileName] = '';
+      }
+    }
+  } catch (error) {
+    console.error('Error loading templates:', error);
+  }
+  return defaultFiles;
+}
+
+// File management functions
+async function loadFiles() {
+  const storedFiles = localStorage.getItem('soroban-files');
+  if (storedFiles) {
+    files = JSON.parse(storedFiles);
+  } else {
+    const defaultFiles = await loadDefaultFiles();
+    files = { ...defaultFiles };
+    saveFiles();
+  }
+}
+
+function saveFiles() {
+  localStorage.setItem('soroban-files', JSON.stringify(files));
+}
+
+function saveCurrentFile() {
+  if (currentFile && editor && !isLoadingFile) {
+    files[currentFile] = editor.getValue();
+    saveFiles();
+  }
+}
+
+function switchToFile(fileName) {
+  if (currentFile === fileName) return;
+
+  // Save current file content
+  saveCurrentFile();
+
+  // Switch to new file
+  currentFile = fileName;
+  const fileContent = files[fileName] || '';
+
+  // Set flag to prevent saving during load
+  isLoadingFile = true;
+  editor.setValue(fileContent);
+  isLoadingFile = false;
+
+  // Update language mode based on file extension
+  const language = getLanguageFromFileName(fileName);
+  monaco.editor.setModelLanguage(editor.getModel(), language);
+
+  // Update tab UI
+  updateActiveTab();
+
+  // Check if menu should be hidden due to overflow
+  setTimeout(() => checkMenuOverflow(), 10);
+}
+
+function getLanguageFromFileName(fileName) {
+  const ext = fileName.split('.').pop().toLowerCase();
+  switch (ext) {
+    case 'rs': return 'rust';
+    case 'toml': return 'toml';
+    case 'js': return 'javascript';
+    case 'ts': return 'typescript';
+    case 'json': return 'json';
+    case 'md': return 'markdown';
+    case 'yml':
+    case 'yaml': return 'yaml';
+    default: return 'plaintext';
+  }
+}
+
+function updateActiveTab() {
+  document.querySelectorAll('.editor-tab').forEach(tab => {
+    tab.classList.remove('active');
+    if (tab.dataset.file === currentFile) {
+      tab.classList.add('active');
+    }
+  });
+}
+
+function checkMenuOverflow() {
+  const container = document.getElementById('editor-tabs-container');
+  const tabs = document.getElementById('editor-tabs');
+  const menu = document.getElementById('header-menu');
+
+  if (!container || !tabs || !menu) return;
+
+  // Get container width
+  const containerWidth = container.offsetWidth;
+
+  // Calculate actual content width of tabs by summing individual tab widths
+  const tabElements = tabs.querySelectorAll('.editor-tab, .add-tab-button');
+  let tabsContentWidth = 0;
+  tabElements.forEach(tab => {
+    tabsContentWidth += tab.offsetWidth;
+  });
+
+  // Measure menu width while hidden by temporarily making it visible but off-screen
+  menu.style.position = 'absolute';
+  menu.style.visibility = 'hidden';
+  menu.classList.remove('hidden');
+  const menuWidth = menu.offsetWidth;
+
+  // Clean up menu styles
+  menu.style.position = '';
+  menu.style.visibility = '';
+  menu.classList.add('hidden');
+
+  const padding = 16; // Account for padding and margins
+
+  // Now decide whether to show or hide based on accurate measurements
+  if (tabsContentWidth + menuWidth + padding <= containerWidth) {
+    menu.classList.remove('hidden');
+  }
+  // If there's not enough space, menu stays hidden
+}
+
+function createNewFile(fileName) {
+  if (files.hasOwnProperty(fileName)) {
+    alert('File already exists!');
+    return;
+  }
+
+  files[fileName] = '';
+  saveFiles();
+  addTab(fileName);
+  switchToFile(fileName);
+}
+
+function addTab(fileName) {
+  const tabsContainer = document.getElementById('editor-tabs');
+  const addButton = document.getElementById('add-tab');
+
+  const tab = document.createElement('div');
+  tab.className = 'editor-tab';
+  tab.dataset.file = fileName;
+
+  const tabName = document.createElement('span');
+  tabName.className = 'tab-name';
+  tabName.textContent = fileName;
+
+  tab.appendChild(tabName);
+
+  // Only add close button if it's not Cargo.toml
+  if (fileName !== 'Cargo.toml') {
+    const tabClose = document.createElement('span');
+    tabClose.className = 'tab-close';
+    tabClose.innerHTML = '×';
+    tabClose.title = 'Close tab';
+
+    tab.appendChild(tabClose);
+
+    tabClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeFile(fileName);
+    });
+
+    // Tab click listener needs to check for close button
+    tab.addEventListener('click', (e) => {
+      if (e.target !== tabClose) {
+        switchToFile(fileName);
+      }
+    });
+  } else {
+    // For Cargo.toml, just switch to file on click
+    tab.addEventListener('click', () => {
+      switchToFile(fileName);
+    });
+  }
+
+  // Insert before the add button
+  tabsContainer.insertBefore(tab, addButton);
+
+  // Check overflow after adding tab
+  setTimeout(() => checkMenuOverflow(), 10);
+}
+
+function closeFile(fileName) {
+  // Prevent closing Cargo.toml
+  if (fileName === 'Cargo.toml') {
+    alert('Cannot close Cargo.toml - it is required for the project!');
+    return;
+  }
+
+  if (Object.keys(files).length <= 1) {
+    alert('Cannot close the last file!');
+    return;
+  }
+
+  if (confirm(`Are you sure you want to delete: ${fileName}?`)) {
+    // If we're deleting the current file, clear currentFile to prevent saveCurrentFile from restoring it
+    if (currentFile === fileName) {
+      currentFile = null;
+    }
+
+    delete files[fileName];
+    saveFiles();
+
+    // Remove tab
+    const tab = document.querySelector(`[data-file="${fileName}"]`);
+    if (tab) tab.remove();
+
+    // Check overflow after removing tab
+    setTimeout(() => checkMenuOverflow(), 10);
+
+    // If we deleted the current file, switch to another
+    if (currentFile === null) {
+      const remainingFiles = Object.keys(files);
+      if (remainingFiles.length > 0) {
+        switchToFile(remainingFiles[0]);
+      }
+    }
+  }
+}
+
+function initializeTabs() {
+  // Clear existing tabs except add button
+  const tabsContainer = document.getElementById('editor-tabs');
+  const tabs = tabsContainer.querySelectorAll('.editor-tab');
+  tabs.forEach(tab => tab.remove());
+
+  // Add tabs for all files
+  Object.keys(files).forEach(fileName => {
+    addTab(fileName);
+  });
+
+  // Set up add button
+  document.getElementById('add-tab').addEventListener('click', () => {
+    const fileName = prompt('Enter file name (e.g., lib.rs, mod.rs, test.rs):');
+    if (fileName && fileName.trim()) {
+      createNewFile(fileName.trim());
+    }
+  });
+
+  // Switch to current file
+  if (files['lib.rs']) {
+    switchToFile('lib.rs');
+  } else if (files[currentFile]) {
+    switchToFile(currentFile);
+  } else {
+    const firstFile = Object.keys(files)[0];
+    if (firstFile) {
+      switchToFile(firstFile);
+    }
+  }
+
+  // Initial overflow check
+  setTimeout(() => checkMenuOverflow(), 100);
+}
+
 require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-require(['vs/editor/editor.main'], function () { 
+require(['vs/editor/editor.main'], async function () {
   editor = monaco.editor.create(document.getElementById('editor'), {
     value: ``,
     language: 'rust',
@@ -21,7 +290,23 @@ require(['vs/editor/editor.main'], function () {
     contextmenu: true,
     fontFamily: 'monospace',
   });
+
+  // Initialize file management
+  await loadFiles();
+
+  // Add content change listener to save current file
+  editor.onDidChangeModelContent(() => {
+    saveCurrentFile();
+  });
+
+  // Initialize tabs and then call init() to handle URL parameters
+  initializeTabs();
   init();
+
+  // Add window resize listener for menu overflow
+  window.addEventListener('resize', () => {
+    checkMenuOverflow();
+  });
 });
 
 function extractContractName(code) {
@@ -38,7 +323,11 @@ function extractContractName(code) {
 
 async function compileCode() {
   document.getElementById('compile-code').disabled = true;
-  const code = editor.getValue();
+
+  // Save current file content and get all files
+  saveCurrentFile();
+  const allFiles = { ...files };
+
   const statusEl = document.getElementById('build-status');
   const consoleEl = document.getElementById('build-console');
   consoleEl.innerText = '';
@@ -51,10 +340,10 @@ async function compileCode() {
     const response = await fetch('/compile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ files: allFiles }),
     });
     if (response.ok) {
-      const contractName = extractContractName(code);
+      const contractName = extractContractName(allFiles['lib.rs'] || '');
       const buffer = await response.arrayBuffer();
       let view = new Uint8Array(buffer);
       let start = 0;
@@ -92,7 +381,11 @@ async function compileCode() {
 
 async function runTests() {
   document.getElementById('run-tests').disabled = true;
-  const code = editor.getValue();
+
+  // Save current file content and get all files
+  saveCurrentFile();
+  const allFiles = { ...files };
+
   const statusEl = document.getElementById('test-status');
   const consoleEl = document.getElementById('test-console');
   consoleEl.innerText = '';
@@ -105,7 +398,7 @@ async function runTests() {
     const response = await fetch('/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({ files: allFiles })
     });
     const resultText = await response.text();
     if (response.ok) {
@@ -267,34 +560,24 @@ function fundAddress(pubKey) {
     });
 }
 
-function resetCode() {
-  editor.setValue(`#![no_std]
+async function resetCode() {
+  // Reset all files to defaults
+  const defaultFiles = await loadDefaultFiles();
+  files = { ...defaultFiles };
+  saveFiles();
 
-use soroban_sdk::{contract, contractimpl, Env};
+  // Clear existing tabs and reinitialize
+  const tabsContainer = document.getElementById('editor-tabs');
+  const tabs = tabsContainer.querySelectorAll('.editor-tab');
+  tabs.forEach(tab => tab.remove());
 
-#[contract]
-pub struct ExampleContract;
+  // Reinitialize tabs and switch to lib.rs
+  Object.keys(files).forEach(fileName => {
+    addTab(fileName);
+  });
 
-#[contractimpl]
-impl ExampleContract {
-    pub fn add(_env: Env, a: i32, b: i32) -> i32 {
-        a + b
-    }
-}
-
-#[cfg(test)]
-
-#[test]
-fn example_unit_test() {
-    let env = Env::default();
-    let contract_id = env.register(ExampleContract, ());
-    let client = ExampleContractClient::new(&env, &contract_id);
-    let a = 5_i32;
-    let b = 7_i32;
-    let result = client.add(&a, &b);
-    assert_eq!(result, 12);
-}
-`);
+  currentFile = 'lib.rs';
+  switchToFile(currentFile);
 }
 
 function toScVal(val, type) {
@@ -675,25 +958,17 @@ async function init() {
       const resp = await fetch(fixedCodeUrl);
       if (resp.ok) {
         const code = await resp.text();
-        editor.setValue(code);
-        localStorage.setItem('contractCode', code);
+        // Update the lib.rs file with the shared code
+        files['lib.rs'] = code;
+        saveFiles();
+        switchToFile('lib.rs');
       }
     } catch(e) {
       alert("Failed to fetch shared code:", e);
     }
-  } else {
-    const contractCode = localStorage.getItem('contractCode');
-    if (!contractCode) {
-      resetCode();
-    } else {
-      editor.setValue(contractCode);
-    }
   }
-  editor.onDidChangeModelContent(() => {
-    const currentCode = editor.getValue();
-    localStorage.setItem('contractCode', currentCode);
-  });
-  document.getElementById('reset-code').onclick = () => { resetCode() };
+  // Note: File loading and editor initialization is now handled in the Monaco editor callback
+  document.getElementById('reset-code').onclick = async () => { await resetCode() };
   document.getElementById('run-tests').onclick = () => runTests();
   document.getElementById('compile-code').onclick = () => compileCode();
 

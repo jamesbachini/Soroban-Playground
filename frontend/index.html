@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SoroPG.com</title>
     <!-- <script src="bundles/stellar-sdk.min.js"></script> -->
-    <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@14.1.0/dist/stellar-sdk.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@14.2.0/dist/stellar-sdk.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stellar-freighter-api/4.1.0/index.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="./style.css" />
@@ -42,16 +42,20 @@
       </div>
 
       <div id="main-content">
-        <div id="header-container">
-          <a href="https://lab.stellar.org/" target="_blank">LAB</a>
-          <a href="https://stellar.expert/" target="_blank">EXPLORER</a>
-          <a href="https://jamesbachini.github.io/Soroban-Dev-Tools/" target="_blank">TOOLS</a>
-          <a href="https://developers.stellar.org/" target="_blank">DOCS</a>
-          -
-          <a href="https://soropg.com" target="_blank">SoroPG.com v0.4.2</a>
-        </div>
-
         <div id="editor-container">
+          <div id="editor-tabs-container">
+            <div id="editor-tabs">
+              <div class="add-tab-button" id="add-tab" title="Add new file">+</div>
+            </div>
+            <div id="header-menu">
+              <a href="https://lab.stellar.org/" target="_blank">LAB</a>
+              <a href="https://stellar.expert/" target="_blank">EXPLORER</a>
+              <a href="https://jamesbachini.github.io/Soroban-Dev-Tools/" target="_blank">TOOLS</a>
+              <a href="https://developers.stellar.org/" target="_blank">DOCS</a>
+              <span class="menu-separator">-</span>
+              <a href="https://soropg.com" target="_blank">SoroPG.com v0.5.1</a>
+            </div>
+          </div>
           <div id="editor"></div>
         </div>
         <div id="resizer"></div>

@@ -1,8 +1,10 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Deserialize)]
 pub struct CompileRequest {
-    pub code: String,
+    pub code: Option<String>,
+    pub files: Option<HashMap<String, String>>,
 }
 
 #[derive(Deserialize)]

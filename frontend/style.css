@@ -142,26 +142,148 @@ textarea {
   height: 100vh;
 }
 
-#header-container {
-  height: 20px;
-  text-align: right;
-  margin: 5px;
-}
-
-#header-container a {
-    font-size: 0.6em;
-    text-decoration: none;
-    padding: 3px 8px;
-}
-
 #editor-container {
   border-bottom: 1px solid var(--border-color);
   flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#editor-tabs-container {
+  background-color: var(--bg-menu);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 35px;
+  padding-right: 8px;
+}
+
+#header-menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6em;
+  color: var(--text-dim);
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+#header-menu.hidden {
+  display: none;
+}
+
+#header-menu a {
+  text-decoration: none;
+  padding: 2px 6px;
+  color: var(--accent-color);
+  transition: color 0.2s ease;
+}
+
+#header-menu a:hover {
+  color: var(--text-light);
+}
+
+.menu-separator {
+  color: var(--text-dim);
+  margin: 0 2px;
+}
+
+/* Hide menu on smaller screens */
+@media (max-width: 768px) {
+  #header-menu {
+    display: none;
+  }
+}
+
+#editor-tabs {
+  display: flex;
+  align-items: center;
+  height: 35px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+  min-width: 0;
+}
+
+#editor-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--bg-menu);
+  border-right: 1px solid var(--border-color);
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-dim);
+  transition: all 0.2s ease;
+  min-width: 120px;
+  position: relative;
+}
+
+.editor-tab:hover {
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+}
+
+.editor-tab.active {
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.tab-name {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-close {
+  margin-left: 8px;
+  font-size: 16px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.tab-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-light);
+}
+
+.add-tab-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  height: 35px;
+  background-color: var(--bg-menu);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  border-left: 1px solid var(--border-color);
+}
+
+.add-tab-button:hover {
+  background-color: var(--bg-dark);
+  color: var(--text-light);
 }
 
 #editor {
   height: 100%;
   width: 100%;
+  flex-grow: 1;
 }
 
 #panel-container {

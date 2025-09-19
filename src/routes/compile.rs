@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::path::PathBuf;
 use tracing::{info, error};
 
-use crate::{docker::run_in_docker, models::CompileRequest, semaphore::SEMAPHORE};
+use crate::{docker::run_in_docker_with_files, models::CompileRequest, semaphore::SEMAPHORE};
 
 #[post("/compile")]
 pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
@@ -15,7 +15,15 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
     let hash = {
         use sha2::{Digest, Sha256};
         let mut h = Sha256::new();
-        h.update(&req.code);
+        // Hash all files for better cache key
+        if let Some(ref files_map) = req.files {
+            for (filename, content) in files_map.iter() {
+                h.update(filename.as_bytes());
+                h.update(content.as_bytes());
+            }
+        } else if let Some(ref code) = req.code {
+            h.update(code.as_bytes());
+        }
         hex::encode(h.finalize())
     };
 
@@ -28,13 +36,31 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
     };
 
     let (tx, rx) = mpsc::channel::<Result<Bytes, String>>(10);
-    let code = req.code.clone();
+
+    // Extract code from either the code field or lib.rs from files
+    let code = match &req.code {
+        Some(c) => c.clone(),
+        None => {
+            // Extract lib.rs from files
+            match &req.files {
+                Some(files_map) => {
+                    match files_map.get("lib.rs") {
+                        Some(lib_rs_code) => lib_rs_code.clone(),
+                        None => return HttpResponse::BadRequest().body("No code provided and no lib.rs file found")
+                    }
+                }
+                None => return HttpResponse::BadRequest().body("No code or files provided")
+            }
+        }
+    };
+
+    let files = req.files.clone();
 
     tokio::spawn(async move {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
 
-        let compile_fut = run_in_docker(code, "cargo build --release --target wasm32-unknown-unknown");
+        let compile_fut = run_in_docker_with_files(code, files, "cargo build --release --target wasm32-unknown-unknown");
         tokio::pin!(compile_fut);
 
         loop {

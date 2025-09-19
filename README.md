@@ -14,7 +14,7 @@ It's simple but capable with the ability to create soroban contracts, all the op
 
 ## Crates Available
 
-- soroban-sdk = "22.0.8"
+- soroban-sdk = "23.0.2"
 - sep-41-token = "1.2.0"
 - soroban-fixed-point-math = "1.3.0"
 - blend-contract-sdk = "2.22.0"
@@ -99,6 +99,8 @@ Then turn it off then on again and keep everything crossed 🤞
 
 Update the cloned github repo to the latest version by pulling in any changes.
 
+**Note** When updating the Cargo.toml or lib.rs files there is duplicate code in src/templates and frontend/main.js
+
 ```bash
 # Move into the directory
 cd ~/Soroban-Playground/
@@ -156,9 +158,9 @@ npm run build:browser
 ```
 
 ## 2 do
-- Multifile support (tabs along top of editor)
-- Research safe way to edit cargo.toml
-- Split contracts and tests
+✅ Multifile support (tabs along top of editor) - done v0.5.1
+✅ Research safe way to edit cargo.toml - done v0.5.1
+✅ Split contracts and tests - done v0.5.1
 - Improve contract explorer
 - Export integration to HTML/JS
 - CustomGPT Chatbot integration

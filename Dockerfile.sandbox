@@ -25,9 +25,10 @@ RUN cargo install stellar-cli
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 
 # Copy Cargo.toml and lib.rs templates
-COPY src/templates/Cargo.toml.template ./Cargo.toml
 RUN mkdir src
-COPY src/templates/lib.rs.template ./src/lib.rs
+COPY frontend/templates/Cargo.toml ./Cargo.toml
+COPY frontend/templates/lib.rs ./src/lib.rs
+COPY frontend/templates/test.rs ./src/test.rs
 
 # Prerun cargo commands
 RUN cargo fetch
