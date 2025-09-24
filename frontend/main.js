@@ -561,23 +561,10 @@ function fundAddress(pubKey) {
 }
 
 async function resetCode() {
-  // Reset all files to defaults
-  const defaultFiles = await loadDefaultFiles();
-  files = { ...defaultFiles };
-  saveFiles();
-
-  // Clear existing tabs and reinitialize
-  const tabsContainer = document.getElementById('editor-tabs');
-  const tabs = tabsContainer.querySelectorAll('.editor-tab');
-  tabs.forEach(tab => tab.remove());
-
-  // Reinitialize tabs and switch to lib.rs
-  Object.keys(files).forEach(fileName => {
-    addTab(fileName);
-  });
-
-  currentFile = 'lib.rs';
-  switchToFile(currentFile);
+  if (confirm(`Are you sure you want reset the editor and lose all code changes and local wallets?`)) {
+    localStorage.clear();
+    window.location = "https://soropg.com";
+  }
 }
 
 function toScVal(val, type) {
