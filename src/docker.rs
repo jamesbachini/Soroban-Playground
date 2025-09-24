@@ -61,6 +61,26 @@ pub async fn run_in_docker_with_files(
     files: Option<HashMap<String, String>>,
     command: &str
 ) -> Result<(Vec<u8>, TempDir), String> {
+    run_in_docker_with_files_internal(code, files, command, false).await
+}
+
+pub async fn run_in_docker_with_files_full_output(
+    code: String,
+    files: Option<HashMap<String, String>>,
+    command: &str
+) -> Result<Vec<u8>, String> {
+    match run_in_docker_with_files_internal(code, files, command, true).await {
+        Ok((output, _)) => Ok(output),
+        Err(e) => Err(e),
+    }
+}
+
+async fn run_in_docker_with_files_internal(
+    code: String,
+    files: Option<HashMap<String, String>>,
+    command: &str,
+    return_full_output: bool
+) -> Result<(Vec<u8>, TempDir), String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
     let project = tmp.path().join("project");
     fs::create_dir(&project).map_err(|e| e.to_string())?;
@@ -166,7 +186,13 @@ pub async fn run_in_docker_with_files(
             combined_output.push_str(&stderr_str);
         }
 
-        return Err(combined_output);
+        if return_full_output {
+            // For tests, we want to return the full output even on failure
+            // Convert the combined output to bytes and return as success
+            return Ok((combined_output.into_bytes(), tmp));
+        } else {
+            return Err(combined_output);
+        }
     }
     Ok((output.stdout, tmp))
 }

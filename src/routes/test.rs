@@ -5,7 +5,7 @@ use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::ReceiverStream;
 use std::time::Duration;
 
-use crate::{docker::run_in_docker_with_files, models::CompileRequest, semaphore::SEMAPHORE};
+use crate::{docker::run_in_docker_with_files_full_output, models::CompileRequest, semaphore::SEMAPHORE};
 
 #[post("/test")]
 pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
@@ -43,7 +43,7 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
 
-        let test_fut = run_in_docker_with_files(code, files, "cargo test");
+        let test_fut = run_in_docker_with_files_full_output(code, files, "cargo test --no-fail-fast");
         tokio::pin!(test_fut);
 
         loop {
@@ -53,8 +53,8 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
                 }
                 res = &mut test_fut => {
                     match res {
-                        Ok((stdout, _tmp)) => {
-                            let _ = tx.send(Ok(Bytes::from(stdout))).await;
+                        Ok(output) => {
+                            let _ = tx.send(Ok(Bytes::from(output))).await;
                         }
                         Err(e) => {
                             let msg = format!("Test Errors: \n{}\n", e);
