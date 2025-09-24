@@ -61,26 +61,6 @@ pub async fn run_in_docker_with_files(
     files: Option<HashMap<String, String>>,
     command: &str
 ) -> Result<(Vec<u8>, TempDir), String> {
-    run_in_docker_with_files_internal(code, files, command, false).await
-}
-
-pub async fn run_in_docker_with_files_full_output(
-    code: String,
-    files: Option<HashMap<String, String>>,
-    command: &str
-) -> Result<Vec<u8>, String> {
-    match run_in_docker_with_files_internal(code, files, command, true).await {
-        Ok((output, _)) => Ok(output),
-        Err(e) => Err(e),
-    }
-}
-
-async fn run_in_docker_with_files_internal(
-    code: String,
-    files: Option<HashMap<String, String>>,
-    command: &str,
-    return_full_output: bool
-) -> Result<(Vec<u8>, TempDir), String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
     let project = tmp.path().join("project");
     fs::create_dir(&project).map_err(|e| e.to_string())?;
@@ -168,31 +148,7 @@ async fn run_in_docker_with_files_internal(
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
-    println!("Docker stdout:\n{}", stdout);
-    println!("Docker stderr:\n{}", stderr);
-    if !output.status.success() {
-        let mut combined_output = String::new();
-
-        let stdout_str = String::from_utf8_lossy(&output.stdout);
-        let stderr_str = String::from_utf8_lossy(&output.stderr);
-
-        if !stdout_str.is_empty() {
-            combined_output.push_str(&stdout_str);
-        }
-        if !stderr_str.is_empty() {
-            if !combined_output.is_empty() {
-                combined_output.push('\n');
-            }
-            combined_output.push_str(&stderr_str);
-        }
-
-        if return_full_output {
-            // For tests, we want to return the full output even on failure
-            // Convert the combined output to bytes and return as success
-            return Ok((combined_output.into_bytes(), tmp));
-        } else {
-            return Err(combined_output);
-        }
-    }
+    //println!("Docker stdout:\n{}", stdout);
+    //println!("Docker stderr:\n{}", stderr);
     Ok((output.stdout, tmp))
 }
