@@ -146,9 +146,13 @@ pub async fn run_in_docker_with_files(
         .await
         .map_err(|e| e.to_string())?;
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    //let stdout = String::from_utf8_lossy(&output.stdout);
+    //let stderr = String::from_utf8_lossy(&output.stderr);
     //println!("Docker stdout:\n{}", stdout);
     //println!("Docker stderr:\n{}", stderr);
-    Ok((output.stdout, tmp))
+    if !output.stdout.is_empty() {
+        Ok((output.stdout, tmp))
+    } else {
+        Ok((output.stderr, tmp))
+    }
 }
