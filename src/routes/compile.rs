@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::path::PathBuf;
 use tracing::{info, error};
 
-use crate::{docker::run_in_docker_with_files, models::CompileRequest, semaphore::SEMAPHORE};
+use crate::{docker::run_in_docker_with_files_and_id, models::CompileRequest, semaphore::SEMAPHORE};
 
 #[post("/compile")]
 pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
@@ -55,12 +55,13 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
     };
 
     let files = req.files.clone();
+    let build_hash = hash.clone();
 
     tokio::spawn(async move {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
 
-        let compile_fut = run_in_docker_with_files(code, files, "cargo build --release --target wasm32-unknown-unknown");
+        let compile_fut = run_in_docker_with_files_and_id(code, files, "cargo build --release --target wasm32-unknown-unknown", Some(build_hash));
         tokio::pin!(compile_fut);
 
         loop {

@@ -126,6 +126,16 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
 Restart server.
 
+## Common Errors
+
+"cannot execute binary file: Exec format error"
+
+```bash
+cargo clean 
+cargo build --release
+sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
+```
+
 ## Pruning Docker
 
 After messing with different docker builds it can use a lot of HD

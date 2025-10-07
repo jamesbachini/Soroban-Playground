@@ -61,6 +61,15 @@ pub async fn run_in_docker_with_files(
     files: Option<HashMap<String, String>>,
     command: &str
 ) -> Result<(Vec<u8>, TempDir), String> {
+    run_in_docker_with_files_and_id(code, files, command, None).await
+}
+
+pub async fn run_in_docker_with_files_and_id(
+    code: String,
+    files: Option<HashMap<String, String>>,
+    command: &str,
+    build_id: Option<String>
+) -> Result<(Vec<u8>, TempDir), String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
     let project = tmp.path().join("project");
     fs::create_dir(&project).map_err(|e| e.to_string())?;
@@ -122,11 +131,19 @@ pub async fn run_in_docker_with_files(
             fs::write(file_path, content).map_err(|e| format!("Failed to write {}: {}", filename, e))?;
         }
     }
+    // Use build_id to create unique target directory if provided
+    let target_dir = if let Some(id) = build_id {
+        format!("/mnt/cargo/target-{}", &id[..12]) // Use first 12 chars of hash
+    } else {
+        "/mnt/cargo/target".to_string()
+    };
+
     let mut final_command = format!("cd /workspace/project && {}", command);
     if command.contains("build") {
         final_command = format!(
-            "set -ex; cd /workspace/project && cargo clean && {} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /host-tmp/project.wasm",
-            command
+            "set -ex; cd /workspace/project && {} && cp {}/wasm32-unknown-unknown/release/project.wasm /host-tmp/project.wasm",
+            command,
+            target_dir
         )
     }
     let output = tokio::process::Command::new("docker")
@@ -136,7 +153,7 @@ pub async fn run_in_docker_with_files(
             "-v", "cargo-cache:/mnt/cargo",
             "-v", "/tmp:/host-tmp",
             "-e", "CARGO_HOME=/mnt/cargo",
-            "-e", "CARGO_TARGET_DIR=/mnt/cargo/target",
+            "-e", &format!("CARGO_TARGET_DIR={}", target_dir),
             "wasm_sandbox:latest", "bash", "-c",
             &final_command
         ])
