@@ -125,7 +125,7 @@ pub async fn run_in_docker_with_files(
     let mut final_command = format!("cd /workspace/project && {}", command);
     if command.contains("build") {
         final_command = format!(
-            "set -ex; cd /workspace/project && {} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /host-tmp/project.wasm",
+            "set -ex; cd /workspace/project && cargo clean && {} && cp /mnt/cargo/target/wasm32-unknown-unknown/release/project.wasm /host-tmp/project.wasm",
             command
         )
     }
