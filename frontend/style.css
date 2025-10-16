@@ -365,6 +365,7 @@ h1 {
 
 .method-left, .method-right {
   width: 50%;
+  min-width: 0;
   padding: 10px 20px;
 }
 
@@ -375,6 +376,18 @@ h1 {
 
 .method-right {
   background: var(--bg-darker);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.method-right .console {
+  flex: 1;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: auto;
+  word-wrap: break-word;
 }
 
 .arg-row {
