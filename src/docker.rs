@@ -52,10 +52,6 @@ fn is_safe_file_content(content: &str) -> bool {
     !suspicious_patterns.iter().any(|&pattern| content.contains(pattern))
 }
 
-pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, TempDir), String> {
-    run_in_docker_with_files(code, None, command).await
-}
-
 pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir), String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
 
