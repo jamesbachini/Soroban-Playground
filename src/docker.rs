@@ -56,6 +56,31 @@ pub async fn run_in_docker(code: String, command: &str) -> Result<(Vec<u8>, Temp
     run_in_docker_with_files(code, None, command).await
 }
 
+pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir), String> {
+    let tmp = TempDir::new().map_err(|e| e.to_string())?;
+
+    let output = tokio::process::Command::new("docker")
+        .args(&[
+            "run", "--rm", "--memory=2G", "--cpus=2",
+            "-v", &format!("{}:/workspace", tmp.path().display()),
+            "-v", "cargo-cache:/mnt/cargo",
+            "-e", "CARGO_HOME=/mnt/cargo",
+            "wasm_sandbox:latest", "bash", "-c",
+            command
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !output.stdout.is_empty() {
+        Ok((output.stdout, tmp))
+    } else {
+        Ok((output.stderr, tmp))
+    }
+}
+
 pub async fn run_in_docker_with_files(
     code: String,
     files: Option<HashMap<String, String>>,
