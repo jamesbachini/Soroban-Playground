@@ -517,11 +517,20 @@ async function loadContract(contractId) {
   document.getElementById('explore-sidebar-icon').classList.add('active');
   document.getElementById('explore-panel').classList.add('active');
   document.getElementById('explore-contract-id').value = contractId;
+
+  // Save current file content and get all files
+  saveCurrentFile();
+  const allFiles = { ...files };
+
   try {
     const response = await fetch('/interface', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contract: contractId, network: network.toLowerCase() })
+      body: JSON.stringify({
+        contract: contractId,
+        network: network.toLowerCase(),
+        files: allFiles
+      })
     });
     const resultText = await response.text();
     renderContractForm(contractId, resultText);

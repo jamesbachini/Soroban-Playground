@@ -11,4 +11,6 @@ pub struct CompileRequest {
 pub struct InterfaceRequest {
     pub contract: String,
     pub network: String,
+    pub code: Option<String>,
+    pub files: Option<HashMap<String, String>>,
 }

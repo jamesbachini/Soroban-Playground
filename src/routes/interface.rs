@@ -5,7 +5,7 @@ use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::ReceiverStream;
 use std::time::Duration;
 
-use crate::{docker::run_in_docker, models::InterfaceRequest, semaphore::SEMAPHORE};
+use crate::{docker::run_in_docker_with_files, models::InterfaceRequest, semaphore::SEMAPHORE};
 
 #[post("/interface")]
 pub async fn interface(req: web::Json<InterfaceRequest>) -> impl Responder {
@@ -21,7 +21,25 @@ pub async fn interface(req: web::Json<InterfaceRequest>) -> impl Responder {
     let (tx, rx) = mpsc::channel::<Result<Bytes, String>>(10);
     let network = req.network.clone();
     let contract_id = req.contract.clone();
-    let blank_code: String = String::new();
+
+    // Extract code from either the code field or lib.rs from files
+    let code = match &req.code {
+        Some(c) => c.clone(),
+        None => {
+            // Extract lib.rs from files
+            match &req.files {
+                Some(files_map) => {
+                    match files_map.get("lib.rs") {
+                        Some(lib_rs_code) => lib_rs_code.clone(),
+                        None => return HttpResponse::BadRequest().body("No code provided and no lib.rs file found")
+                    }
+                }
+                None => return HttpResponse::BadRequest().body("No code or files provided")
+            }
+        }
+    };
+
+    let files = req.files.clone();
     let clean_network: String = network.chars().filter(|c| c.is_alphanumeric()).collect();
     let clean_contract_id: String = contract_id.chars().filter(|c| c.is_alphanumeric()).collect();
     let mut clean_network_string = clean_network.clone();
@@ -39,7 +57,7 @@ pub async fn interface(req: web::Json<InterfaceRequest>) -> impl Responder {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
 
-        let interface_fut = run_in_docker(blank_code, &command);
+        let interface_fut = run_in_docker_with_files(code, files, &command);
         tokio::pin!(interface_fut);
 
         loop {
