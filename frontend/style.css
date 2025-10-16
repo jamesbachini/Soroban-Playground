@@ -372,6 +372,7 @@ h1 {
 .method-left {
   background: var(--bg-dark);
   border-right: 1px solid #5d5d5d;
+  overflow: hidden;
 }
 
 .method-right {
@@ -388,6 +389,14 @@ h1 {
   overflow-y: auto;
   overflow-x: auto;
   word-wrap: break-word;
+}
+
+.method-right .console pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin: 0;
+  max-width: 100%;
 }
 
 .arg-row {
