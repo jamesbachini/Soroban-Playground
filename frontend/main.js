@@ -517,6 +517,9 @@ async function loadContract(contractId) {
   document.getElementById('explore-sidebar-icon').classList.add('active');
   document.getElementById('explore-panel').classList.add('active');
   document.getElementById('explore-contract-id').value = contractId;
+  // Save to local storage
+  localStorage.setItem('last-contract-id', contractId);
+  localStorage.setItem('last-explore-network', network);
   try {
     const response = await fetch('/interface', {
       method: 'POST',
@@ -691,6 +694,7 @@ document.getElementById('deploy-network').addEventListener('change', (e) => {
 });
 document.getElementById('explore-network').addEventListener('change', (e) => {
   updateNetwork(e.target.value);
+  localStorage.setItem('last-explore-network', network);
 });
 
 document.getElementById('share-link').onclick = () => {
@@ -935,6 +939,17 @@ async function init() {
     });
     document.getElementById('deploy-button').disabled = false;
   }
+
+  // Restore last contract ID and network settings
+  const lastContractId = localStorage.getItem('last-contract-id');
+  if (lastContractId) {
+    document.getElementById('explore-contract-id').value = lastContractId;
+  }
+  const lastExploreNetwork = localStorage.getItem('last-explore-network');
+  if (lastExploreNetwork) {
+    document.getElementById('explore-network').value = lastExploreNetwork;
+  }
+
   const urlParams = new URLSearchParams(window.location.search);
   const codeUrl = urlParams.get("codeUrl");
   if (codeUrl) {
