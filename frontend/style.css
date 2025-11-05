@@ -229,6 +229,8 @@ textarea {
   transition: all 0.2s ease;
   min-width: 120px;
   position: relative;
+  height: 35px;
+  box-sizing: border-box;
 }
 
 .editor-tab:hover {
@@ -240,6 +242,7 @@ textarea {
   background-color: var(--bg-dark);
   color: white;
   border-bottom: 2px solid var(--accent-color);
+  margin-bottom: -1px;
 }
 
 .tab-name {
