@@ -6,7 +6,7 @@
     <title>SoroPG.com</title>
     <!-- <script src="bundles/stellar-sdk.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@14.2.0/dist/stellar-sdk.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/stellar-freighter-api/4.1.0/index.min.js"></script>
+    <script src="bundles/wallet-kit-bundle.umd.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -174,9 +174,9 @@
               </div>
               <div class="deploy-controls">
                 <button class="connect-testnet">Generate Wallet</button>
-                <button class="connect-freighter">Connect Freighter</button>
                 <button class="connect-secret">Load Secret Key</button>
                 <button class="export-keys">Export Keys</button>
+                <div id="wallet-button-deploy"></div>
                 <div class="wallet-info"></div>
                 <br />
                 <div class="box">
@@ -225,9 +225,9 @@
               </div>
               <div class="explore-controls">
                 <button class="connect-testnet">Generate Wallet</button>
-                <button class="connect-freighter">Connect Freighter</button>
                 <button class="connect-secret">Load Secret Key</button>
                 <button class="export-keys">Export Keys</button>
+                <div id="wallet-button-explore"></div>
                 <div class="wallet-info"></div>
                 <br />
                 <label for="explore-network">Network: </label>

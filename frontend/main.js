@@ -5,6 +5,14 @@ let rpc;
 let horizon;
 let networkPassphrase;
 let network = 'TESTNET';
+let walletKitAddress = null;
+
+// Initialize Stellar Wallet Kit
+const { StellarWalletsKit, KitEventType, SwkAppDarkTheme, defaultModules } = window.MyWalletKit;
+StellarWalletsKit.init({
+  theme: SwkAppDarkTheme,
+  modules: defaultModules(),
+});
 
 // Multi-file editor state
 let files = {};
@@ -728,27 +736,26 @@ function toRawUrl(url) {
   }
 }
 
-document.querySelectorAll('.connect-freighter').forEach(button => {
-  button.addEventListener('click', async () => { 
-    if (!window.freighterApi) {
-      alert('Freighter extension is not installed.');
-      return;
-    }
-    const retrievePublicKey = async () => {
-        const accessObj = await window.freighterApi.requestAccess();
-        if (accessObj.error) {
-            throw new Error(accessObj.error.message);
-        } else {
-            return accessObj.address;
-        }
-    };
+// Setup Wallet Kit event listener for state updates
+StellarWalletsKit.on(KitEventType.STATE_UPDATED, event => {
+  if (event.payload.address) {
+    walletKitAddress = event.payload.address;
     keypair = null;
-    publicKey = await retrievePublicKey();
+    publicKey = walletKitAddress;
     document.querySelectorAll('.wallet-info').forEach(el => {
       el.innerHTML = `Connected: ${publicKey}`;
     });
     document.getElementById('deploy-button').disabled = false;
-  });
+  } else {
+    walletKitAddress = null;
+    if (!keypair) {
+      publicKey = null;
+      document.querySelectorAll('.wallet-info').forEach(el => {
+        el.innerHTML = '';
+      });
+      document.getElementById('deploy-button').disabled = true;
+    }
+  }
 });
 
 document.querySelectorAll('.connect-testnet').forEach(button => {
@@ -799,14 +806,13 @@ async function signTransaction(preparedTx) {
     return preparedTx;
   } else {
     const xdr = preparedTx.toXDR();
-    document.getElementById('deploy-console').innerHTML += 'Requesting signature from Freighter...<br />';
-    const signedXDR = await window.freighterApi.signTransaction(xdr, {
-      network,
+    document.getElementById('deploy-console').innerHTML += 'Requesting signature from wallet...<br />';
+    const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, {
       networkPassphrase,
       address: publicKey
     });
     const signedTx = StellarSdk.TransactionBuilder.fromXDR(
-      signedXDR.signedTxXdr, 
+      signedTxXdr,
       networkPassphrase,
     );
     return signedTx;
@@ -930,6 +936,16 @@ document.getElementById('load-contract-button').addEventListener('click', async 
 });
 
 async function init() {
+  // Create Wallet Kit buttons
+  const deployButtonWrapper = document.getElementById('wallet-button-deploy');
+  const exploreButtonWrapper = document.getElementById('wallet-button-explore');
+  if (deployButtonWrapper) {
+    StellarWalletsKit.createButton(deployButtonWrapper);
+  }
+  if (exploreButtonWrapper) {
+    StellarWalletsKit.createButton(exploreButtonWrapper);
+  }
+
   const keyStore = localStorage.getItem('secretKey');
   if (keyStore) {
     keypair = StellarSdk.Keypair.fromSecret(keyStore);
