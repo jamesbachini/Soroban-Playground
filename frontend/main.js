@@ -993,19 +993,24 @@ async function init() {
   const resizer = document.getElementById("resizer");
   const topPanel = document.getElementById("editor-container");
   const bottomPanel = document.getElementById("panel-container");
+  const MIN_HEIGHT = 200; // Minimum height for both panels
   let isDragging = false;
+
   resizer.addEventListener("mousedown", (e) => {
     isDragging = true;
     document.body.style.cursor = "row-resize";
     e.preventDefault();
   });
+
   window.addEventListener("mousemove", (e) => {
     if (!isDragging) return;
     const containerOffsetTop = document.getElementById("main-content").offsetTop;
     const totalHeight = document.getElementById("main-content").clientHeight;
     const newTopHeight = e.clientY - containerOffsetTop;
     const newBottomHeight = totalHeight - newTopHeight - resizer.offsetHeight;
-    if (newTopHeight > 100 && newBottomHeight > 100) {
+
+    // Only update if both panels meet minimum height requirement
+    if (newTopHeight >= MIN_HEIGHT && newBottomHeight >= MIN_HEIGHT) {
       topPanel.style.height = `${newTopHeight}px`;
       bottomPanel.style.height = `${newBottomHeight}px`;
     }

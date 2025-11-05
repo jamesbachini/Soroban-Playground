@@ -5,7 +5,10 @@
       "Bash(docker run:*)",
       "Bash(cargo build:*)",
       "Bash(./target/release/Soroban-Playground)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(pkill:*)",
+      "Bash(sudo fuser:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

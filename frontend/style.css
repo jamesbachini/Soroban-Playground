@@ -79,6 +79,9 @@ textarea {
   height: 6px;
   background: var(--border-color);
   cursor: row-resize;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .box {
@@ -151,6 +154,8 @@ textarea {
   display: flex;
   flex-direction: column;
   box-shadow: inset 0px 0px 5px #00000088;
+  min-height: 200px;
+  overflow: hidden;
 }
 
 #editor-tabs-container {
