@@ -195,13 +195,6 @@ textarea {
   margin: 0 2px;
 }
 
-/* Hide menu on smaller screens */
-@media (max-width: 768px) {
-  #header-menu {
-    display: none;
-  }
-}
-
 #editor-tabs {
   display: flex;
   align-items: center;
@@ -462,4 +455,15 @@ h1 {
 #wallet-button-explore stellar-wallets-button button:disabled {
   background-color: #444 !important;
   cursor: not-allowed !important;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  #header-menu {
+    display: none;
+  }
+
+  .deploy-controls button, .explore-controls button {
+    margin-bottom: 3px;
+  }
 }
