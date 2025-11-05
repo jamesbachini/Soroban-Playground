@@ -20,3 +20,4 @@ Cargo.lock
 # Added by cargo
 
 /target
+frontend/bundles/js-stellar-sdk/
