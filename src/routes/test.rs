@@ -53,7 +53,7 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
                 }
                 res = &mut test_fut => {
                     match res {
-                        Ok((stdout, _tmp)) => {
+                        Ok((stdout, _tmp, _output_filename)) => {
                             let _ = tx.send(Ok(Bytes::from(stdout))).await;
                         }
                         Err(e) => {

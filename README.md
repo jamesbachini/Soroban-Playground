@@ -67,6 +67,12 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 # Open up a browser on http://127.0.0.1
 ```
 
+## Local oneliner
+
+```bash
+cargo build --release; sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground; ./target/release/Soroban-Playground
+```
+
 ## Production
 Additional steps to run it up on a remote server
 

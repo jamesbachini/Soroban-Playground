@@ -3,11 +3,13 @@
 :root {
   --bg-dark: #1e1e1e;
   --bg-darker: #121212;
-  --bg-menu: #252526;
-  --accent-color: #9e8cfc;
+  --bg-menu: #1f222b;
+  --tabs: #1e1f24;
+  --accent-color: #737cca;
+  --gradient: linear-gradient(135deg, #4b64d2, #5451a6);
   --text-light: #e0e0e0;
   --text-dim: #9e9e9e;
-  --section-bg: #2d2d2d;
+  --section-bg: #1e1f24;
   --border-color: #3e3e3e;
 }
 
@@ -97,6 +99,7 @@ textarea {
   flex-direction: column;
   align-items: center;
   border-right: 1px solid var(--border-color);
+  box-shadow: inset 0px 0px 5px #00000088;
 }
 
 .sidebar-icon {
@@ -124,7 +127,7 @@ textarea {
 .sidebar-label {
   font-size: 0.5rem;
   margin-top: 2px;
-  color: var(--accent-color);
+  color: var(--text-light);
 }
 
 .github-icon {
@@ -150,13 +153,14 @@ textarea {
 }
 
 #editor-tabs-container {
-  background-color: var(--bg-menu);
+  background-color: var(--tabs);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: 35px;
   padding-right: 8px;
+  box-shadow: inset 0px 0px 5px #00000088;
 }
 
 #header-menu {
@@ -177,7 +181,7 @@ textarea {
 #header-menu a {
   text-decoration: none;
   padding: 2px 6px;
-  color: var(--accent-color);
+  color: var(--text-dim);
   transition: color 0.2s ease;
 }
 
@@ -292,6 +296,7 @@ textarea {
   overflow-y: auto;
   flex-grow: 1;
   min-height: 170px;
+  box-shadow: inset 0px 0px 5px #00000088;
 }
 
 .panel {

@@ -1,5 +1,6 @@
 use std::{fs, process::Stdio, collections::HashMap};
 use tempfile::TempDir;
+use regex::Regex;
 
 fn is_safe_filename(filename: &str) -> bool {
     // Only allow alphanumeric, underscore, dash, and dot
@@ -52,6 +53,27 @@ fn is_safe_file_content(content: &str) -> bool {
     !suspicious_patterns.iter().any(|&pattern| content.contains(pattern))
 }
 
+fn extract_contract_name(code: &str) -> Option<String> {
+    // Remove comments from code
+    let code_without_comments = code
+        .lines()
+        .map(|line| {
+            if let Some(pos) = line.find("//") {
+                &line[..pos]
+            } else {
+                line
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Look for #[contract] pub struct ContractName
+    let re = Regex::new(r#"#\[\s*contract\s*\]\s*pub\s+struct\s+([A-Za-z0-9_]+)\s*;"#).ok()?;
+    re.captures(&code_without_comments)
+        .and_then(|cap| cap.get(1))
+        .map(|m| m.as_str().to_string())
+}
+
 pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir), String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
 
@@ -81,7 +103,7 @@ pub async fn run_in_docker_with_files(
     code: String,
     files: Option<HashMap<String, String>>,
     command: &str
-) -> Result<(Vec<u8>, TempDir), String> {
+) -> Result<(Vec<u8>, TempDir, String), String> {
     run_in_docker_with_files_and_id(code, files, command, None).await
 }
 
@@ -90,7 +112,7 @@ pub async fn run_in_docker_with_files_and_id(
     files: Option<HashMap<String, String>>,
     command: &str,
     build_id: Option<String>
-) -> Result<(Vec<u8>, TempDir), String> {
+) -> Result<(Vec<u8>, TempDir, String), String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
     let project = tmp.path().join("project");
     fs::create_dir(&project).map_err(|e| e.to_string())?;
@@ -100,13 +122,18 @@ pub async fn run_in_docker_with_files_and_id(
         return Err("Unsafe code content detected in main file".to_string());
     }
 
+    // Extract contract name from lib.rs code
+    let contract_name = extract_contract_name(&code).unwrap_or_else(|| "project".to_string());
+
     // Handle Cargo.toml - must be provided in files
     if let Some(ref files_map) = files {
         if let Some(custom_cargo) = files_map.get("Cargo.toml") {
             if !is_safe_file_content(custom_cargo) {
                 return Err("Unsafe content detected in Cargo.toml".to_string());
             }
-            fs::write(project.join("Cargo.toml"), custom_cargo).map_err(|e| e.to_string())?;
+            // Update the package name in Cargo.toml to match the contract name
+            let updated_cargo = custom_cargo.replace("name = \"project\"", &format!("name = \"{}\"", contract_name));
+            fs::write(project.join("Cargo.toml"), updated_cargo).map_err(|e| e.to_string())?;
         } else {
             return Err("Cargo.toml file is required but not provided".to_string());
         }
@@ -152,19 +179,27 @@ pub async fn run_in_docker_with_files_and_id(
             fs::write(file_path, content).map_err(|e| format!("Failed to write {}: {}", filename, e))?;
         }
     }
-    // Use build_id to create unique target directory if provided
-    let target_dir = if let Some(id) = build_id {
-        format!("/mnt/cargo/target-{}", &id[..12]) // Use first 12 chars of hash
+    // Use build_id to create unique target directory and output filename if provided
+    let (target_dir, output_filename) = if let Some(id) = build_id {
+        (
+            format!("/mnt/cargo/target-{}", &id[..12]), // Use first 12 chars of hash
+            format!("{}-{}.wasm", contract_name, &id[..8]) // Use contract name and first 8 chars of hash
+        )
     } else {
-        "/mnt/cargo/target".to_string()
+        (
+            "/mnt/cargo/target".to_string(),
+            format!("{}.wasm", contract_name)
+        )
     };
 
     let mut final_command = format!("cd /workspace/project && {}", command);
     if command.contains("build") {
         final_command = format!(
-            "set -ex; cd /workspace/project && {} && cp {}/wasm32-unknown-unknown/release/project.wasm /host-tmp/project.wasm",
+            "set -ex; cd /workspace/project && {} && cp {}/wasm32-unknown-unknown/release/{}.wasm /host-tmp/{}",
             command,
-            target_dir
+            target_dir,
+            contract_name,
+            output_filename
         )
     }
     let output = tokio::process::Command::new("docker")
@@ -189,8 +224,8 @@ pub async fn run_in_docker_with_files_and_id(
     //println!("Docker stdout:\n{}", stdout);
     //println!("Docker stderr:\n{}", stderr);
     if !output.stdout.is_empty() {
-        Ok((output.stdout, tmp))
+        Ok((output.stdout, tmp, output_filename))
     } else {
-        Ok((output.stderr, tmp))
+        Ok((output.stderr, tmp, output_filename))
     }
 }

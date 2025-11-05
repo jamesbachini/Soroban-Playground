@@ -73,12 +73,12 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
                 }
                 res = &mut compile_fut => {
                     match res {
-                        Ok((_, _tmp)) => {
-                            let path = PathBuf::from("/tmp/project.wasm");
+                        Ok((_, _tmp, output_filename)) => {
+                            let path = PathBuf::from(format!("/tmp/{}", output_filename));
                             match std::fs::read(&path) {
                                 Ok(wasm) => {
                                     let _ = tx.send(Ok(Bytes::from(wasm))).await;
-                                    info!(hash=%hash, "compiled successfully");
+                                    info!(hash=%hash, filename=%output_filename, "compiled successfully");
                                 }
                                 Err(e) => {
                                     let msg = format!("Compile Error: {}\n", e);
