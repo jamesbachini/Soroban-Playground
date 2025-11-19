@@ -1,6 +1,6 @@
 # Soroban Playground
 
-![Github](https://img.shields.io/badge/github-Open%20Source-green?logo=github) ![Stellar](https://img.shields.io/badge/Stellar-Network-blue) ![Rust](https://img.shields.io/badge/Rust-Soroban-orange) ![GitHub License](https://img.shields.io/github/license/jamesbachini/Soroban-Playground)
+![Github](https://img.shields.io/badge/Github-Open%20Source-green?logo=github) ![Stellar](https://img.shields.io/badge/Stellar-Network-blue) ![Rust](https://img.shields.io/badge/Rust-Soroban-orange) ![GitHub License](https://img.shields.io/github/license/jamesbachini/Soroban-Playground)
 
 An online IDE for Stellar Soroban developers
 
