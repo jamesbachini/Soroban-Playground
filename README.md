@@ -16,15 +16,15 @@ It's simple but capable with the ability to create stellar smart contracts, all 
 
 ## Crates Available
 
-- soroban-sdk = "23.0.2"
-- sep-41-token = "1.2.0"
-- soroban-fixed-point-math = "1.3.0"
-- blend-contract-sdk = "2.22.0"
-- stellar-tokens = "0.4.1"
-- stellar-access = "0.4.1"
-- stellar-contract-utils = "0.4.1"
-- stellar-macros = "0.4.1"
-
+- soroban-sdk
+- sep-41-token
+- soroban-fixed-point-math
+- blend-contract-sdk
+- stellar-tokens
+- stellar-access
+- stellar-contract-utils
+- stellar-macros
+- stellar-accounts
 
 Full version info available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
 
