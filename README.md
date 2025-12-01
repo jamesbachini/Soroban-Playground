@@ -2,11 +2,11 @@
 
 ![Github](https://img.shields.io/badge/Github-Open%20Source-green?logo=github) ![Stellar](https://img.shields.io/badge/Stellar-Network-blue) ![Rust](https://img.shields.io/badge/Rust-Soroban-orange) ![GitHub License](https://img.shields.io/github/license/jamesbachini/Soroban-Playground)
 
-An online IDE for Stellar Soroban developers
+An online IDE for Stellar smart contract developers
 
 Available at https://soropg.com
 
-It's simple but capable with the ability to create soroban contracts, all the openzeppelin stuff works (can copy and paste from the contract wizard), can use it to run unit tests, deploy contracts to testnet/mainnet and there's an integration section for invoking contract functions with the js-stellar-sdk. All point and click functionality to make it as easy as possible.
+It's simple but capable with the ability to create stellar smart contracts, all the openzeppelin stuff works (can copy and paste from the contract wizard), can use it to run unit tests, deploy contracts to testnet/mainnet and there's an integration section for invoking contract functions with the js-stellar-sdk. All point and click functionality to make it as easy as possible.
 
 ## Architecture
 
