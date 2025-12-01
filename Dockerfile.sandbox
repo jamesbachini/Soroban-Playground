@@ -18,7 +18,7 @@ RUN rustup target add wasm32-unknown-unknown
 
 # Libdbus fix / needed if not using wasm32v1-none?
 RUN apt-get update
-RUN apt-get install -y pkg-config libdbus-1-dev libudev-dev
+RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev
 
 # Install stellar cli
 RUN cargo install stellar-cli
