@@ -47,7 +47,7 @@ Follow these commands to install locally. If on windows I'd recommend using wind
 sudo curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 sudo curl --proto '=https' --tlsv1.2 -sSf https://get.docker.com | sh
 sudo apt update
-sudo apt install build-essential
+sudo apt install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev
 
 # Clone the repo
 git clone https://github.com/jamesbachini/Soroban-Playground.git
