@@ -64,7 +64,7 @@ docker build -f Dockerfile.sandbox -t wasm_sandbox .
 # Build the app, authorize port 80 using setcap and run the binary
 cargo build --release
 sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
-./target/release/Soroban-Playground
+./target/release/Soroban-Playground --port 80
 
 # Open up a browser on http://127.0.0.1
 ```
@@ -94,7 +94,7 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 crontab -e
 
 @reboot echo "." > /tmp/project.wasm; chmod 664 /tmp/project.wasm
-@reboot cd /home/$USERNAME/Soroban-Playground; /home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground
+@reboot cd /home/$USERNAME/Soroban-Playground; /home/$USERNAME/Soroban-Playground/target/release/Soroban-Playground --port 80
 0 1 * * * cd /home/$USERNAME/Soroban-Playground; docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /cache/target/tmp"
 ```
 
@@ -158,7 +158,7 @@ docker build -f Dockerfile.sandbox -t wasm_sandbox .
 
 ```bash
 @reboot echo "." > /tmp/project.wasm; chmod 666 /tmp/project.wasm
-@reboot cd ~/Soroban-Playground; ~/Soroban-Playground/target/release/Soroban-Playground
+@reboot cd ~/Soroban-Playground; ~/Soroban-Playground/target/release/Soroban-Playground --port 80
 0 1 * * * cd ~/Soroban-Playground; docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /cache/target/tmp"
 ```
 
