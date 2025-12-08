@@ -53,6 +53,29 @@ fn is_safe_file_content(content: &str) -> bool {
     !suspicious_patterns.iter().any(|&pattern| content.contains(pattern))
 }
 
+fn to_snake_case(s: &str) -> String {
+    let mut result = String::new();
+    let mut prev_is_lowercase = false;
+
+    for (i, ch) in s.chars().enumerate() {
+        if ch.is_uppercase() {
+            // Add underscore before uppercase letter if:
+            // - Not at the start
+            // - Previous character was lowercase
+            if i > 0 && prev_is_lowercase {
+                result.push('_');
+            }
+            result.push(ch.to_lowercase().next().unwrap());
+            prev_is_lowercase = false;
+        } else {
+            result.push(ch);
+            prev_is_lowercase = ch.is_lowercase();
+        }
+    }
+
+    result
+}
+
 fn extract_contract_name(code: &str) -> Option<String> {
     // Remove comments from code
     let code_without_comments = code
@@ -194,11 +217,13 @@ pub async fn run_in_docker_with_files_and_id(
 
     let mut final_command = format!("cd /workspace/project && {}", command);
     if command.contains("build") {
+        // Cargo produces WASM files with snake_case names, even if the package name is CamelCase
+        let wasm_filename = to_snake_case(&contract_name);
         final_command = format!(
             "set -ex; cd /workspace/project && {} && cp {}/wasm32-unknown-unknown/release/{}.wasm /host-tmp/{}",
             command,
             target_dir,
-            contract_name,
+            wasm_filename,
             output_filename
         )
     }
