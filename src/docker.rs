@@ -146,7 +146,12 @@ pub async fn run_in_docker_with_files_and_id(
     }
 
     // Extract contract name from lib.rs code
-    let contract_name = extract_contract_name(&code).unwrap_or_else(|| "project".to_string());
+    //let contract_name = extract_contract_name(&code).unwrap_or_else(|| "project".to_string());
+    let contract_name = extract_contract_name(&code).unwrap_or_else(|| {
+        eprintln!("Warning: Could not extract contract name from code, using 'project'");
+        "project".to_string()
+    });
+    eprintln!("Contract name extracted: {}", contract_name);
 
     // Handle Cargo.toml - must be provided in files
     if let Some(ref files_map) = files {
@@ -155,7 +160,10 @@ pub async fn run_in_docker_with_files_and_id(
                 return Err("Unsafe content detected in Cargo.toml".to_string());
             }
             // Update the package name in Cargo.toml to match the contract name
-            let updated_cargo = custom_cargo.replace("name = \"project\"", &format!("name = \"{}\"", contract_name));
+            // Use snake_case for the package name as per Cargo conventions
+            let package_name = to_snake_case(&contract_name);
+            eprintln!("Setting package name in Cargo.toml: {}", package_name);
+            let updated_cargo = custom_cargo.replace("name = \"project\"", &format!("name = \"{}\"", package_name));
             fs::write(project.join("Cargo.toml"), updated_cargo).map_err(|e| e.to_string())?;
         } else {
             return Err("Cargo.toml file is required but not provided".to_string());
@@ -219,9 +227,12 @@ pub async fn run_in_docker_with_files_and_id(
     if command.contains("build") {
         // Cargo produces WASM files with snake_case names, even if the package name is CamelCase
         let wasm_filename = to_snake_case(&contract_name);
+        eprintln!("Looking for WASM file: {}.wasm", wasm_filename);
+        eprintln!("Target directory: {}", target_dir);
         final_command = format!(
-            "set -ex; cd /workspace/project && {} && cp {}/wasm32-unknown-unknown/release/{}.wasm /host-tmp/{}",
+            "set -ex; cd /workspace/project && {} && ls -la {}/wasm32-unknown-unknown/release/*.wasm && cp {}/wasm32-unknown-unknown/release/{}.wasm /host-tmp/{}",
             command,
+            target_dir,
             target_dir,
             wasm_filename,
             output_filename
