@@ -61,7 +61,7 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
 
-        let compile_fut = run_in_docker_with_files_and_id(code, files, "cargo build --release --target wasm32-unknown-unknown", Some(build_hash));
+        let compile_fut = run_in_docker_with_files_and_id(code, files, "stellar contract build", Some(build_hash));
         tokio::pin!(compile_fut);
 
         loop {

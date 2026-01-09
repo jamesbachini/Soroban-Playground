@@ -230,7 +230,7 @@ pub async fn run_in_docker_with_files_and_id(
         eprintln!("Looking for WASM file: {}.wasm", wasm_filename);
         eprintln!("Target directory: {}", target_dir);
         final_command = format!(
-            "set -ex; cd /workspace/project && {} && ls -la {}/wasm32-unknown-unknown/release/*.wasm && cp {}/wasm32-unknown-unknown/release/{}.wasm /host-tmp/{}",
+            "set -ex; cd /workspace/project && {} && ls -la {}/wasm32v1-none/release/*.wasm && cp {}/wasm32v1-none/release/{}.wasm /host-tmp/{}",
             command,
             target_dir,
             target_dir,

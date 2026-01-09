@@ -12,7 +12,7 @@ WORKDIR /workspace
 RUN rustup default nightly
 RUN rustup override set nightly
 
-# Install wasm target
+# Install wasm targets
 RUN rustup target add wasm32v1-none
 RUN rustup target add wasm32-unknown-unknown
 
@@ -33,6 +33,6 @@ COPY frontend/templates/test.rs ./src/test.rs
 # Prerun cargo commands
 RUN cargo fetch
 RUN cargo test
-RUN cargo build --release --target wasm32-unknown-unknown
+RUN stellar contract build
 
 CMD ["bash"]
