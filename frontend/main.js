@@ -16,6 +16,8 @@ const friendbotUrls = {
 let fundingMessageTimeout = null;
 let fundingMessageInterval = null;
 let fundingMessageId = 0;
+const PANEL_MIN_HEIGHT = 200;
+let defaultPanelSplitRatio = null;
 
 // Initialize Stellar Wallet Kit
 const { StellarWalletsKit, KitEventType, SwkAppDarkTheme, defaultModules } = window.MyWalletKit;
@@ -290,6 +292,69 @@ function checkMenuOverflow() {
     menu.classList.remove('hidden');
   }
   // If there's not enough space, menu stays hidden
+}
+
+function getPanelLayoutElements() {
+  const mainContent = document.getElementById('main-content');
+  const topPanel = document.getElementById('editor-container');
+  const bottomPanel = document.getElementById('panel-container');
+  const resizer = document.getElementById('resizer');
+  if (!mainContent || !topPanel || !bottomPanel || !resizer) return null;
+  return { mainContent, topPanel, bottomPanel, resizer };
+}
+
+function captureDefaultSplitIfNeeded(layout) {
+  if (defaultPanelSplitRatio !== null) return;
+  const usableHeight = layout.mainContent.clientHeight - layout.resizer.offsetHeight;
+  if (usableHeight <= 0) return;
+  const topHeight = layout.topPanel.getBoundingClientRect().height;
+  defaultPanelSplitRatio = topHeight / usableHeight;
+}
+
+function applyPanelSplit(topRatio, options = {}) {
+  const layout = getPanelLayoutElements();
+  if (!layout) return;
+  const { captureDefault = true } = options;
+  if (captureDefault) captureDefaultSplitIfNeeded(layout);
+  const totalHeight = layout.mainContent.clientHeight;
+  const resizerHeight = layout.resizer.offsetHeight;
+  const usableHeight = totalHeight - resizerHeight;
+  if (usableHeight <= 0) return;
+
+  let newTopHeight = Math.round(usableHeight * topRatio);
+  let newBottomHeight = usableHeight - newTopHeight;
+  const minHeight = usableHeight >= PANEL_MIN_HEIGHT * 2 ? PANEL_MIN_HEIGHT : 0;
+
+  if (newTopHeight < minHeight) newTopHeight = minHeight;
+  if (newBottomHeight < minHeight) newBottomHeight = minHeight;
+
+  if (newTopHeight + newBottomHeight > usableHeight) {
+    const overflow = newTopHeight + newBottomHeight - usableHeight;
+    if (newBottomHeight >= newTopHeight) {
+      newBottomHeight = Math.max(minHeight, newBottomHeight - overflow);
+    } else {
+      newTopHeight = Math.max(minHeight, newTopHeight - overflow);
+    }
+  }
+
+  layout.topPanel.style.height = `${newTopHeight}px`;
+  layout.bottomPanel.style.height = `${newBottomHeight}px`;
+  if (editor) {
+    editor.layout();
+  }
+}
+
+function resetPanelSplit() {
+  const layout = getPanelLayoutElements();
+  if (!layout) return;
+  layout.topPanel.style.height = '';
+  layout.bottomPanel.style.height = '';
+  defaultPanelSplitRatio = null;
+  requestAnimationFrame(() => {
+    if (editor) {
+      editor.layout();
+    }
+  });
 }
 
 function createNewFile(fileName) {
@@ -1543,6 +1608,7 @@ async function loadContract(contractId) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('explore-sidebar-icon').classList.add('active');
   document.getElementById('explore-panel').classList.add('active');
+  applyPanelSplit(0.25);
   const exploreForm = document.getElementById('explore-form');
   document.getElementById('explore-contract-id').value = contractId;
   // Save to local storage
@@ -2056,8 +2122,9 @@ async function init() {
   const resizer = document.getElementById("resizer");
   const topPanel = document.getElementById("editor-container");
   const bottomPanel = document.getElementById("panel-container");
-  const MIN_HEIGHT = 200; // Minimum height for both panels
   let isDragging = false;
+  const layout = getPanelLayoutElements();
+  if (layout) captureDefaultSplitIfNeeded(layout);
 
   resizer.addEventListener("mousedown", (e) => {
     isDragging = true;
@@ -2073,7 +2140,7 @@ async function init() {
     const newBottomHeight = totalHeight - newTopHeight - resizer.offsetHeight;
 
     // Only update if both panels meet minimum height requirement
-    if (newTopHeight >= MIN_HEIGHT && newBottomHeight >= MIN_HEIGHT) {
+    if (newTopHeight >= PANEL_MIN_HEIGHT && newBottomHeight >= PANEL_MIN_HEIGHT) {
       topPanel.style.height = `${newTopHeight}px`;
       bottomPanel.style.height = `${newBottomHeight}px`;
     }
@@ -2090,6 +2157,7 @@ document.querySelectorAll('.sidebar-icon').forEach(icon => {
     const panelId = this.getAttribute('data-panel') + '-panel';
     if (panelId == 'home-panel') window.location = "/";
     if (panelId == 'github-panel') window.open("https://github.com/jamesbachini/Soroban-Playground", "_blank");
+    if (panelId == 'create-panel') resetPanelSplit();
     document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     this.classList.add('active');
