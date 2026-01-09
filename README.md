@@ -64,8 +64,10 @@ docker build -f Dockerfile.sandbox -t wasm_sandbox .
 # Build the app, authorize port 80 using setcap and run the binary
 cargo build --release
 ./target/release/Soroban-Playground --port 3003
-
 # Open up a browser on http://127.0.0.1:3003
+
+# Rebuild and restart oneliner:
+cargo build --release; ./target/release/Soroban-Playground --port 3003
 ```
 
 ## Local oneliner
@@ -176,12 +178,12 @@ npm run build:browser
 ✅ Multifile support (tabs along top of editor) - done v0.5.1
 ✅ Research safe way to edit cargo.toml - done v0.5.1
 ✅ Split contracts and tests - done v0.5.1
-- Improve contract explorer
-- Export integration to HTML/JS
+✅ Improve contract explorer - done v0.7.1
+- Export bindings
 - CustomGPT Chatbot integration
 - Rust linter
-- More wallets supported (Creit-Tech Wallet Kit v2 will support vanilla js, issue & contact: https://github.com/jamesbachini/Soroban-Playground/issues/2)
-
+✅ More wallets supported - done v0.6.1
+- History and undo system in localStorage
 
 ## License
 

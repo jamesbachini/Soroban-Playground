@@ -36,6 +36,9 @@
           <div><i class="fas fa-flask fa-lg"></i></div>
           <div class="sidebar-label">EXPLORE</div>
         </div>
+        <div class="sidebar-icon settings-icon" data-panel="settings" title="Settings">
+          <i class="fas fa-cog fa-lg"></i>
+        </div>
         <div class="sidebar-icon github-icon" data-panel="github" title="Github">
           <i class="fa-brands fa-github fa-lg"></i>
         </div>
@@ -58,21 +61,17 @@
           </div>
           <div id="editor"></div>
         </div>
-        <div id="resizer"></div>
+        <div id="resizer">
+          <button id="panel-collapse" type="button" title="Hide panel" aria-label="Hide panel">&#x2716;</button>
+        </div>
         <div id="panel-container">
 
           <div class="panel active" id="create-panel">
             <h1>The Soroban Playground</h1>
             <div class="panel-content">
               <div class="welcome-message">
-                <p>Write, build, test, and deploy Soroban smart contracts directly in your browser</p>
+                <p>Write, build, test, and deploy Stellar smart contracts directly in your browser</p>
               </div>
-              <button id="reset-code" class="primary-button">
-                <i class="fas fa-rotate-left"></i> Reset Editor
-              </button>
-              <button id="share-link" class="primary-button">
-                <i class="fas fa-share-alt"></i> Share Code Link
-              </button>
               <div class="info-card">
                 <p>Use the editor above to write your Rust smart contract. The template already includes a basic contract structure to help you get started.</p>
                 <p>Navigate between different stages of development using the icons in the left sidebar:</p>
@@ -98,6 +97,41 @@
                 <div class="tip">
                   <i class="fas fa-lightbulb"></i>
                   <a href="https://wizard.openzeppelin.com/stellar" target="_blank">OpenZeppelin Contract Wizard</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" id="settings-panel">
+            <h1><i class="fas fa-cog accent"></i> Settings</h1>
+            <div class="panel-content">
+              <div class="info-card">
+                <p>Manage editor storage, sharing, and layout preferences.</p>
+              </div>
+              <div class="settings-list">
+                <div class="settings-item">
+                  <div class="settings-header">
+                    <h3>Share Code Link</h3>
+                    <p>Paste a GitHub or Gist URL to generate a shareable link to your code.</p>
+                  </div>
+                  <div class="settings-controls">
+                    <input type="text" id="share-url-input" placeholder="https://github.com/... or https://gist.github.com/..." />
+                    <button id="share-link" class="primary-button">
+                      <i class="fas fa-share-alt"></i> Copy Share Link
+                    </button>
+                  </div>
+                  <div id="share-link-status" class="settings-status" role="status" aria-live="polite"></div>
+                </div>
+                <div class="settings-item">
+                  <div class="settings-header">
+                    <h3>Reset Editor</h3>
+                    <p>Clear locally stored files and wallets and restore the default template.</p>
+                  </div>
+                  <div class="settings-controls">
+                    <button id="reset-code" class="primary-button">
+                      <i class="fas fa-rotate-left"></i> Reset Editor
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -154,7 +188,7 @@
                 </div>
               </div>
               <div>
-                <p>This will transform your code into a binary format that can be executed on the Soroban platform.</p>
+                <p>This will transform your code into a binary format that can be deployed on the Stellar Network.</p>
                 <p>The compilation process:</p>
                 <ol>
                   <li>Validates your Rust code syntax</li>
@@ -170,7 +204,7 @@
             <h1><i class="fas fa-rocket accent"></i> Deploy</h1>
             <div class="panel-content">
               <div class="info-card">
-                <p>Deploy your compiled WASM file to the Soroban network.</p>
+                <p>Deploy your compiled WASM file to the Stellar network.</p>
               </div>
               <div class="deploy-controls">
                 <div class="wallet-toolbar" data-context="deploy">
@@ -243,7 +277,7 @@
             <h1><i class="fas fa-flask accent"></i> Contract Explorer</h1>
             <div class="panel-content">
               <div class="info-card">
-                <p>In this section you can explore and call Soroban contract functions using your web browser</p>
+                <p>In this section you can explore and call Stellar contract functions using your web browser</p>
               </div>
               <div class="explore-controls">
                 <div class="wallet-toolbar" data-context="explore">
@@ -291,6 +325,7 @@
           </div>
 
         </div> <!-- end panel-container -->
+        <button id="panel-expand" type="button" title="Show panel" aria-label="Show panel">+</button>
       </div> <!-- end main-content -->
     </div> <!-- end container -->
 

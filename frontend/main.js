@@ -18,6 +18,8 @@ let fundingMessageInterval = null;
 let fundingMessageId = 0;
 const PANEL_MIN_HEIGHT = 200;
 let defaultPanelSplitRatio = null;
+let lastPanelSplitRatio = null;
+let isPanelCollapsed = false;
 
 // Initialize Stellar Wallet Kit
 const { StellarWalletsKit, KitEventType, SwkAppDarkTheme, defaultModules } = window.MyWalletKit;
@@ -339,6 +341,9 @@ function applyPanelSplit(topRatio, options = {}) {
 
   layout.topPanel.style.height = `${newTopHeight}px`;
   layout.bottomPanel.style.height = `${newBottomHeight}px`;
+  if (usableHeight > 0) {
+    lastPanelSplitRatio = newTopHeight / usableHeight;
+  }
   if (editor) {
     editor.layout();
   }
@@ -350,10 +355,55 @@ function resetPanelSplit() {
   layout.topPanel.style.height = '';
   layout.bottomPanel.style.height = '';
   defaultPanelSplitRatio = null;
+  lastPanelSplitRatio = null;
   requestAnimationFrame(() => {
     if (editor) {
       editor.layout();
     }
+  });
+}
+
+function getCurrentSplitRatio(layout) {
+  const usableHeight = layout.mainContent.clientHeight - layout.resizer.offsetHeight;
+  if (usableHeight <= 0) return null;
+  const topHeight = layout.topPanel.getBoundingClientRect().height;
+  if (!topHeight) return null;
+  return topHeight / usableHeight;
+}
+
+function clearPanelHeights(layout) {
+  layout.topPanel.style.height = '';
+  layout.bottomPanel.style.height = '';
+}
+
+function setPanelCollapsed(collapsed, options = {}) {
+  const layout = getPanelLayoutElements();
+  if (!layout) return;
+  if (collapsed === isPanelCollapsed) return;
+  const { restoreRatio = true } = options;
+
+  if (collapsed) {
+    const ratio = getCurrentSplitRatio(layout);
+    if (ratio) lastPanelSplitRatio = ratio;
+    clearPanelHeights(layout);
+    layout.mainContent.classList.add('panel-collapsed');
+    isPanelCollapsed = true;
+    if (editor) {
+      editor.layout();
+    }
+    return;
+  }
+
+  layout.mainContent.classList.remove('panel-collapsed');
+  isPanelCollapsed = false;
+  requestAnimationFrame(() => {
+    captureDefaultSplitIfNeeded(layout);
+    if (!restoreRatio) {
+      if (editor) editor.layout();
+      return;
+    }
+    const ratio = lastPanelSplitRatio ?? defaultPanelSplitRatio ?? 0.62;
+    applyPanelSplit(ratio, { captureDefault: false });
   });
 }
 
@@ -642,7 +692,6 @@ function renderContractForm(contractId, interfaceString, divId = 'explore-form')
   while ((match = methodRegex.exec(interfaceString)) !== null) {
     const methodName = match[1];
     const signature = match[0];
-    const isRead = signature.includes('->');
     const args = [];
     const argsPart = signature.substring(signature.indexOf('(') + 1, signature.lastIndexOf(')'));
     let argMatch;
@@ -740,8 +789,11 @@ function renderContractForm(contractId, interfaceString, divId = 'explore-form')
           .addOperation(op)
           .setTimeout(30)
           .build();
-        if (isRead) {
-          const simulationResult = await rpc.simulateTransaction(tx);
+        const simulationResult = await rpc.simulateTransaction(tx);
+        if (simulationResult.error) {
+          throw new Error(simulationResult.error);
+        }
+        if (isReadOnlySimulation(simulationResult)) {
           const decoded = StellarSdk.scValToNative(simulationResult.result?.retval);
           const safeDecoded = JSON.parse(JSON.stringify(decoded, (key, value) =>
             typeof value === "bigint" ? value.toString() : value
@@ -754,14 +806,19 @@ function renderContractForm(contractId, interfaceString, divId = 'explore-form')
           consoleDiv.innerHTML = '';
           consoleDiv.appendChild(pre);
         } else {
-          const preparedTx = await rpc.prepareTransaction(tx);
+          const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simulationResult).build();
           const signedTx = await signTransaction(preparedTx);
-          let response = await rpc.sendTransaction(signedTx);
+          if (!signedTx) {
+            throw new Error('Transaction was not signed.');
+          }
+          const response = await rpc.sendTransaction(signedTx);
           const hash = response.hash;
-          consoleDiv.innerHTML = `
-            <p>Transaction Sent! Check block explorer:</p>
-            <a href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a>
-          `;
+          if (response.status === 'ERROR') {
+            console.error('Transaction rejected', response);
+            consoleDiv.innerHTML = `<pre style="color:red;">Transaction rejected by RPC. Check console for details.</pre>`;
+            return;
+          }
+          await pollTransactionResult(hash, methodName, consoleDiv, null);
         }
       } catch (err) {
         consoleDiv.innerHTML = `<pre style="color:red;">${err.message || err}</pre>`;
@@ -1441,6 +1498,89 @@ function safeSerialize(value) {
   }));
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isReadOnlySimulation(simulationResult) {
+  const authCount = simulationResult?.result?.auth?.length ?? 0;
+  const txData = simulationResult?.transactionData;
+  let writeCount = 0;
+  if (txData) {
+    if (typeof txData.getReadWrite === 'function') {
+      writeCount = txData.getReadWrite().length;
+    } else if (typeof txData.getFootprint === 'function') {
+      const fp = txData.getFootprint();
+      if (typeof fp?.readWrite === 'function') {
+        writeCount = fp.readWrite().length;
+      }
+    } else {
+      const readWrite = txData
+        ?.resources?.()
+        ?.footprint?.()
+        ?.readWrite?.();
+      if (readWrite?.length != null) {
+        writeCount = readWrite.length;
+      }
+    }
+  }
+  return authCount === 0 && writeCount === 0;
+}
+
+function formatReturnValues(methodName, returnValue, spec) {
+  if (!returnValue) return null;
+  const decoded = spec
+    ? spec.funcResToNative(methodName, returnValue)
+    : StellarSdk.scValToNative(returnValue);
+  const safeDecoded = spec ? safeSerialize(decoded) : JSON.parse(
+    JSON.stringify(decoded, (key, value) => typeof value === "bigint" ? value.toString() : value)
+  );
+  const normalizeValue = (value) => {
+    if (typeof value === 'string') return value;
+    return JSON.stringify(value, null, 2);
+  };
+  if (Array.isArray(safeDecoded)) {
+    return safeDecoded.length ? safeDecoded.map(normalizeValue) : ['[]'];
+  }
+  return [normalizeValue(safeDecoded)];
+}
+
+async function pollTransactionResult(hash, methodName, consoleDiv, spec) {
+  consoleDiv.innerHTML =
+    `<div>Transaction Submitted (PENDING). Waiting for confirmation...</div>` +
+    `<a href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a>`;
+  while (true) {
+    const tx = await rpc.getTransaction(hash);
+    if (tx.status === 'NOT_FOUND') {
+      await sleep(2000);
+      continue;
+    }
+    if (tx.status === 'FAILED') {
+      consoleDiv.innerHTML =
+        `<div style="color:red;">Transaction FAILED.</div>` +
+        `<a href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a>`;
+      return;
+    }
+    if (tx.status === 'SUCCESS') {
+      const outputs = formatReturnValues(methodName, tx.returnValue, spec);
+      if (outputs !== null) {
+        const pre = document.createElement('pre');
+        pre.textContent = outputs.join('\n');
+        consoleDiv.innerHTML =
+          `<div>Success TX: <a class="tx-hash-link" href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a></div>` +
+          `<div class="tx-output-label">Output:</div>`;
+        consoleDiv.appendChild(pre);
+      } else {
+        consoleDiv.innerHTML =
+          `<div>Success TX: <a class="tx-hash-link" href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a></div>` +
+          `<div class="tx-output-label">Output: No return value.</div>`;
+      }
+      return;
+    }
+    await sleep(2000);
+  }
+}
+
 async function getContractSpec(contractId) {
   const cacheKey = `${network}:${contractId}`;
   if (contractSpecCache.has(cacheKey)) {
@@ -1463,8 +1603,6 @@ function renderContractFormFromSpec(contractId, spec, divId = 'explore-form') {
   funcs.forEach(fn => {
     const methodName = fn.name().toString();
     const inputs = fn.inputs();
-    const outputs = fn.outputs();
-    const isRead = outputs.length > 0;
     const args = inputs.map(input => {
       return {
         name: input.name().toString(),
@@ -1570,8 +1708,11 @@ function renderContractFormFromSpec(contractId, spec, divId = 'explore-form') {
           .addOperation(op)
           .setTimeout(30)
           .build();
-        if (isRead) {
-          const simulationResult = await rpc.simulateTransaction(tx);
+        const simulationResult = await rpc.simulateTransaction(tx);
+        if (simulationResult.error) {
+          throw new Error(simulationResult.error);
+        }
+        if (isReadOnlySimulation(simulationResult)) {
           const decoded = spec.funcResToNative(methodName, simulationResult.result?.retval);
           const safeDecoded = safeSerialize(decoded);
           const output = typeof safeDecoded === 'string'
@@ -1582,14 +1723,19 @@ function renderContractFormFromSpec(contractId, spec, divId = 'explore-form') {
           consoleDiv.innerHTML = '';
           consoleDiv.appendChild(pre);
         } else {
-          const preparedTx = await rpc.prepareTransaction(tx);
+          const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simulationResult).build();
           const signedTx = await signTransaction(preparedTx);
+          if (!signedTx) {
+            throw new Error('Transaction was not signed.');
+          }
           const response = await rpc.sendTransaction(signedTx);
           const hash = response.hash;
-          consoleDiv.innerHTML = `
-            <p>Transaction Sent! Check block explorer:</p>
-            <a href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a>
-          `;
+          if (response.status === 'ERROR') {
+            console.error('Transaction rejected', response);
+            consoleDiv.innerHTML = `<pre style="color:red;">Transaction rejected by RPC. Check console for details.</pre>`;
+            return;
+          }
+          await pollTransactionResult(hash, methodName, consoleDiv, spec);
         }
       } catch (err) {
         consoleDiv.innerHTML = `<pre style="color:red;">${err.message || err}</pre>`;
@@ -1603,12 +1749,30 @@ function renderContractFormFromSpec(contractId, spec, divId = 'explore-form') {
 }
 
 
-async function loadContract(contractId) {
+function activatePanel(panelId, options = {}) {
+  const { splitRatio = null, resetSplit = false, expandPanel = true } = options;
+  const panelEl = document.getElementById(panelId);
+  if (!panelEl) return;
+
+  if (expandPanel) {
+    const shouldRestore = splitRatio === null && !resetSplit;
+    setPanelCollapsed(false, { restoreRatio: shouldRestore });
+  }
+
   document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('explore-sidebar-icon').classList.add('active');
-  document.getElementById('explore-panel').classList.add('active');
-  applyPanelSplit(0.25);
+
+  panelEl.classList.add('active');
+  const panelKey = panelId.replace('-panel', '');
+  const sidebarIcon = document.querySelector(`.sidebar-icon[data-panel="${panelKey}"]`);
+  if (sidebarIcon) sidebarIcon.classList.add('active');
+
+  if (resetSplit) resetPanelSplit();
+  if (splitRatio !== null) applyPanelSplit(splitRatio, { captureDefault: true });
+}
+
+async function loadContract(contractId) {
+  activatePanel('explore-panel', { splitRatio: 0.25 });
   const exploreForm = document.getElementById('explore-form');
   document.getElementById('explore-contract-id').value = contractId;
   // Save to local storage
@@ -1801,14 +1965,28 @@ document.getElementById('explore-network').addEventListener('change', (e) => {
   localStorage.setItem('last-explore-network', network);
 });
 
-document.getElementById('share-link').onclick = () => {
-  let url = prompt("Paste GitHub/Gist URL: ");
-  if (!url) return;
+function setShareStatus(message, isError = false) {
+  const statusEl = document.getElementById('share-link-status');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.toggle('error', isError);
+}
+
+function handleShareLink() {
+  const input = document.getElementById('share-url-input');
+  if (!input) return;
+  const url = input.value.trim();
+  if (!url) {
+    setShareStatus('Paste a GitHub or Gist URL first.', true);
+    return;
+  }
   const shareUrl = `${window.location.origin}${window.location.pathname}?codeUrl=${encodeURIComponent(url)}`;
   navigator.clipboard.writeText(shareUrl).then(() => {
-    alert("Shareable link copied to clipboard!");
+    setShareStatus('Shareable link copied to clipboard.');
+  }).catch(() => {
+    setShareStatus('Could not copy automatically. The link is ready to share.', true);
   });
-};
+}
 
 function toRawUrl(url) {
   try {
@@ -2115,7 +2293,19 @@ async function init() {
     }
   }
   // Note: File loading and editor initialization is now handled in the Monaco editor callback
-  document.getElementById('reset-code').onclick = async () => { await resetCode() };
+  const resetButton = document.getElementById('reset-code');
+  if (resetButton) resetButton.onclick = async () => { await resetCode() };
+  const shareButton = document.getElementById('share-link');
+  if (shareButton) shareButton.onclick = () => handleShareLink();
+  const shareInput = document.getElementById('share-url-input');
+  if (shareInput) {
+    shareInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') handleShareLink();
+    });
+    shareInput.addEventListener('input', () => {
+      setShareStatus('');
+    });
+  }
   document.getElementById('run-tests').onclick = () => runTests();
   document.getElementById('compile-code').onclick = () => compileCode();
 
@@ -2125,6 +2315,25 @@ async function init() {
   let isDragging = false;
   const layout = getPanelLayoutElements();
   if (layout) captureDefaultSplitIfNeeded(layout);
+
+  const collapseButton = document.getElementById('panel-collapse');
+  if (collapseButton) {
+    collapseButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setPanelCollapsed(true);
+    });
+    collapseButton.addEventListener('mousedown', (event) => {
+      event.stopPropagation();
+    });
+  }
+  const expandButton = document.getElementById('panel-expand');
+  if (expandButton) {
+    expandButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      setPanelCollapsed(false);
+    });
+  }
 
   resizer.addEventListener("mousedown", (e) => {
     isDragging = true;
@@ -2147,7 +2356,16 @@ async function init() {
   });
 
   window.addEventListener("mouseup", () => {
-    isDragging = false;
+    if (isDragging) {
+      isDragging = false;
+      document.body.style.cursor = "default";
+      const currentLayout = getPanelLayoutElements();
+      if (currentLayout && !isPanelCollapsed) {
+        const ratio = getCurrentSplitRatio(currentLayout);
+        if (ratio) lastPanelSplitRatio = ratio;
+      }
+      return;
+    }
     document.body.style.cursor = "default";
   });
 }
@@ -2155,13 +2373,16 @@ async function init() {
 document.querySelectorAll('.sidebar-icon').forEach(icon => {
   icon.addEventListener('click', function() {
     const panelId = this.getAttribute('data-panel') + '-panel';
-    if (panelId == 'home-panel') window.location = "/";
-    if (panelId == 'github-panel') window.open("https://github.com/jamesbachini/Soroban-Playground", "_blank");
-    if (panelId == 'create-panel') resetPanelSplit();
-    document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    this.classList.add('active');
-    document.getElementById(panelId).classList.add('active');
+    if (panelId === 'home-panel') {
+      window.location = "/";
+      return;
+    }
+    if (panelId === 'github-panel') {
+      window.open("https://github.com/jamesbachini/Soroban-Playground", "_blank");
+      return;
+    }
+    const resetSplit = panelId === 'create-panel';
+    activatePanel(panelId, { resetSplit });
   });
 });
 
