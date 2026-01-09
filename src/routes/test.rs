@@ -2,10 +2,10 @@ use actix_web::{post, web, HttpResponse, Responder};
 use bytes::Bytes;
 use futures_util::StreamExt;
 use tokio::{sync::mpsc, time};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use std::time::Duration;
 
-use crate::{docker::run_in_docker_with_files, models::CompileRequest, semaphore::SEMAPHORE};
+use crate::{docker::run_in_docker_with_files_and_id_stream, models::CompileRequest, semaphore::SEMAPHORE};
 
 #[post("/test")]
 pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
@@ -18,7 +18,7 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
         }
     };
 
-    let (tx, rx) = mpsc::channel::<Result<Bytes, String>>(10);
+    let (tx, rx) = mpsc::unbounded_channel::<Bytes>();
 
     // Extract code from either the code field or lib.rs from files
     let code = match &req.code {
@@ -43,22 +43,26 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
 
-        let test_fut = run_in_docker_with_files(code, files, "cargo test");
+        let test_fut = run_in_docker_with_files_and_id_stream(
+            code,
+            files,
+            "cargo test",
+            None,
+            tx.clone(),
+        );
         tokio::pin!(test_fut);
 
         loop {
             tokio::select! {
                 _ = heartbeat.tick() => {
-                    if tx.send(Ok(Bytes::from_static(b" "))).await.is_err() { break; }
+                    if tx.send(Bytes::from_static(b" ")).is_err() { break; }
                 }
                 res = &mut test_fut => {
                     match res {
-                        Ok((stdout, _tmp, _output_filename)) => {
-                            let _ = tx.send(Ok(Bytes::from(stdout))).await;
-                        }
+                        Ok((_tmp, _output_filename)) => {}
                         Err(e) => {
                             let msg = format!("Test Errors: \n{}\n", e);
-                            let _ = tx.send(Ok(Bytes::from(msg))).await;
+                            let _ = tx.send(Bytes::from(msg));
                         }
                     }
                     break;
@@ -67,12 +71,8 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
         }
     });
 
-    let stream = ReceiverStream::new(rx).map(|chunk| {
-        match chunk {
-            Ok(bytes) => Ok::<Bytes, actix_web::Error>(bytes),
-            Err(_) => unreachable!(),
-        }
-    });
+    let stream = UnboundedReceiverStream::new(rx)
+        .map(|bytes| Ok::<Bytes, actix_web::Error>(bytes));
 
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")

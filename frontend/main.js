@@ -586,8 +586,37 @@ function extractContractName(code) {
   return "project";
 }
 
+const WASM_BASE64_START = '<<<SOROBAN_WASM_BASE64_START>>>';
+const WASM_BASE64_END = '<<<SOROBAN_WASM_BASE64_END>>>';
+
+function appendConsoleText(consoleEl, text) {
+  if (!text) return;
+  consoleEl.style.display = 'block';
+  consoleEl.innerText += text;
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+function scrollButtonToPanelTop(buttonEl) {
+  const panelContainer = document.getElementById('panel-container');
+  if (!panelContainer || !buttonEl) return;
+  const containerRect = panelContainer.getBoundingClientRect();
+  const buttonRect = buttonEl.getBoundingClientRect();
+  const delta = buttonRect.top - containerRect.top;
+  panelContainer.scrollTo({
+    top: panelContainer.scrollTop + delta,
+    behavior: 'smooth'
+  });
+}
+
+function elapsedSeconds(startMs) {
+  return Math.max(0, Math.round((performance.now() - startMs) / 1000));
+}
+
 async function compileCode() {
-  document.getElementById('compile-code').disabled = true;
+  const compileButton = document.getElementById('compile-code');
+  compileButton.disabled = true;
+  scrollButtonToPanelTop(compileButton);
+  const startTime = performance.now();
 
   // Save current file content and get all files
   saveCurrentFile();
@@ -596,6 +625,7 @@ async function compileCode() {
   const statusEl = document.getElementById('build-status');
   const consoleEl = document.getElementById('build-console');
   consoleEl.innerText = '';
+  consoleEl.style.display = 'block';
   statusEl.innerText = 'Compiling... (Estimated build time 30s)';
   const interval = setInterval(() => {
     const msg = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
@@ -607,45 +637,103 @@ async function compileCode() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: allFiles }),
     });
-    if (response.ok) {
-      const contractName = extractContractName(allFiles['lib.rs'] || '');
-      const buffer = await response.arrayBuffer();
-      let view = new Uint8Array(buffer);
-      let start = 0;
-      while (view[start] === 0x20) start++; // Skip any 0x20 bytes heartbeat
-      const clean = view.subarray(start);
-      if (!(clean[0] === 0x00 && clean[1] === 0x61 && clean[2] === 0x73 && clean[3] === 0x6d)) {
-        const textDecoder = new TextDecoder('utf-8');
-        const resultText = textDecoder.decode(buffer);
-        consoleEl.style.display = 'block';
-        consoleEl.innerText = resultText;
-        consoleEl.scrollTop = consoleEl.scrollHeight;
-        return;
+    if (!response.ok) {
+      const resultText = await response.text();
+      appendConsoleText(consoleEl, resultText);
+      statusEl.innerText = `Compilation failed: ${elapsedSeconds(startTime)}s`;
+      return;
+    }
+
+    if (!response.body) {
+      const resultText = await response.text();
+      appendConsoleText(consoleEl, resultText);
+      statusEl.innerText = `Compilation failed: ${elapsedSeconds(startTime)}s`;
+      return;
+    }
+
+    const contractName = extractContractName(allFiles['lib.rs'] || '');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let pending = '';
+    let wasmBase64 = '';
+    let inWasm = false;
+
+    const startHold = Math.max(WASM_BASE64_START.length - 1, 0);
+    const endHold = Math.max(WASM_BASE64_END.length - 1, 0);
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      pending += decoder.decode(value, { stream: true });
+
+      while (true) {
+        if (!inWasm) {
+          const idx = pending.indexOf(WASM_BASE64_START);
+          if (idx === -1) {
+            if (pending.length > startHold) {
+              appendConsoleText(consoleEl, pending.slice(0, -startHold));
+              pending = pending.slice(-startHold);
+            }
+            break;
+          }
+          appendConsoleText(consoleEl, pending.slice(0, idx));
+          pending = pending.slice(idx + WASM_BASE64_START.length);
+          inWasm = true;
+        } else {
+          const idx = pending.indexOf(WASM_BASE64_END);
+          if (idx === -1) {
+            if (pending.length > endHold) {
+              wasmBase64 += pending.slice(0, -endHold);
+              pending = pending.slice(-endHold);
+            }
+            break;
+          }
+          wasmBase64 += pending.slice(0, idx);
+          pending = pending.slice(idx + WASM_BASE64_END.length);
+          inWasm = false;
+        }
       }
-      const blob = new Blob([clean], { type: 'application/wasm' });
+    }
+
+    pending += decoder.decode();
+    if (pending) {
+      if (inWasm) {
+        wasmBase64 += pending;
+      } else {
+        appendConsoleText(consoleEl, pending);
+      }
+    }
+
+    if (wasmBase64.trim()) {
+      const cleaned = wasmBase64.replace(/\s+/g, '');
+      const binary = atob(cleaned);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'application/wasm' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `${contractName}.wasm`;
       a.click();
-      statusEl.innerText = 'Compilation successful!';
+      statusEl.innerText = `Compilation successful: ${elapsedSeconds(startTime)}s`;
     } else {
-      const resultText = await response.text();
-      consoleEl.style.display = 'block';
-      consoleEl.innerText = resultText;
-      consoleEl.scrollTop = consoleEl.scrollHeight;
+      statusEl.innerText = `Compilation failed: ${elapsedSeconds(startTime)}s`;
     }
   } catch (err) {
     console.error(err);
-    statusEl.innerText = 'Build error';
+    statusEl.innerText = `Compilation failed: ${elapsedSeconds(startTime)}s`;
   } finally {
     clearInterval(interval);
-    document.getElementById('compile-code').disabled = false;
+    compileButton.disabled = false;
   }
 }
 
 async function runTests() {
-  document.getElementById('run-tests').disabled = true;
+  const testButton = document.getElementById('run-tests');
+  testButton.disabled = true;
+  scrollButtonToPanelTop(testButton);
 
   // Save current file content and get all files
   saveCurrentFile();
@@ -654,6 +742,7 @@ async function runTests() {
   const statusEl = document.getElementById('test-status');
   const consoleEl = document.getElementById('test-console');
   consoleEl.innerText = '';
+  consoleEl.style.display = 'block';
   statusEl.innerText = 'Running tests... (This may take a minute or two)';
   const interval = setInterval(() => {
     const msgIndex = Math.floor(Math.random() * funnyMessages.length);
@@ -665,21 +754,43 @@ async function runTests() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: allFiles })
     });
-    const resultText = await response.text();
-    if (response.ok) {
-      consoleEl.innerText = resultText;
-      consoleEl.scrollTop = consoleEl.scrollHeight;
-      statusEl.innerText = 'Tests completed';
-    } else {
-      consoleEl.innerText = resultText;
-      consoleEl.scrollTop = consoleEl.scrollHeight;
+    if (!response.ok) {
+      const resultText = await response.text();
+      appendConsoleText(consoleEl, resultText);
       statusEl.innerText = 'Errors in tests';
+      return;
     }
+
+    if (!response.body) {
+      const resultText = await response.text();
+      appendConsoleText(consoleEl, resultText);
+      statusEl.innerText = 'Errors in tests';
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let hasErrors = false;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      if (chunk.includes('Test Errors:')) hasErrors = true;
+      appendConsoleText(consoleEl, chunk);
+    }
+    const tail = decoder.decode();
+    if (tail) {
+      if (tail.includes('Test Errors:')) hasErrors = true;
+      appendConsoleText(consoleEl, tail);
+    }
+
+    statusEl.innerText = hasErrors ? 'Errors in tests' : 'Tests completed';
   } catch (err) {
     statusEl.innerText = `Network error: ${err.message}`;
     console.error(err);
   }
-  document.getElementById('run-tests').disabled = false;
+  testButton.disabled = false;
   clearInterval(interval);
 }
 

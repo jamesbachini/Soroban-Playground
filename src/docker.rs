@@ -1,6 +1,16 @@
 use std::{fs, process::Stdio, collections::HashMap};
+
+use bytes::Bytes;
 use tempfile::TempDir;
 use regex::Regex;
+use tokio::{io::AsyncReadExt, sync::mpsc};
+
+struct PreparedDockerRun {
+    tmp: TempDir,
+    final_command: String,
+    output_filename: String,
+    target_dir: String,
+}
 
 fn is_safe_filename(filename: &str) -> bool {
     // Only allow alphanumeric, underscore, dash, and dot
@@ -97,45 +107,12 @@ fn extract_contract_name(code: &str) -> Option<String> {
         .map(|m| m.as_str().to_string())
 }
 
-pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir), String> {
-    let tmp = TempDir::new().map_err(|e| e.to_string())?;
-
-    let output = tokio::process::Command::new("docker")
-        .args(&[
-            "run", "--rm", "--memory=2G", "--cpus=2",
-            "-v", &format!("{}:/workspace", tmp.path().display()),
-            "-v", "cargo-cache:/mnt/cargo",
-            "-e", "CARGO_HOME=/mnt/cargo",
-            "wasm_sandbox:latest", "bash", "-c",
-            command
-        ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    if !output.stdout.is_empty() {
-        Ok((output.stdout, tmp))
-    } else {
-        Ok((output.stderr, tmp))
-    }
-}
-
-pub async fn run_in_docker_with_files(
-    code: String,
-    files: Option<HashMap<String, String>>,
-    command: &str
-) -> Result<(Vec<u8>, TempDir, String), String> {
-    run_in_docker_with_files_and_id(code, files, command, None).await
-}
-
-pub async fn run_in_docker_with_files_and_id(
+fn prepare_docker_run(
     code: String,
     files: Option<HashMap<String, String>>,
     command: &str,
-    build_id: Option<String>
-) -> Result<(Vec<u8>, TempDir, String), String> {
+    build_id: Option<String>,
+) -> Result<PreparedDockerRun, String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
     let project = tmp.path().join("project");
     fs::create_dir(&project).map_err(|e| e.to_string())?;
@@ -210,6 +187,7 @@ pub async fn run_in_docker_with_files_and_id(
             fs::write(file_path, content).map_err(|e| format!("Failed to write {}: {}", filename, e))?;
         }
     }
+
     // Use build_id to create unique target directory and output filename if provided
     let (target_dir, output_filename) = if let Some(id) = build_id {
         (
@@ -238,16 +216,67 @@ pub async fn run_in_docker_with_files_and_id(
             output_filename
         )
     }
+
+    Ok(PreparedDockerRun {
+        tmp,
+        final_command,
+        output_filename,
+        target_dir,
+    })
+}
+
+pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir), String> {
+    let tmp = TempDir::new().map_err(|e| e.to_string())?;
+
     let output = tokio::process::Command::new("docker")
         .args(&[
             "run", "--rm", "--memory=2G", "--cpus=2",
             "-v", &format!("{}:/workspace", tmp.path().display()),
             "-v", "cargo-cache:/mnt/cargo",
+            "-e", "CARGO_HOME=/mnt/cargo",
+            "wasm_sandbox:latest", "bash", "-c",
+            command
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !output.stdout.is_empty() {
+        Ok((output.stdout, tmp))
+    } else {
+        Ok((output.stderr, tmp))
+    }
+}
+
+#[allow(dead_code)]
+pub async fn run_in_docker_with_files(
+    code: String,
+    files: Option<HashMap<String, String>>,
+    command: &str
+) -> Result<(Vec<u8>, TempDir, String), String> {
+    run_in_docker_with_files_and_id(code, files, command, None).await
+}
+
+#[allow(dead_code)]
+pub async fn run_in_docker_with_files_and_id(
+    code: String,
+    files: Option<HashMap<String, String>>,
+    command: &str,
+    build_id: Option<String>
+) -> Result<(Vec<u8>, TempDir, String), String> {
+    let prepared = prepare_docker_run(code, files, command, build_id)?;
+    let output = tokio::process::Command::new("docker")
+        .args(&[
+            "run", "--rm", "--memory=2G", "--cpus=2",
+            "-v", &format!("{}:/workspace", prepared.tmp.path().display()),
+            "-v", "cargo-cache:/mnt/cargo",
             "-v", "/tmp:/host-tmp",
             "-e", "CARGO_HOME=/mnt/cargo",
-            "-e", &format!("CARGO_TARGET_DIR={}", target_dir),
+            "-e", &format!("CARGO_TARGET_DIR={}", prepared.target_dir),
             "wasm_sandbox:latest", "bash", "-c",
-            &final_command
+            &prepared.final_command
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -260,8 +289,68 @@ pub async fn run_in_docker_with_files_and_id(
     //println!("Docker stdout:\n{}", stdout);
     //println!("Docker stderr:\n{}", stderr);
     if !output.stdout.is_empty() {
-        Ok((output.stdout, tmp, output_filename))
+        Ok((output.stdout, prepared.tmp, prepared.output_filename))
     } else {
-        Ok((output.stderr, tmp, output_filename))
+        Ok((output.stderr, prepared.tmp, prepared.output_filename))
     }
+}
+
+async fn stream_pipe<R>(mut reader: R, tx: mpsc::UnboundedSender<Bytes>) -> Result<(), String>
+where
+    R: tokio::io::AsyncRead + Unpin,
+{
+    let mut buf = [0u8; 4096];
+    loop {
+        let size = reader.read(&mut buf).await.map_err(|e| e.to_string())?;
+        if size == 0 {
+            break;
+        }
+        if tx.send(Bytes::copy_from_slice(&buf[..size])).is_err() {
+            break;
+        }
+    }
+    Ok(())
+}
+
+pub async fn run_in_docker_with_files_and_id_stream(
+    code: String,
+    files: Option<HashMap<String, String>>,
+    command: &str,
+    build_id: Option<String>,
+    tx: mpsc::UnboundedSender<Bytes>,
+) -> Result<(TempDir, String), String> {
+    let prepared = prepare_docker_run(code, files, command, build_id)?;
+
+    let mut child = tokio::process::Command::new("docker")
+        .args(&[
+            "run", "--rm", "--memory=2G", "--cpus=2",
+            "-v", &format!("{}:/workspace", prepared.tmp.path().display()),
+            "-v", "cargo-cache:/mnt/cargo",
+            "-v", "/tmp:/host-tmp",
+            "-e", "CARGO_HOME=/mnt/cargo",
+            "-e", &format!("CARGO_TARGET_DIR={}", prepared.target_dir),
+            "wasm_sandbox:latest", "bash", "-c",
+            &prepared.final_command
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    let stdout = child.stdout.take().ok_or_else(|| "Failed to capture stdout".to_string())?;
+    let stderr = child.stderr.take().ok_or_else(|| "Failed to capture stderr".to_string())?;
+
+    let stdout_task = tokio::spawn(stream_pipe(stdout, tx.clone()));
+    let stderr_task = tokio::spawn(stream_pipe(stderr, tx.clone()));
+
+    let status = child.wait().await.map_err(|e| e.to_string())?;
+
+    let _ = stdout_task.await;
+    let _ = stderr_task.await;
+
+    if !status.success() {
+        return Err(format!("Docker exited with status: {}", status));
+    }
+
+    Ok((prepared.tmp, prepared.output_filename))
 }

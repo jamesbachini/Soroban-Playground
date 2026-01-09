@@ -509,9 +509,11 @@ button:active:not(:disabled) {
 }
 
 button:disabled {
-  background-color: #444;
-  border-color: #444;
+  background: #3b3f4a;
+  color: #a5acba;
+  border-color: #3b3f4a;
   box-shadow: none;
+  cursor: not-allowed;
 }
 
 .status {
