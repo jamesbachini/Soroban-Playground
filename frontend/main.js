@@ -6,6 +6,13 @@ let horizon;
 let networkPassphrase;
 let network = 'TESTNET';
 let walletKitAddress = null;
+const friendbotUrls = {
+  TESTNET: 'https://friendbot.stellar.org',
+  FUTURENET: 'https://friendbot-futurenet.stellar.org',
+};
+let fundingMessageTimeout = null;
+let fundingMessageInterval = null;
+let fundingMessageId = 0;
 
 // Initialize Stellar Wallet Kit
 const { StellarWalletsKit, KitEventType, SwkAppDarkTheme, defaultModules } = window.MyWalletKit;
@@ -61,6 +68,58 @@ function saveCurrentFile() {
     files[currentFile] = editor.getValue();
     saveFiles();
   }
+}
+
+function setWalletInfoHtml(html) {
+  document.querySelectorAll('.wallet-info').forEach(el => {
+    let main = el.querySelector('.wallet-info-main');
+    if (!main) {
+      main = document.createElement('div');
+      main.className = 'wallet-info-main';
+      el.prepend(main);
+    }
+    main.innerHTML = html;
+  });
+}
+
+function clearWalletInfo() {
+  document.querySelectorAll('.wallet-info').forEach(el => {
+    el.innerHTML = '';
+  });
+}
+
+function showFundingStatus(durationMs = 20000) {
+  fundingMessageId += 1;
+  const currentId = fundingMessageId;
+  if (fundingMessageTimeout) clearTimeout(fundingMessageTimeout);
+  if (fundingMessageInterval) clearInterval(fundingMessageInterval);
+  const baseText = 'Wallet generated. Funding wallet, requesting testnet & futurenet XLM';
+  let dotCount = 0;
+  const update = () => {
+    if (currentId !== fundingMessageId) return;
+    const dots = '.'.repeat(dotCount);
+    dotCount = (dotCount + 1) % 4;
+    document.querySelectorAll('.wallet-info').forEach(el => {
+      let status = el.querySelector('.wallet-funding-status');
+      if (!status) {
+        status = document.createElement('div');
+        status.className = 'wallet-funding-status';
+        el.appendChild(status);
+      }
+      status.textContent = `${baseText}${dots}`;
+    });
+  };
+  update();
+  fundingMessageInterval = setInterval(update, 700);
+  fundingMessageTimeout = setTimeout(() => {
+    if (currentId !== fundingMessageId) return;
+    if (fundingMessageInterval) clearInterval(fundingMessageInterval);
+    fundingMessageInterval = null;
+    document.querySelectorAll('.wallet-info').forEach(el => {
+      const status = el.querySelector('.wallet-funding-status');
+      if (status) status.remove();
+    });
+  }, durationMs);
 }
 
 function switchToFile(fileName) {
@@ -448,26 +507,69 @@ function renderContractForm(contractId, interfaceString, divId = 'explore-form')
     }
     const wrapper = document.createElement('div');
     wrapper.classList.add('method-box');
+    const isMultiArg = args.length > 1;
+    if (args.length <= 1) {
+      wrapper.classList.add('method-compact');
+    }
+    if (args.length === 0) {
+      wrapper.classList.add('method-no-args');
+    }
+    if (isMultiArg) {
+      wrapper.classList.add('method-multi');
+    }
     const left = document.createElement('div');
     left.classList.add('method-left');
     const title = document.createElement('h3');
     title.textContent = methodName;
-    left.appendChild(title);
-    args.forEach(arg => {
+    const button = document.createElement('button');
+    button.classList.add('method-call-button');
+    button.innerHTML = '<i class="fas fa-paper-plane"></i>';
+    button.setAttribute('aria-label', `Call ${methodName}`);
+    button.setAttribute('title', `Call ${methodName}`);
+    if (!isMultiArg) {
+      left.appendChild(title);
+    }
+    args.forEach((arg, index) => {
       const row = document.createElement('div');
       row.classList.add('arg-row');
       const label = document.createElement('label');
-      label.textContent = `${arg.name}: ${arg.type}`;
+      label.textContent = `${arg.name}:${arg.type}`;
+      label.classList.add('arg-label');
       label.htmlFor = `${methodName}-${arg.name}`;
       const input = document.createElement('input');
       input.type = 'text';
       input.id = `${methodName}-${arg.name}`;
-      row.append(input, label);
+      input.placeholder = `${arg.name}:${arg.type}`;
+      input.setAttribute('aria-label', `${arg.name}: ${arg.type}`);
+      if (isMultiArg) {
+        row.classList.add('arg-row-multi');
+        const titleCell = document.createElement('div');
+        titleCell.classList.add('method-title-cell');
+        if (index === 0) {
+          titleCell.appendChild(title);
+        } else {
+          const spacer = document.createElement('span');
+          spacer.classList.add('method-title-spacer');
+          titleCell.appendChild(spacer);
+        }
+        const fieldCell = document.createElement('div');
+        fieldCell.classList.add('method-field-cell');
+        fieldCell.append(input, label);
+        if (index === args.length - 1) {
+          fieldCell.appendChild(button);
+        }
+        row.append(titleCell, fieldCell);
+      } else {
+        if (args.length <= 1) {
+          row.classList.add('arg-row-inline');
+        }
+        row.append(input, label);
+      }
       left.appendChild(row);
     });
-    const button = document.createElement('button');
-    button.textContent = methodName;
-    left.appendChild(button);
+    if (!isMultiArg) {
+      left.appendChild(button);
+    }
     const right = document.createElement('div');
     right.classList.add('method-right');
     const consoleDiv = document.createElement('div');
@@ -496,7 +598,13 @@ function renderContractForm(contractId, interfaceString, divId = 'explore-form')
           const safeDecoded = JSON.parse(JSON.stringify(decoded, (key, value) =>
             typeof value === "bigint" ? value.toString() : value
           ));
-          consoleDiv.innerHTML = `<pre>${JSON.stringify(safeDecoded, null, 2)}</pre>`;
+          const output = typeof safeDecoded === 'string'
+            ? safeDecoded
+            : JSON.stringify(safeDecoded, null, 2);
+          const pre = document.createElement('pre');
+          pre.textContent = output;
+          consoleDiv.innerHTML = '';
+          consoleDiv.appendChild(pre);
         } else {
           const preparedTx = await rpc.prepareTransaction(tx);
           const signedTx = await signTransaction(preparedTx);
@@ -550,6 +658,10 @@ function updateNetwork(value) {
     rpcURL = 'https://soroban-testnet.stellar.org';
     horizonURL = 'https://horizon-testnet.stellar.org'; 
     networkPassphrase = StellarSdk.Networks.TESTNET;
+  } else if (network == 'FUTURENET') {
+    rpcURL = 'https://rpc-futurenet.stellar.org';
+    horizonURL = 'https://horizon-futurenet.stellar.org';
+    networkPassphrase = StellarSdk.Networks.FUTURENET || 'Test SDF Future Network ; October 2022';
   } else {
     rpcURL = 'https://mainnet.sorobanrpc.com';
     horizonURL = 'https://horizon.stellar.org'; 
@@ -559,16 +671,14 @@ function updateNetwork(value) {
   horizon = new StellarSdk.Horizon.Server(horizonURL);
 }
 
-function fundAddress(pubKey) {
-  const url = `https://friendbot.stellar.org/?addr=${pubKey}`;
-  fetch(url).then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to fund account, status ' + response.status);
-      }
-    })
-    .catch(err => {
-      throw new Error('Error funding address: ' + err);
-    });
+async function fundAddressOnNetwork(pubKey, networkName) {
+  const friendbotUrl = friendbotUrls[networkName];
+  if (!friendbotUrl) return;
+  const url = `${friendbotUrl}/?addr=${pubKey}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fund ${networkName} account, status ${response.status}`);
+  }
 }
 
 async function resetCode() {
@@ -742,17 +852,13 @@ StellarWalletsKit.on(KitEventType.STATE_UPDATED, event => {
     walletKitAddress = event.payload.address;
     keypair = null;
     publicKey = walletKitAddress;
-    document.querySelectorAll('.wallet-info').forEach(el => {
-      el.innerHTML = `Connected: ${publicKey}`;
-    });
+    setWalletInfoHtml(`Connected: ${publicKey}`);
     document.getElementById('deploy-button').disabled = false;
   } else {
     walletKitAddress = null;
     if (!keypair) {
       publicKey = null;
-      document.querySelectorAll('.wallet-info').forEach(el => {
-        el.innerHTML = '';
-      });
+      clearWalletInfo();
       document.getElementById('deploy-button').disabled = true;
     }
   }
@@ -763,10 +869,12 @@ document.querySelectorAll('.connect-testnet').forEach(button => {
     keypair = StellarSdk.Keypair.random();
     localStorage.setItem('secretKey', keypair.secret());
     publicKey = keypair.publicKey();
-    await fundAddress(publicKey);
-    document.querySelectorAll('.wallet-info').forEach(el => {
-      el.innerHTML = `Connected: ${publicKey}`;
-    });
+    setWalletInfoHtml(`Connected: ${publicKey}`);
+    showFundingStatus(20000);
+    await Promise.allSettled([
+      fundAddressOnNetwork(publicKey, 'TESTNET'),
+      fundAddressOnNetwork(publicKey, 'FUTURENET'),
+    ]);
     document.getElementById('deploy-button').disabled = false;
   });
 });
@@ -777,9 +885,7 @@ document.querySelectorAll('.connect-secret').forEach(button => {
     localStorage.setItem('secretKey', secretKey);
     keypair = StellarSdk.Keypair.fromSecret(secretKey);
     publicKey = keypair.publicKey();
-    document.querySelectorAll('.wallet-info').forEach(el => {
-      el.innerHTML = `Connected: ${publicKey}`;
-    });
+    setWalletInfoHtml(`Connected: ${publicKey}`);
     document.getElementById('deploy-button').disabled = false;
   });
 });
@@ -789,9 +895,7 @@ document.querySelectorAll('.export-keys').forEach(button => {
     const secretKey = localStorage.getItem('secretKey');
     if (!secretKey) return alert('No secret key found');
     keypair = StellarSdk.Keypair.fromSecret(secretKey);
-    document.querySelectorAll('.wallet-info').forEach(el => {
-      el.innerHTML = `Public Key: ${publicKey}<br /><br />Secret Key: ${secretKey}`;
-    });
+    setWalletInfoHtml(`Public Key: ${publicKey}<br /><br />Secret Key: ${secretKey}`);
     document.getElementById('deploy-button').disabled = false;
   });
 });

@@ -80,7 +80,7 @@
                   <li><i class="fas fa-file-code accent"></i> <strong>Create</strong> - Write your smart contract code</li>
                   <li><i class="fas fa-hammer accent"></i> <strong>Build</strong> - Compile your contract to WASM</li>
                   <li><i class="fas fa-vial accent"></i> <strong>Test</strong> - Run unit tests and debug contract</li>
-                  <li><i class="fas fa-rocket accent"></i> <strong>Deploy</strong> - Deploy WASM file to testnet/mainnet</li>
+                  <li><i class="fas fa-rocket accent"></i> <strong>Deploy</strong> - Deploy WASM file to testnet/futurenet/mainnet</li>
                   <li><i class="fas fa-flask accent"></i> <strong>Explore</strong> - Explore &amp; Invoke contract functions</li>
                 </ul>
               </div>
@@ -187,6 +187,7 @@
                     <label for="deploy-network">Network: </label>
                     <select id="deploy-network">
                       <option value="TESTNET" selected>Testnet</option>
+                      <option value="FUTURENET">Futurenet</option>
                       <option value="PUBLIC">Mainnet</option>
                     </select>
                   </div>
@@ -207,7 +208,7 @@
                 </div>
                 <div class="tip">
                   <i class="fas fa-server accent"></i>
-                  <span>Consider deploying to testnet first, when you generate a wallet it will automatically receive testnet XLM.</span>
+                  <span>Consider deploying to testnet first; when you generate a wallet it will automatically receive testnet and futurenet XLM.</span>
                 </div>
                 <div class="tip">
                   <i class="fas fa-shield-alt accent"></i>
@@ -233,6 +234,7 @@
                 <label for="explore-network">Network: </label>
                 <select id="explore-network">
                   <option value="TESTNET" selected>Testnet</option>
+                  <option value="FUTURENET">Futurenet</option>
                   <option value="PUBLIC">Mainnet</option>
                 </select>
               </div>

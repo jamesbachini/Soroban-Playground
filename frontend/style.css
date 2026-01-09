@@ -11,6 +11,8 @@
   --text-dim: #9e9e9e;
   --section-bg: #1e1f24;
   --border-color: #3e3e3e;
+  --editor-bg: #1e1e1e;
+  --method-title-width: 180px;
 }
 
 html, body { 
@@ -45,7 +47,9 @@ input[type="text"] {
   padding: 0.5rem;
   margin-right: 0.5rem;
   margin-bottom: 1.5rem;
-  border: 1px solid #ccc;
+  background-color: var(--editor-bg);
+  color: #f2f2f2;
+  border: 1px solid var(--border-color);
   border-radius: 5px;
 }
 
@@ -54,20 +58,27 @@ select {
   padding: 0.5rem;
   margin-right: 0.5rem;
   margin-bottom: 1.5rem;
-  border: 1px solid #ccc;
+  background-color: var(--editor-bg);
+  color: #f2f2f2;
+  border: 1px solid var(--border-color);
   border-radius: 5px;
 }
 
 textarea {
   width: 100%;
   height: 230px;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: var(--editor-bg);
+  color: #f2f2f2;
   font-size: 14px;
   padding: 10px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   resize: vertical;
+}
+
+select option {
+  background-color: var(--editor-bg);
+  color: #f2f2f2;
 }
 
 .container {
@@ -336,6 +347,12 @@ button:disabled {
   color: var(--text-light);
 }
 
+.wallet-funding-status {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 h1 {
   margin-top: 0;
   color: var(--text-light);
@@ -364,26 +381,28 @@ h1 {
 
 .method-box {
   display: flex;
-  border: 1px solid #5d5d5d;
-  border-radius: 10px;
-  margin-bottom: 5px;
+  border: 1px solid #2a2d36;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, rgba(115, 124, 202, 0.08), rgba(0, 0, 0, 0) 45%);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 
 .method-left, .method-right {
   width: 50%;
   min-width: 0;
-  padding: 10px 20px;
+  padding: 8px 12px;
 }
 
 .method-left {
-  background: var(--bg-dark);
-  border-right: 1px solid #5d5d5d;
+  background: #1a1d24;
+  border-right: 1px solid #2a2d36;
   overflow: hidden;
 }
 
 .method-right {
-  background: var(--bg-darker);
+  background: #14161c;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -391,8 +410,9 @@ h1 {
 
 .method-right .console {
   flex: 1;
-  min-height: 200px;
-  max-height: 400px;
+  min-height: 32px;
+  max-height: none;
+  height: auto;
   overflow-y: auto;
   overflow-x: auto;
   word-wrap: break-word;
@@ -412,6 +432,168 @@ h1 {
 
 .method-box h3 {
   color: var(--accent-color);
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  letter-spacing: 0.2px;
+}
+
+.method-box .arg-label {
+  display: none;
+}
+
+.method-box input[type="text"] {
+  width: 100%;
+  max-width: 280px;
+  padding: 4px 8px;
+  margin: 0;
+  height: 26px;
+  line-height: 18px;
+  background: var(--editor-bg);
+  border: 1px solid var(--border-color);
+  color: #f2f2f2;
+  border-radius: 6px;
+}
+
+.method-box button {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.method-call-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  padding: 5px 10px;
+}
+
+.method-call-button i {
+  font-size: 12px;
+}
+
+.method-box .console {
+  padding: 6px 8px;
+  border-radius: 8px;
+  margin-top: 6px;
+  background: #0b0d12;
+}
+
+.method-compact .method-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.method-compact .method-left h3 {
+  margin: 0;
+  font-size: 14px;
+  min-width: var(--method-title-width);
+  flex: 0 0 var(--method-title-width);
+}
+
+.method-compact .arg-row {
+  margin-bottom: 0;
+}
+
+.arg-row-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.arg-row-inline label {
+  font-size: 12px;
+  color: var(--text-dim);
+  order: 0;
+  white-space: nowrap;
+}
+
+.arg-row-inline input {
+  order: 1;
+  min-width: 300px;
+  width: 300px;
+  max-width: 380px;
+}
+
+.method-multi .method-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.method-multi .arg-row-multi {
+  display: grid;
+  grid-template-columns: var(--method-title-width) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  width: 100%;
+}
+
+.method-multi .method-title-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.method-multi .method-title-cell h3 {
+  margin: 0;
+  font-size: 14px;
+  text-align: left;
+}
+
+.method-multi .method-title-spacer {
+  display: block;
+  height: 0;
+}
+
+.method-multi .method-field-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.method-multi .method-field-cell input[type="text"] {
+  flex: 0 0 300px;
+  min-width: 300px;
+  max-width: 380px;
+}
+
+.method-multi .method-call-button {
+  margin: 0;
+}
+
+.method-compact button {
+  margin-top: 0;
+}
+
+.method-no-args .method-left {
+  justify-content: space-between;
+}
+
+@media (max-width: 900px) {
+  .method-compact .method-left h3 {
+    min-width: 140px;
+    flex-basis: 140px;
+  }
+  .arg-row-inline input {
+    min-width: 220px;
+    width: 220px;
+  }
+  .method-multi .method-field-cell input[type="text"] {
+    flex: 0 0 220px;
+    min-width: 220px;
+    width: 220px;
+  }
+  :root {
+    --method-title-width: 140px;
+  }
 }
 
 #wallet-button-deploy,

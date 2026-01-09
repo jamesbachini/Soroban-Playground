@@ -63,10 +63,9 @@ docker build -f Dockerfile.sandbox -t wasm_sandbox .
 
 # Build the app, authorize port 80 using setcap and run the binary
 cargo build --release
-sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
-./target/release/Soroban-Playground --port 80
+./target/release/Soroban-Playground --port 3003
 
-# Open up a browser on http://127.0.0.1
+# Open up a browser on http://127.0.0.1:3003
 ```
 
 ## Local oneliner
