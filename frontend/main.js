@@ -3,9 +3,12 @@ let publicKey = null;
 let keypair;
 let rpc;
 let horizon;
+let rpcUrl;
+let horizonUrl;
 let networkPassphrase;
 let network = 'TESTNET';
 let walletKitAddress = null;
+const contractSpecCache = new Map();
 const friendbotUrls = {
   TESTNET: 'https://friendbot.stellar.org',
   FUTURENET: 'https://friendbot-futurenet.stellar.org',
@@ -70,21 +73,108 @@ function saveCurrentFile() {
   }
 }
 
-function setWalletInfoHtml(html) {
-  document.querySelectorAll('.wallet-info').forEach(el => {
-    let main = el.querySelector('.wallet-info-main');
-    if (!main) {
-      main = document.createElement('div');
-      main.className = 'wallet-info-main';
-      el.prepend(main);
+function getWalletToolbars() {
+  return document.querySelectorAll('.wallet-toolbar');
+}
+
+function setWalletKeysHtml(html) {
+  getWalletToolbars().forEach(toolbar => {
+    const keysEl = toolbar.querySelector('.wallet-keys');
+    if (keysEl) {
+      keysEl.innerHTML = html;
+      keysEl.style.display = html ? 'block' : 'none';
     }
-    main.innerHTML = html;
   });
 }
 
-function clearWalletInfo() {
-  document.querySelectorAll('.wallet-info').forEach(el => {
-    el.innerHTML = '';
+function clearWalletKeys() {
+  setWalletKeysHtml('');
+}
+
+function updateWalletUi() {
+  const connected = !!publicKey;
+  const hasSecret = !!localStorage.getItem('secretKey');
+  const isBrowserWallet = !!walletKitAddress && !keypair;
+  getWalletToolbars().forEach(toolbar => {
+    const icon = toolbar.querySelector('.wallet-icon');
+    if (icon) {
+      if (connected) {
+        icon.classList.add('connected');
+        icon.classList.remove('disconnected');
+      } else {
+        icon.classList.add('disconnected');
+        icon.classList.remove('connected');
+      }
+    }
+    const statusText = toolbar.querySelector('.wallet-status-text');
+    const addressText = toolbar.querySelector('.wallet-status-address');
+    if (statusText) {
+      if (connected) {
+        statusText.textContent = '';
+        statusText.style.display = 'none';
+      } else {
+        statusText.textContent = 'Generate a new wallet or connect a browser wallet.';
+        statusText.style.display = 'block';
+      }
+    }
+    if (addressText) {
+      addressText.textContent = connected ? publicKey : '';
+      addressText.style.display = connected ? 'block' : 'none';
+    }
+    const exportBtn = toolbar.querySelector('.wallet-export-keys');
+    if (exportBtn) {
+      const disabled = !hasSecret || isBrowserWallet;
+      exportBtn.disabled = disabled;
+      exportBtn.title = isBrowserWallet
+        ? 'Not available for browser wallets.'
+        : (hasSecret ? '' : 'No secret key loaded.');
+    }
+    const fundBtn = toolbar.querySelector('.wallet-fund');
+    if (fundBtn) {
+      fundBtn.disabled = !connected;
+      fundBtn.title = connected ? '' : 'Connect a wallet first.';
+    }
+    const disconnectBtn = toolbar.querySelector('.wallet-disconnect');
+    if (disconnectBtn) {
+      disconnectBtn.disabled = !connected;
+      disconnectBtn.title = connected ? '' : 'No wallet connected.';
+    }
+  });
+  const deployButton = document.getElementById('deploy-button');
+  if (deployButton) {
+    deployButton.disabled = !connected;
+  }
+  if (!hasSecret || isBrowserWallet) {
+    clearWalletKeys();
+  }
+}
+
+function closeWalletMenus() {
+  document.querySelectorAll('.wallet-menu.open').forEach(menu => {
+    menu.classList.remove('open');
+    const toggle = menu.querySelector('.wallet-menu-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function setupWalletMenus() {
+  document.querySelectorAll('.wallet-menu-toggle').forEach(toggle => {
+    toggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const menu = toggle.closest('.wallet-menu');
+      const isOpen = menu.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+  });
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('.wallet-menu')) return;
+    closeWalletMenus();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeWalletMenus();
+  });
+  document.querySelectorAll('.wallet-menu-item').forEach(item => {
+    item.addEventListener('click', () => closeWalletMenus());
   });
 }
 
@@ -99,14 +189,8 @@ function showFundingStatus(durationMs = 20000) {
     if (currentId !== fundingMessageId) return;
     const dots = '.'.repeat(dotCount);
     dotCount = (dotCount + 1) % 4;
-    document.querySelectorAll('.wallet-info').forEach(el => {
-      let status = el.querySelector('.wallet-funding-status');
-      if (!status) {
-        status = document.createElement('div');
-        status.className = 'wallet-funding-status';
-        el.appendChild(status);
-      }
-      status.textContent = `${baseText}${dots}`;
+    document.querySelectorAll('.wallet-funding-status').forEach(el => {
+      el.textContent = `${baseText}${dots}`;
     });
   };
   update();
@@ -115,9 +199,8 @@ function showFundingStatus(durationMs = 20000) {
     if (currentId !== fundingMessageId) return;
     if (fundingMessageInterval) clearInterval(fundingMessageInterval);
     fundingMessageInterval = null;
-    document.querySelectorAll('.wallet-info').forEach(el => {
-      const status = el.querySelector('.wallet-funding-status');
-      if (status) status.remove();
+    document.querySelectorAll('.wallet-funding-status').forEach(el => {
+      el.textContent = '';
     });
   }, durationMs);
 }
@@ -626,24 +709,863 @@ function renderContractForm(contractId, interfaceString, divId = 'explore-form')
   }
 }
 
+function specTypeName(typeDef) {
+  if (!typeDef || !typeDef.switch) return 'unknown';
+  return typeDef.switch().name || 'unknown';
+}
+
+function isComplexSpecType(typeDef) {
+  const name = specTypeName(typeDef);
+  return [
+    'scSpecTypeVal',
+    'scSpecTypeOption',
+    'scSpecTypeResult',
+    'scSpecTypeVec',
+    'scSpecTypeMap',
+    'scSpecTypeTuple',
+    'scSpecTypeBytes',
+    'scSpecTypeBytesN',
+    'scSpecTypeUdt',
+    'scSpecTypeError',
+  ].includes(name);
+}
+
+function specTypeToString(typeDef, spec, depth = 0) {
+  if (!typeDef) return 'unknown';
+  const name = specTypeName(typeDef);
+  if (depth > 4) return '...';
+  switch (name) {
+    case 'scSpecTypeBool':
+      return 'bool';
+    case 'scSpecTypeVoid':
+      return 'void';
+    case 'scSpecTypeU32':
+    case 'scSpecTypeI32':
+    case 'scSpecTypeU64':
+    case 'scSpecTypeI64':
+    case 'scSpecTypeU128':
+    case 'scSpecTypeI128':
+    case 'scSpecTypeU256':
+    case 'scSpecTypeI256':
+      return name.replace('scSpecType', '').toLowerCase();
+    case 'scSpecTypeString':
+      return 'string';
+    case 'scSpecTypeSymbol':
+      return 'symbol';
+    case 'scSpecTypeAddress':
+      return 'address';
+    case 'scSpecTypeMuxedAddress':
+      return 'muxed_address';
+    case 'scSpecTypeBytes':
+      return 'bytes';
+    case 'scSpecTypeBytesN':
+      return `bytesN<${typeDef.bytesN().n()}>`;
+    case 'scSpecTypeTimepoint':
+      return 'timepoint';
+    case 'scSpecTypeDuration':
+      return 'duration';
+    case 'scSpecTypeVal':
+      return 'val';
+    case 'scSpecTypeError':
+      return 'error';
+    case 'scSpecTypeOption':
+      return `Option<${specTypeToString(typeDef.option().valueType(), spec, depth + 1)}>`;
+    case 'scSpecTypeResult': {
+      const result = typeDef.result();
+      return `Result<${specTypeToString(result.okType(), spec, depth + 1)}, ${specTypeToString(result.errorType(), spec, depth + 1)}>`;
+    }
+    case 'scSpecTypeVec':
+      return `Vec<${specTypeToString(typeDef.vec().elementType(), spec, depth + 1)}>`;
+    case 'scSpecTypeMap':
+      return `Map<${specTypeToString(typeDef.map().keyType(), spec, depth + 1)}, ${specTypeToString(typeDef.map().valueType(), spec, depth + 1)}>`;
+    case 'scSpecTypeTuple': {
+      const types = typeDef.tuple().valueTypes();
+      return `(${types.map(t => specTypeToString(t, spec, depth + 1)).join(', ')})`;
+    }
+    case 'scSpecTypeUdt':
+      return typeDef.udt().name().toString();
+    default:
+      return name.replace('scSpecType', '').toLowerCase();
+  }
+}
+
+function specTypeHint(typeDef, spec, depth = 0) {
+  if (!typeDef) return '';
+  if (depth > 3) return '...';
+  const name = specTypeName(typeDef);
+  switch (name) {
+    case 'scSpecTypeBool':
+      return 'true';
+    case 'scSpecTypeU32':
+    case 'scSpecTypeI32':
+      return '1';
+    case 'scSpecTypeU64':
+    case 'scSpecTypeI64':
+    case 'scSpecTypeU128':
+    case 'scSpecTypeI128':
+    case 'scSpecTypeU256':
+    case 'scSpecTypeI256':
+      return '"123"';
+    case 'scSpecTypeString':
+      return '"hello"';
+    case 'scSpecTypeSymbol':
+      return '"symbol"';
+    case 'scSpecTypeAddress':
+      return '"G..."';
+    case 'scSpecTypeMuxedAddress':
+      return '"M..."';
+    case 'scSpecTypeBytes':
+      return '"0xdeadbeef"';
+    case 'scSpecTypeBytesN':
+      return `"0x${'00'.repeat(typeDef.bytesN().n())}"`;
+    case 'scSpecTypeTimepoint':
+      return '"1700000000"';
+    case 'scSpecTypeDuration':
+      return '"3600"';
+    case 'scSpecTypeVal':
+      return '{"type":"string","value":"hello"} or xdr:...';
+    case 'scSpecTypeError':
+      return '{"type":"contract","code":1}';
+    case 'scSpecTypeOption':
+      return 'null';
+    case 'scSpecTypeResult':
+      return '{"ok": 1}';
+    case 'scSpecTypeVec':
+      return `[${specTypeHint(typeDef.vec().elementType(), spec, depth + 1)}]`;
+    case 'scSpecTypeTuple':
+      return `[${typeDef.tuple().valueTypes().map(t => specTypeHint(t, spec, depth + 1)).join(', ')}]`;
+    case 'scSpecTypeMap':
+      {
+        const keyType = typeDef.map().keyType();
+        const valueType = typeDef.map().valueType();
+        const keyName = specTypeName(keyType);
+        const valueHint = specTypeHint(valueType, spec, depth + 1);
+        if ([
+          'scSpecTypeString',
+          'scSpecTypeSymbol',
+          'scSpecTypeU32',
+          'scSpecTypeI32',
+          'scSpecTypeU64',
+          'scSpecTypeI64',
+          'scSpecTypeU128',
+          'scSpecTypeI128',
+          'scSpecTypeU256',
+          'scSpecTypeI256',
+          'scSpecTypeBool',
+        ].includes(keyName)) {
+          return `{ "key": ${valueHint} }`;
+        }
+        const keyHint = specTypeHint(keyType, spec, depth + 1);
+        return `[[${keyHint}, ${valueHint}]]`;
+      }
+    case 'scSpecTypeUdt': {
+      if (!spec || !spec.findEntry) return '{...}';
+      const entry = spec.findEntry(typeDef.udt().name().toString());
+      if (!entry) return '{...}';
+      const kind = entry.switch().name;
+      if (kind === 'scSpecEntryUdtStructV0') {
+        const fields = entry.udtStructV0().fields();
+        const sample = fields.map(field => {
+          const fname = field.name().toString();
+          const ftype = specTypeHint(field.type(), spec, depth + 1);
+          return `"${fname}": ${ftype}`;
+        });
+        return `{ ${sample.join(', ')} }`;
+      }
+      if (kind === 'scSpecEntryUdtEnumV0') {
+        const cases = entry.udtEnumV0().cases();
+        const name = cases.length ? cases[0].name().toString() : 'Variant';
+        return `"${name}"`;
+      }
+      if (kind === 'scSpecEntryUdtUnionV0') {
+        const cases = entry.udtUnionV0().cases();
+        const name = cases.length ? cases[0].value().name().toString() : 'Variant';
+        return `{ "tag": "${name}", "values": [] }`;
+      }
+      return '{...}';
+    }
+    default:
+      return '';
+  }
+}
+
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function hexToBytes(hex) {
+  const clean = hex.replace(/^0x/i, '').trim();
+  if (clean.length % 2 !== 0) {
+    throw new Error('Hex string must have an even length.');
+  }
+  const bytes = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < clean.length; i += 2) {
+    bytes[i / 2] = parseInt(clean.slice(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function parseJsonValue(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`Expected JSON input. ${err.message}`);
+  }
+}
+
+function parseIntegerLike(value, label) {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label} must be a finite number.`);
+    }
+    return value;
+  }
+  const str = String(value).trim();
+  if (!/^-?\\d+$/.test(str)) {
+    throw new Error(`${label} must be an integer.`);
+  }
+  return BigInt(str);
+}
+
+function parseStringValue(raw) {
+  const trimmed = raw.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    try {
+      return JSON.parse(trimmed.replace(/'/g, '"'));
+    } catch {
+      return trimmed.slice(1, -1);
+    }
+  }
+  return trimmed;
+}
+
+function parseBytesValue(raw) {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('base64:')) {
+    return base64ToBytes(trimmed.slice(7));
+  }
+  if (trimmed.startsWith('0x') || /^[0-9a-fA-F]+$/.test(trimmed)) {
+    return hexToBytes(trimmed);
+  }
+  if (trimmed.startsWith('[')) {
+    const arr = parseJsonValue(trimmed);
+    if (!Array.isArray(arr)) {
+      throw new Error('Bytes JSON must be an array of numbers.');
+    }
+    return Uint8Array.from(arr);
+  }
+  return new TextEncoder().encode(trimmed);
+}
+
+function normalizeUnionInput(value) {
+  if (typeof value === 'string') {
+    return { tag: value };
+  }
+  if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
+    return { tag: value[0], values: value.slice(1) };
+  }
+  if (value && typeof value === 'object') {
+    if (value.tag) {
+      return value;
+    }
+    const keys = Object.keys(value);
+    if (keys.length === 1) {
+      const tag = keys[0];
+      const inner = value[tag];
+      return {
+        tag,
+        values: Array.isArray(inner) ? inner : (typeof inner === 'undefined' ? [] : [inner]),
+      };
+    }
+  }
+  throw new Error('Union input must be a tag string or JSON object with a tag/values.');
+}
+
+function buildResultScVal(value, resultTypeDef, spec) {
+  const resultDef = resultTypeDef.result();
+  const okType = resultDef.okType();
+  const errType = resultDef.errorType();
+  let tag;
+  let inner;
+  if (Array.isArray(value) && value.length >= 2 && typeof value[0] === 'string') {
+    tag = value[0].toLowerCase();
+    inner = value[1];
+  } else if (value && typeof value === 'object') {
+    if (Object.prototype.hasOwnProperty.call(value, 'ok')) {
+      tag = 'ok';
+      inner = value.ok;
+    } else if (Object.prototype.hasOwnProperty.call(value, 'err')) {
+      tag = 'err';
+      inner = value.err;
+    } else if (value.tag) {
+      tag = value.tag.toLowerCase();
+      inner = value.value;
+    }
+  } else if (typeof value === 'string') {
+    tag = value.toLowerCase();
+  }
+  if (tag !== 'ok' && tag !== 'err') {
+    throw new Error('Result input must be JSON like {"ok": ...} or {"err": ...}.');
+  }
+  const symbol = StellarSdk.xdr.ScVal.scvSymbol(tag);
+  if (typeof inner === 'undefined') {
+    throw new Error(`Result ${tag} requires a value.`);
+  }
+  const normalized = normalizeSpecValue(inner, tag === 'ok' ? okType : errType, spec);
+  const innerVal = spec.nativeToScVal(normalized, tag === 'ok' ? okType : errType);
+  return StellarSdk.xdr.ScVal.scvVec([symbol, innerVal]);
+}
+
+function buildErrorScVal(value) {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Error input must be a JSON object.');
+  }
+  const type = (value.type || 'contract').toString().toLowerCase();
+  const code = value.code;
+  if (type === 'contract') {
+    const num = Number(code);
+    if (!Number.isFinite(num)) {
+      throw new Error('Contract error code must be a number.');
+    }
+    return StellarSdk.xdr.ScVal.scvError(StellarSdk.xdr.ScError.sceContract(num));
+  }
+  const toScErrorCode = (val) => {
+    if (typeof val === 'number') {
+      return StellarSdk.xdr.ScErrorCode._byValue[val];
+    }
+    if (typeof val === 'string') {
+      if (/^\\d+$/.test(val)) {
+        return StellarSdk.xdr.ScErrorCode._byValue[Number(val)];
+      }
+      const fn = StellarSdk.xdr.ScErrorCode[val];
+      if (typeof fn === 'function') {
+        return fn();
+      }
+    }
+    return null;
+  };
+  const scCode = toScErrorCode(code);
+  if (!scCode) {
+    throw new Error('Invalid ScErrorCode. Use a numeric code or enum name like \"scecInvalidInput\".');
+  }
+  const typeMap = {
+    wasmvm: 'sceWasmVm',
+    context: 'sceContext',
+    storage: 'sceStorage',
+    object: 'sceObject',
+    crypto: 'sceCrypto',
+    events: 'sceEvents',
+    budget: 'sceBudget',
+    value: 'sceValue',
+    auth: 'sceAuth',
+  };
+  const method = typeMap[type];
+  if (!method || typeof StellarSdk.xdr.ScError[method] !== 'function') {
+    throw new Error(`Unsupported error type: ${type}`);
+  }
+  return StellarSdk.xdr.ScVal.scvError(StellarSdk.xdr.ScError[method](scCode));
+}
+
+function normalizeSpecValue(value, typeDef, spec, depth = 0) {
+  if (depth > 6) return value;
+  if (value instanceof StellarSdk.xdr.ScVal) return value;
+  if (typeof value === 'string' && value.trim().toLowerCase().startsWith('xdr:')) {
+    return StellarSdk.xdr.ScVal.fromXDR(value.trim().slice(4), 'base64');
+  }
+  const name = specTypeName(typeDef);
+  switch (name) {
+    case 'scSpecTypeOption':
+      if (value === null || typeof value === 'undefined') return undefined;
+      return normalizeSpecValue(value, typeDef.option().valueType(), spec, depth + 1);
+    case 'scSpecTypeBool':
+      if (typeof value === 'string') {
+        const lower = value.toLowerCase();
+        if (lower === 'true') return true;
+        if (lower === 'false') return false;
+      }
+      return value;
+    case 'scSpecTypeU32':
+    case 'scSpecTypeI32':
+      if (typeof value === 'string' && /^-?\\d+$/.test(value)) {
+        return Number(value);
+      }
+      return value;
+    case 'scSpecTypeBytes':
+    case 'scSpecTypeBytesN': {
+      if (value instanceof Uint8Array) return value;
+      if (Array.isArray(value)) return Uint8Array.from(value);
+      if (typeof value === 'string') return parseBytesValue(value);
+      return value;
+    }
+    case 'scSpecTypeTimepoint': {
+      return StellarSdk.xdr.ScVal.scvTimepoint(parseIntegerLike(value, 'Timepoint'));
+    }
+    case 'scSpecTypeDuration': {
+      return StellarSdk.xdr.ScVal.scvDuration(parseIntegerLike(value, 'Duration'));
+    }
+    case 'scSpecTypeMuxedAddress': {
+      if (typeof value !== 'string') return value;
+      const muxed = StellarSdk.decodeAddressToMuxedAccount(value);
+      return StellarSdk.xdr.ScVal.scvAddress(
+        StellarSdk.xdr.ScAddress.scAddressTypeMuxedAccount(muxed)
+      );
+    }
+    case 'scSpecTypeVal': {
+      if (value && typeof value === 'object' && value.type) {
+        const type = String(value.type).toLowerCase();
+        if (type === 'timepoint') {
+          return StellarSdk.xdr.ScVal.scvTimepoint(parseIntegerLike(value.value, 'Timepoint'));
+        }
+        if (type === 'duration') {
+          return StellarSdk.xdr.ScVal.scvDuration(parseIntegerLike(value.value, 'Duration'));
+        }
+        if (type === 'bytes') {
+          const bytes = value.value instanceof Uint8Array
+            ? value.value
+            : Array.isArray(value.value)
+              ? Uint8Array.from(value.value)
+              : parseBytesValue(String(value.value));
+          return StellarSdk.nativeToScVal(bytes, { type: 'bytes' });
+        }
+        return StellarSdk.nativeToScVal(value.value, { type: value.type });
+      }
+      return StellarSdk.nativeToScVal(value);
+    }
+    case 'scSpecTypeError':
+      return buildErrorScVal(value);
+    case 'scSpecTypeVec': {
+      if (!Array.isArray(value)) {
+        throw new Error('Vec input must be a JSON array.');
+      }
+      const elementType = typeDef.vec().elementType();
+      return value.map(item => normalizeSpecValue(item, elementType, spec, depth + 1));
+    }
+    case 'scSpecTypeTuple': {
+      if (!Array.isArray(value)) {
+        throw new Error('Tuple input must be a JSON array.');
+      }
+      const types = typeDef.tuple().valueTypes();
+      if (value.length !== types.length) {
+        throw new Error(`Tuple expects ${types.length} values, but ${value.length} were provided.`);
+      }
+      return value.map((item, idx) => normalizeSpecValue(item, types[idx], spec, depth + 1));
+    }
+    case 'scSpecTypeMap': {
+      const keyType = typeDef.map().keyType();
+      const valueType = typeDef.map().valueType();
+      let entries;
+      if (Array.isArray(value)) {
+        entries = value;
+      } else if (value instanceof Map) {
+        entries = Array.from(value.entries());
+      } else if (value && typeof value === 'object') {
+        entries = Object.entries(value);
+      } else {
+        throw new Error('Map input must be a JSON object or array of [key, value] pairs.');
+      }
+      return entries.map((entry) => {
+        if (!Array.isArray(entry) || entry.length !== 2) {
+          throw new Error('Map entries must be [key, value] pairs.');
+        }
+        const [k, v] = entry;
+        return [
+          normalizeSpecValue(k, keyType, spec, depth + 1),
+          normalizeSpecValue(v, valueType, spec, depth + 1),
+        ];
+      });
+    }
+    case 'scSpecTypeUdt': {
+      const entry = spec.findEntry(typeDef.udt().name().toString());
+      if (!entry) return value;
+      const kind = entry.switch().name;
+      if (kind === 'scSpecEntryUdtEnumV0') {
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string' && /^\\d+$/.test(value)) return Number(value);
+        const cases = entry.udtEnumV0().cases();
+        const match = cases.find(c => c.name().toString() === value || c.name().toString().toLowerCase() === String(value).toLowerCase());
+        if (!match) {
+          throw new Error(`Unknown enum case: ${value}`);
+        }
+        return match.value();
+      }
+      if (kind === 'scSpecEntryUdtStructV0') {
+        const fields = entry.udtStructV0().fields();
+        const fieldNames = fields.map(field => field.name().toString());
+        const numericFields = fieldNames.every(name => /^\\d+$/.test(name));
+        if (Array.isArray(value)) {
+          if (!numericFields) {
+            throw new Error('Struct input must be a JSON object with named fields.');
+          }
+          if (value.length !== fields.length) {
+            throw new Error(`Struct expects ${fields.length} values, but ${value.length} were provided.`);
+          }
+          return value.map((item, idx) => normalizeSpecValue(item, fields[idx].type(), spec, depth + 1));
+        }
+        if (!value || typeof value !== 'object') {
+          throw new Error('Struct input must be a JSON object with named fields.');
+        }
+        const normalized = {};
+        fields.forEach(field => {
+          const fname = field.name().toString();
+          if (!Object.prototype.hasOwnProperty.call(value, fname)) return;
+          normalized[fname] = normalizeSpecValue(value[fname], field.type(), spec, depth + 1);
+        });
+        return normalized;
+      }
+      if (kind === 'scSpecEntryUdtUnionV0') {
+        const normalized = normalizeUnionInput(value);
+        const cases = entry.udtUnionV0().cases();
+        const unionCase = cases.find(c => c.value().name().toString() === normalized.tag);
+        if (!unionCase) {
+          throw new Error(`Unknown union case: ${normalized.tag}`);
+        }
+        if (unionCase.switch() === StellarSdk.xdr.ScSpecUdtUnionCaseV0Kind.scSpecUdtUnionCaseVoidV0()) {
+          return { tag: normalized.tag };
+        }
+        const tupleTypes = unionCase.tupleCase().type();
+        const values = Array.isArray(normalized.values) ? normalized.values : [];
+        if (values.length !== tupleTypes.length) {
+          throw new Error(`Union ${normalized.tag} expects ${tupleTypes.length} values, but ${values.length} were provided.`);
+        }
+        return {
+          tag: normalized.tag,
+          values: values.map((item, idx) => normalizeSpecValue(item, tupleTypes[idx], spec, depth + 1)),
+        };
+      }
+      return value;
+    }
+    default:
+      return value;
+  }
+}
+
+function parseInputValue(raw, typeDef, spec) {
+  const trimmed = raw.trim();
+  const name = specTypeName(typeDef);
+  if (trimmed === '') {
+    if (name === 'scSpecTypeOption') {
+      return undefined;
+    }
+    throw new Error('Argument value is required.');
+  }
+  if (trimmed.toLowerCase().startsWith('xdr:')) {
+    return StellarSdk.xdr.ScVal.fromXDR(trimmed.slice(4).trim(), 'base64');
+  }
+  if (name === 'scSpecTypeBool') {
+    const lower = trimmed.toLowerCase();
+    if (lower === 'true' || lower === 'false') {
+      return lower === 'true';
+    }
+    return parseJsonValue(trimmed);
+  }
+  if (name === 'scSpecTypeString' || name === 'scSpecTypeSymbol' || name === 'scSpecTypeAddress') {
+    return parseStringValue(trimmed);
+  }
+  if (name === 'scSpecTypeMuxedAddress') {
+    const addr = parseStringValue(trimmed);
+    const muxed = StellarSdk.decodeAddressToMuxedAccount(addr);
+    return StellarSdk.xdr.ScVal.scvAddress(
+      StellarSdk.xdr.ScAddress.scAddressTypeMuxedAccount(muxed)
+    );
+  }
+  if (name === 'scSpecTypeBytes' || name === 'scSpecTypeBytesN') {
+    const bytes = parseBytesValue(trimmed);
+    if (name === 'scSpecTypeBytesN') {
+      const expected = typeDef.bytesN().n();
+      if (bytes.length !== expected) {
+        throw new Error(`Expected ${expected} bytes, got ${bytes.length}.`);
+      }
+    }
+    return bytes;
+  }
+  if (name === 'scSpecTypeU32' || name === 'scSpecTypeI32') {
+    const num = Number(trimmed);
+    if (Number.isNaN(num)) {
+      throw new Error('Expected a number.');
+    }
+    return num;
+  }
+  if ([
+    'scSpecTypeU64',
+    'scSpecTypeI64',
+    'scSpecTypeU128',
+    'scSpecTypeI128',
+    'scSpecTypeU256',
+    'scSpecTypeI256',
+  ].includes(name)) {
+    return trimmed;
+  }
+  if (name === 'scSpecTypeTimepoint') {
+    const value = trimmed.startsWith('"') ? parseStringValue(trimmed) : trimmed;
+    return StellarSdk.xdr.ScVal.scvTimepoint(parseIntegerLike(value, 'Timepoint'));
+  }
+  if (name === 'scSpecTypeDuration') {
+    const value = trimmed.startsWith('"') ? parseStringValue(trimmed) : trimmed;
+    return StellarSdk.xdr.ScVal.scvDuration(parseIntegerLike(value, 'Duration'));
+  }
+  if (name === 'scSpecTypeOption') {
+    if (trimmed.toLowerCase() === 'null') return undefined;
+    return parseInputValue(trimmed, typeDef.option().valueType(), spec);
+  }
+  if (name === 'scSpecTypeVal') {
+    let parsed;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      parsed = parseStringValue(trimmed);
+    }
+    if (parsed && typeof parsed === 'object' && parsed.type) {
+      const type = String(parsed.type).toLowerCase();
+      if (type === 'timepoint') {
+        return StellarSdk.xdr.ScVal.scvTimepoint(parseIntegerLike(parsed.value, 'Timepoint'));
+      }
+      if (type === 'duration') {
+        return StellarSdk.xdr.ScVal.scvDuration(parseIntegerLike(parsed.value, 'Duration'));
+      }
+      if (type === 'bytes') {
+        const bytes = parsed.value instanceof Uint8Array
+          ? parsed.value
+          : Array.isArray(parsed.value)
+            ? Uint8Array.from(parsed.value)
+            : parseBytesValue(String(parsed.value));
+        return StellarSdk.nativeToScVal(bytes, { type: 'bytes' });
+      }
+      return StellarSdk.nativeToScVal(parsed.value, { type: parsed.type });
+    }
+    return StellarSdk.nativeToScVal(parsed);
+  }
+  if (name === 'scSpecTypeError') {
+    const parsed = parseJsonValue(trimmed);
+    return buildErrorScVal(parsed);
+  }
+  if (name === 'scSpecTypeResult') {
+    const parsed = parseJsonValue(trimmed);
+    return buildResultScVal(parsed, typeDef, spec);
+  }
+  if (name === 'scSpecTypeVec' || name === 'scSpecTypeTuple' || name === 'scSpecTypeMap') {
+    const parsed = parseJsonValue(trimmed);
+    return normalizeSpecValue(parsed, typeDef, spec);
+  }
+  if (name === 'scSpecTypeUdt') {
+    const parsed = (trimmed.startsWith('{') || trimmed.startsWith('[')) ? parseJsonValue(trimmed) : parseStringValue(trimmed);
+    return normalizeSpecValue(parsed, typeDef, spec);
+  }
+  if (name === 'scSpecTypeVoid') {
+    return null;
+  }
+  return parseJsonValue(trimmed);
+}
+
+function safeSerialize(value) {
+  return JSON.parse(JSON.stringify(value, (key, val) => {
+    if (typeof val === 'bigint') return val.toString();
+    if (val instanceof Uint8Array) return Array.from(val);
+    if (val instanceof Map) return Object.fromEntries(val.entries());
+    if (val instanceof StellarSdk.contract.Ok) {
+      return { ok: val.value ?? val };
+    }
+    if (val instanceof StellarSdk.contract.Err) {
+      return { err: val.error ?? val };
+    }
+    return val;
+  }));
+}
+
+async function getContractSpec(contractId) {
+  const cacheKey = `${network}:${contractId}`;
+  if (contractSpecCache.has(cacheKey)) {
+    return contractSpecCache.get(cacheKey);
+  }
+  const client = await StellarSdk.contract.Client.from({
+    contractId,
+    rpcUrl,
+    networkPassphrase,
+  });
+  const spec = client.spec;
+  contractSpecCache.set(cacheKey, spec);
+  return spec;
+}
+
+function renderContractFormFromSpec(contractId, spec, divId = 'explore-form') {
+  const container = document.getElementById(divId);
+  container.innerHTML = '';
+  const funcs = spec.funcs();
+  funcs.forEach(fn => {
+    const methodName = fn.name().toString();
+    const inputs = fn.inputs();
+    const outputs = fn.outputs();
+    const isRead = outputs.length > 0;
+    const args = inputs.map(input => {
+      return {
+        name: input.name().toString(),
+        typeDef: input.type(),
+        doc: input.doc ? input.doc().toString() : '',
+      };
+    });
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('method-box');
+    const isMultiArg = args.length > 1;
+    if (args.length <= 1) {
+      wrapper.classList.add('method-compact');
+    }
+    if (args.length === 0) {
+      wrapper.classList.add('method-no-args');
+    }
+    if (isMultiArg) {
+      wrapper.classList.add('method-multi');
+    }
+    const left = document.createElement('div');
+    left.classList.add('method-left');
+    const title = document.createElement('h3');
+    title.textContent = methodName;
+    const button = document.createElement('button');
+    button.classList.add('method-call-button');
+    button.innerHTML = '<i class="fas fa-paper-plane"></i>';
+    button.setAttribute('aria-label', `Call ${methodName}`);
+    button.setAttribute('title', `Call ${methodName}`);
+    if (!isMultiArg) {
+      left.appendChild(title);
+    }
+    args.forEach((arg, index) => {
+      const row = document.createElement('div');
+      row.classList.add('arg-row');
+      const label = document.createElement('label');
+      const typeLabel = specTypeToString(arg.typeDef, spec);
+      label.textContent = `${arg.name}:${typeLabel}`;
+      label.classList.add('arg-label');
+      label.htmlFor = `${methodName}-${arg.name}`;
+      const isComplex = isComplexSpecType(arg.typeDef);
+      const input = document.createElement(isComplex ? 'textarea' : 'input');
+      if (!isComplex) {
+        input.type = 'text';
+      } else {
+        input.rows = 2;
+      }
+      input.id = `${methodName}-${arg.name}`;
+      const hint = specTypeHint(arg.typeDef, spec);
+      input.placeholder = hint ? `${arg.name}:${typeLabel} e.g. ${hint}` : `${arg.name}:${typeLabel}`;
+      const docHint = arg.doc ? ` ${arg.doc}` : '';
+      input.setAttribute('title', `${typeLabel}${docHint} (JSON for complex types)`);
+      input.setAttribute('aria-label', `${arg.name}: ${typeLabel}`);
+      if (isMultiArg) {
+        row.classList.add('arg-row-multi');
+        const titleCell = document.createElement('div');
+        titleCell.classList.add('method-title-cell');
+        if (index === 0) {
+          titleCell.appendChild(title);
+        } else {
+          const spacer = document.createElement('span');
+          spacer.classList.add('method-title-spacer');
+          titleCell.appendChild(spacer);
+        }
+        const fieldCell = document.createElement('div');
+        fieldCell.classList.add('method-field-cell');
+        fieldCell.append(input, label);
+        if (index === args.length - 1) {
+          fieldCell.appendChild(button);
+        }
+        row.append(titleCell, fieldCell);
+      } else {
+        if (args.length <= 1) {
+          row.classList.add('arg-row-inline');
+        }
+        row.append(input, label);
+      }
+      left.appendChild(row);
+    });
+    if (!isMultiArg) {
+      left.appendChild(button);
+    }
+    const right = document.createElement('div');
+    right.classList.add('method-right');
+    const consoleDiv = document.createElement('div');
+    consoleDiv.classList.add('console');
+    right.appendChild(consoleDiv);
+    button.addEventListener('click', async () => {
+      try {
+        const contract = new StellarSdk.Contract(contractId);
+        const argsObj = {};
+        args.forEach(arg => {
+          const inputEl = document.getElementById(`${methodName}-${arg.name}`);
+          const value = parseInputValue(inputEl.value, arg.typeDef, spec);
+          argsObj[arg.name] = value;
+        });
+        const convertedArgs = spec.funcArgsToScVals(methodName, argsObj);
+        const sourceAccount = await horizon.loadAccount(publicKey);
+        const op = contract.call(methodName, ...convertedArgs);
+        const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+          fee: StellarSdk.BASE_FEE,
+          networkPassphrase,
+        })
+          .addOperation(op)
+          .setTimeout(30)
+          .build();
+        if (isRead) {
+          const simulationResult = await rpc.simulateTransaction(tx);
+          const decoded = spec.funcResToNative(methodName, simulationResult.result?.retval);
+          const safeDecoded = safeSerialize(decoded);
+          const output = typeof safeDecoded === 'string'
+            ? safeDecoded
+            : JSON.stringify(safeDecoded, null, 2);
+          const pre = document.createElement('pre');
+          pre.textContent = output;
+          consoleDiv.innerHTML = '';
+          consoleDiv.appendChild(pre);
+        } else {
+          const preparedTx = await rpc.prepareTransaction(tx);
+          const signedTx = await signTransaction(preparedTx);
+          const response = await rpc.sendTransaction(signedTx);
+          const hash = response.hash;
+          consoleDiv.innerHTML = `
+            <p>Transaction Sent! Check block explorer:</p>
+            <a href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a>
+          `;
+        }
+      } catch (err) {
+        consoleDiv.innerHTML = `<pre style="color:red;">${err.message || err}</pre>`;
+        console.error(err);
+      }
+    });
+    wrapper.appendChild(left);
+    wrapper.appendChild(right);
+    container.appendChild(wrapper);
+  });
+}
+
 
 async function loadContract(contractId) {
   document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('explore-sidebar-icon').classList.add('active');
   document.getElementById('explore-panel').classList.add('active');
+  const exploreForm = document.getElementById('explore-form');
   document.getElementById('explore-contract-id').value = contractId;
   // Save to local storage
   localStorage.setItem('last-contract-id', contractId);
   localStorage.setItem('last-explore-network', network);
   try {
-    const response = await fetch('/interface', {
+    exploreForm.innerText = 'Loading contract interface...';
+    const interfacePromise = fetch('/interface', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contract: contractId, network: network.toLowerCase() })
-    });
-    const resultText = await response.text();
-    renderContractForm(contractId, resultText);
+    }).then(response => response.text());
+    const specPromise = getContractSpec(contractId);
+    const [specResult, interfaceResult] = await Promise.allSettled([specPromise, interfacePromise]);
+    if (specResult.status === 'fulfilled') {
+      renderContractFormFromSpec(contractId, specResult.value);
+      return;
+    }
+    if (interfaceResult.status === 'fulfilled') {
+      renderContractForm(contractId, interfaceResult.value);
+      return;
+    }
+    throw specResult.reason || interfaceResult.reason;
   } catch (err) {
     exploreForm.innerText = `Failed to load contract: ${err.message}`;
     console.error(err);
@@ -652,23 +1574,21 @@ async function loadContract(contractId) {
 
 function updateNetwork(value) {
   network = value;
-  let rpcURL;
-  let horizonURL;
   if (network == 'TESTNET') {
-    rpcURL = 'https://soroban-testnet.stellar.org';
-    horizonURL = 'https://horizon-testnet.stellar.org'; 
+    rpcUrl = 'https://soroban-testnet.stellar.org';
+    horizonUrl = 'https://horizon-testnet.stellar.org';
     networkPassphrase = StellarSdk.Networks.TESTNET;
   } else if (network == 'FUTURENET') {
-    rpcURL = 'https://rpc-futurenet.stellar.org';
-    horizonURL = 'https://horizon-futurenet.stellar.org';
+    rpcUrl = 'https://rpc-futurenet.stellar.org';
+    horizonUrl = 'https://horizon-futurenet.stellar.org';
     networkPassphrase = StellarSdk.Networks.FUTURENET || 'Test SDF Future Network ; October 2022';
   } else {
-    rpcURL = 'https://mainnet.sorobanrpc.com';
-    horizonURL = 'https://horizon.stellar.org'; 
+    rpcUrl = 'https://mainnet.sorobanrpc.com';
+    horizonUrl = 'https://horizon.stellar.org';
     networkPassphrase = StellarSdk.Networks.PUBLIC;
   }
-  rpc = new StellarSdk.rpc.Server(rpcURL);
-  horizon = new StellarSdk.Horizon.Server(horizonURL);
+  rpc = new StellarSdk.rpc.Server(rpcUrl);
+  horizon = new StellarSdk.Horizon.Server(horizonUrl);
 }
 
 async function fundAddressOnNetwork(pubKey, networkName) {
@@ -852,51 +1772,92 @@ StellarWalletsKit.on(KitEventType.STATE_UPDATED, event => {
     walletKitAddress = event.payload.address;
     keypair = null;
     publicKey = walletKitAddress;
-    setWalletInfoHtml(`Connected: ${publicKey}`);
-    document.getElementById('deploy-button').disabled = false;
+    updateWalletUi();
   } else {
     walletKitAddress = null;
     if (!keypair) {
       publicKey = null;
-      clearWalletInfo();
-      document.getElementById('deploy-button').disabled = true;
+      updateWalletUi();
     }
   }
 });
 
-document.querySelectorAll('.connect-testnet').forEach(button => {
-  button.addEventListener('click', async () => {  
+document.querySelectorAll('.wallet-generate').forEach(button => {
+  button.addEventListener('click', async () => {
     keypair = StellarSdk.Keypair.random();
+    walletKitAddress = null;
     localStorage.setItem('secretKey', keypair.secret());
     publicKey = keypair.publicKey();
-    setWalletInfoHtml(`Connected: ${publicKey}`);
+    updateWalletUi();
     showFundingStatus(20000);
     await Promise.allSettled([
       fundAddressOnNetwork(publicKey, 'TESTNET'),
       fundAddressOnNetwork(publicKey, 'FUTURENET'),
     ]);
-    document.getElementById('deploy-button').disabled = false;
   });
 });
 
-document.querySelectorAll('.connect-secret').forEach(button => {
-  button.addEventListener('click', async () => {  
+document.querySelectorAll('.wallet-load-secret').forEach(button => {
+  button.addEventListener('click', async () => {
     const secretKey = prompt('Enter a secret key (do not use in production): ');
+    if (!secretKey) return;
     localStorage.setItem('secretKey', secretKey);
     keypair = StellarSdk.Keypair.fromSecret(secretKey);
+    walletKitAddress = null;
     publicKey = keypair.publicKey();
-    setWalletInfoHtml(`Connected: ${publicKey}`);
-    document.getElementById('deploy-button').disabled = false;
+    updateWalletUi();
   });
 });
 
-document.querySelectorAll('.export-keys').forEach(button => {
+document.querySelectorAll('.wallet-export-keys').forEach(button => {
   button.addEventListener('click', async () => {
     const secretKey = localStorage.getItem('secretKey');
     if (!secretKey) return alert('No secret key found');
+    if (walletKitAddress && !keypair) return;
     keypair = StellarSdk.Keypair.fromSecret(secretKey);
-    setWalletInfoHtml(`Public Key: ${publicKey}<br /><br />Secret Key: ${secretKey}`);
-    document.getElementById('deploy-button').disabled = false;
+    publicKey = keypair.publicKey();
+    updateWalletUi();
+    setWalletKeysHtml(`Public Key: ${publicKey}<br />Secret Key: ${secretKey}`);
+  });
+});
+
+document.querySelectorAll('.wallet-fund').forEach(button => {
+  button.addEventListener('click', async () => {
+    if (!publicKey) {
+      alert('Connect a wallet first.');
+      return;
+    }
+    showFundingStatus(20000);
+    await Promise.allSettled([
+      fundAddressOnNetwork(publicKey, 'TESTNET'),
+      fundAddressOnNetwork(publicKey, 'FUTURENET'),
+    ]);
+  });
+});
+
+document.querySelectorAll('.wallet-disconnect').forEach(button => {
+  button.addEventListener('click', async () => {
+    if (!publicKey) return;
+    if (keypair || localStorage.getItem('secretKey')) {
+      const ok = confirm('Disconnecting will remove the local wallet from this browser. If you have not exported the keys, they will be lost forever. Continue?');
+      if (!ok) return;
+      localStorage.removeItem('secretKey');
+      keypair = null;
+      walletKitAddress = null;
+      publicKey = null;
+      updateWalletUi();
+      return;
+    }
+    if (walletKitAddress) {
+      try {
+        await StellarWalletsKit.disconnect();
+      } catch (err) {
+        console.error(err);
+      }
+      walletKitAddress = null;
+      publicKey = null;
+      updateWalletUi();
+    }
   });
 });
 
@@ -1049,16 +2010,14 @@ async function init() {
   if (exploreButtonWrapper) {
     StellarWalletsKit.createButton(exploreButtonWrapper);
   }
+  setupWalletMenus();
 
   const keyStore = localStorage.getItem('secretKey');
   if (keyStore) {
     keypair = StellarSdk.Keypair.fromSecret(keyStore);
     publicKey = keypair.publicKey();
-    document.querySelectorAll('.wallet-info').forEach(el => {
-      el.innerHTML = `Connected: ${publicKey}`;
-    });
-    document.getElementById('deploy-button').disabled = false;
   }
+  updateWalletUi();
 
   // Restore last contract ID and network settings
   const lastContractId = localStorage.getItem('last-contract-id');

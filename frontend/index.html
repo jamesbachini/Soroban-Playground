@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SoroPG.com</title>
     <!-- <script src="bundles/stellar-sdk.min.js"></script> -->
-    <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@14.3.0/dist/stellar-sdk.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@14.4.3/dist/stellar-sdk.min.js"></script>
     <script src="bundles/wallet-kit-bundle.umd.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="./style.css" />
@@ -53,7 +53,7 @@
               <a href="https://jamesbachini.github.io/Soroban-Dev-Tools/" target="_blank">TOOLS</a>
               <a href="https://developers.stellar.org/" target="_blank">DOCS</a>
               <span class="menu-separator">-</span>
-              <a href="https://soropg.com" target="_blank">SoroPG.com v0.6.3</a>
+              <a href="https://soropg.com" target="_blank">SoroPG.com v0.7.1</a>
             </div>
           </div>
           <div id="editor"></div>
@@ -173,11 +173,32 @@
                 <p>Deploy your compiled WASM file to the Soroban network.</p>
               </div>
               <div class="deploy-controls">
-                <button class="connect-testnet">Generate Wallet</button>
-                <button class="connect-secret">Load Secret Key</button>
-                <button class="export-keys">Export Keys</button>
-                <div id="wallet-button-deploy"></div>
-                <div class="wallet-info"></div>
+                <div class="wallet-toolbar" data-context="deploy">
+                  <div class="wallet-toolbar-row">
+                    <div class="wallet-icon" aria-hidden="true">
+                      <i class="fas fa-wallet"></i>
+                    </div>
+                    <button type="button" class="wallet-generate">Generate Wallet</button>
+                    <div id="wallet-button-deploy" class="wallet-connect"></div>
+                    <div class="wallet-menu">
+                      <button type="button" class="wallet-menu-toggle" aria-haspopup="true" aria-expanded="false" title="Wallet options">
+                        <i class="fas fa-ellipsis-h"></i>
+                      </button>
+                      <div class="wallet-menu-panel" role="menu">
+                        <button type="button" class="wallet-menu-item wallet-load-secret" role="menuitem">Import Keys</button>
+                        <button type="button" class="wallet-menu-item wallet-export-keys" role="menuitem">Export Keys</button>
+                        <button type="button" class="wallet-menu-item wallet-fund" role="menuitem">Fund Wallet</button>
+                        <button type="button" class="wallet-menu-item wallet-disconnect" role="menuitem">Disconnect</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="wallet-status">
+                    <span class="wallet-status-text"></span>
+                    <span class="wallet-status-address"></span>
+                    <div class="wallet-funding-status"></div>
+                    <div class="wallet-keys"></div>
+                  </div>
+                </div>
                 <br />
                 <div class="box">
                   <div>
@@ -225,11 +246,32 @@
                 <p>In this section you can explore and call Soroban contract functions using your web browser</p>
               </div>
               <div class="explore-controls">
-                <button class="connect-testnet">Generate Wallet</button>
-                <button class="connect-secret">Load Secret Key</button>
-                <button class="export-keys">Export Keys</button>
-                <div id="wallet-button-explore"></div>
-                <div class="wallet-info"></div>
+                <div class="wallet-toolbar" data-context="explore">
+                  <div class="wallet-toolbar-row">
+                    <div class="wallet-icon" aria-hidden="true">
+                      <i class="fas fa-wallet"></i>
+                    </div>
+                    <button type="button" class="wallet-generate">Generate Wallet</button>
+                    <div id="wallet-button-explore" class="wallet-connect"></div>
+                    <div class="wallet-menu">
+                      <button type="button" class="wallet-menu-toggle" aria-haspopup="true" aria-expanded="false" title="Wallet options">
+                        <i class="fas fa-ellipsis-h"></i>
+                      </button>
+                      <div class="wallet-menu-panel" role="menu">
+                        <button type="button" class="wallet-menu-item wallet-load-secret" role="menuitem">Import Keys</button>
+                        <button type="button" class="wallet-menu-item wallet-export-keys" role="menuitem">Export Keys</button>
+                        <button type="button" class="wallet-menu-item wallet-fund" role="menuitem">Fund Wallet</button>
+                        <button type="button" class="wallet-menu-item wallet-disconnect" role="menuitem">Disconnect</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="wallet-status">
+                    <span class="wallet-status-text"></span>
+                    <span class="wallet-status-address"></span>
+                    <div class="wallet-funding-status"></div>
+                    <div class="wallet-keys"></div>
+                  </div>
+                </div>
                 <br />
                 <label for="explore-network">Network: </label>
                 <select id="explore-network">
