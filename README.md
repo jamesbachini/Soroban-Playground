@@ -131,9 +131,10 @@ cargo build --release
 #  Enable that binary to bind to port 80
 sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 
+# Restart server
+sudo reboot
 ```
 
-Restart server.
 
 ## Common Errors
 
