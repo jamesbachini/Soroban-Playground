@@ -79,7 +79,7 @@
                   <li><i class="fas fa-file-code accent"></i> <strong>Create</strong> - Write your smart contract code</li>
                   <li><i class="fas fa-hammer accent"></i> <strong>Build</strong> - Compile your contract to WASM</li>
                   <li><i class="fas fa-vial accent"></i> <strong>Test</strong> - Run unit tests and debug contract</li>
-                  <li><i class="fas fa-rocket accent"></i> <strong>Deploy</strong> - Deploy WASM file to testnet/futurenet/mainnet</li>
+                  <li><i class="fas fa-rocket accent"></i> <strong>Deploy</strong> - Deploy WASM file to testnet/local/futurenet/mainnet</li>
                   <li><i class="fas fa-flask accent"></i> <strong>Explore</strong> - Explore &amp; Invoke contract functions</li>
                 </ul>
               </div>
@@ -121,6 +121,29 @@
                     </button>
                   </div>
                   <div id="share-link-status" class="settings-status" role="status" aria-live="polite"></div>
+                </div>
+                <div class="settings-item">
+                  <div class="settings-header">
+                    <h3>Local / Custom Network Configuration</h3>
+                    <p>Configure RPC, Horizon, and network passphrase used when selecting the local network.</p>
+                  </div>
+                  <div class="settings-controls settings-controls-stacked">
+                    <label for="local-network-rpc-url">RPC URL</label>
+                    <input type="text" id="local-network-rpc-url" placeholder="http://localhost:8000/rpc" />
+                    <label for="local-network-horizon-url">Horizon URL</label>
+                    <input type="text" id="local-network-horizon-url" placeholder="http://localhost:8000" />
+                    <label for="local-network-passphrase">Network Passphrase</label>
+                    <input type="text" id="local-network-passphrase" placeholder="Standalone Network ; February 2017" />
+                    <div class="settings-actions">
+                      <button id="save-local-network-config" class="primary-button">
+                        <i class="fas fa-floppy-disk"></i> Save Local/Custom Config
+                      </button>
+                      <button id="reset-local-network-config" class="primary-button">
+                        <i class="fas fa-rotate-left"></i> Reset to Defaults
+                      </button>
+                    </div>
+                  </div>
+                  <div id="local-network-status" class="settings-status" role="status" aria-live="polite"></div>
                 </div>
                 <div class="settings-item">
                   <div class="settings-header">
@@ -242,6 +265,7 @@
                     <label for="deploy-network">Network: </label>
                     <select id="deploy-network">
                       <option value="TESTNET" selected>Testnet</option>
+                      <option value="LOCAL">Local</option>
                       <option value="FUTURENET">Futurenet</option>
                       <option value="PUBLIC">Mainnet</option>
                     </select>
@@ -310,6 +334,7 @@
                 <label for="explore-network">Network: </label>
                 <select id="explore-network">
                   <option value="TESTNET" selected>Testnet</option>
+                  <option value="LOCAL">Local</option>
                   <option value="FUTURENET">Futurenet</option>
                   <option value="PUBLIC">Mainnet</option>
                 </select>

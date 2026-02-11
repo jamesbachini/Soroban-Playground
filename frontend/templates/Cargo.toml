@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-soroban-sdk = "25.0.2"
+soroban-sdk = "25.1.0"
 sep-41-token = "1.4.0"
 soroban-fixed-point-math = "1.5.0"
 blend-contract-sdk = "2.25.0"
@@ -18,7 +18,7 @@ stellar-macros = "0.6.0"
 stellar-accounts = "0.6.0"
 
 [dev-dependencies]
-soroban-sdk = { version = "25.0.2", features = ["testutils"] }
+soroban-sdk = { version = "25.1.0", features = ["testutils"] }
 sep-41-token = { version = "1.4.0", features = ["testutils"] }
 soroban-fixed-point-math = { version = "1.5.0" }
 blend-contract-sdk = { version = "2.25.0", features = ["testutils"] }

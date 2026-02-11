@@ -13,6 +13,13 @@ const friendbotUrls = {
   TESTNET: 'https://friendbot.stellar.org',
   FUTURENET: 'https://friendbot-futurenet.stellar.org',
 };
+const LOCAL_NETWORK_CONFIG_KEY = 'local-network-config';
+const DEFAULT_LOCAL_NETWORK_CONFIG = Object.freeze({
+  rpcUrl: 'http://localhost:8000/rpc',
+  horizonUrl: 'http://localhost:8000',
+  networkPassphrase: 'Standalone Network ; February 2017',
+});
+let localNetworkConfig = loadLocalNetworkConfig();
 let fundingMessageTimeout = null;
 let fundingMessageInterval = null;
 let fundingMessageId = 0;
@@ -187,7 +194,7 @@ function showFundingStatus(durationMs = 20000) {
   const currentId = fundingMessageId;
   if (fundingMessageTimeout) clearTimeout(fundingMessageTimeout);
   if (fundingMessageInterval) clearInterval(fundingMessageInterval);
-  const baseText = 'Wallet generated. Funding wallet, requesting testnet & futurenet XLM';
+  const baseText = 'Wallet generated. Funding wallet, requesting testnet, futurenet & local XLM';
   let dotCount = 0;
   const update = () => {
     if (currentId !== fundingMessageId) return;
@@ -891,7 +898,7 @@ function renderContractForm(contractId, interfaceString, divId = 'explore-form')
           const value = document.getElementById(`${methodName}-${arg.name}`).value.trim();
           convertedArgs.push(toScVal(value, arg.type.toLowerCase()));
         });
-        const sourceAccount = await horizon.loadAccount(publicKey);
+        const sourceAccount = await loadSourceAccount(publicKey);
         const op = contract.call(methodName, ...convertedArgs);
         const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
           fee: StellarSdk.BASE_FEE,
@@ -1656,10 +1663,34 @@ function formatReturnValues(methodName, returnValue, spec) {
   return [normalizeValue(safeDecoded)];
 }
 
+function getExplorerBaseUrl() {
+  if (network === 'LOCAL') {
+    return null;
+  }
+  return `https://stellar.expert/explorer/${network.toLowerCase()}`;
+}
+
+function txExplorerMarkup(hash, className = '') {
+  const explorerBase = getExplorerBaseUrl();
+  if (!explorerBase) {
+    return `<code>${hash}</code>`;
+  }
+  const classAttr = className ? ` class="${className}"` : '';
+  return `<a${classAttr} href="${explorerBase}/tx/${hash}" target="_blank">${hash}</a>`;
+}
+
+function contractExplorerMarkup(contractAddress) {
+  const explorerBase = getExplorerBaseUrl();
+  if (!explorerBase) {
+    return 'Block Explorer: Not available for local/custom network.<br />';
+  }
+  return `Block Explorer: <a href="${explorerBase}/contract/${contractAddress}" target="_blank">Stellar.Expert</a><br />`;
+}
+
 async function pollTransactionResult(hash, methodName, consoleDiv, spec) {
   consoleDiv.innerHTML =
     `<div>Transaction Submitted (PENDING). Waiting for confirmation...</div>` +
-    `<a href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a>`;
+    txExplorerMarkup(hash);
   while (true) {
     const tx = await rpc.getTransaction(hash);
     if (tx.status === 'NOT_FOUND') {
@@ -1669,7 +1700,7 @@ async function pollTransactionResult(hash, methodName, consoleDiv, spec) {
     if (tx.status === 'FAILED') {
       consoleDiv.innerHTML =
         `<div style="color:red;">Transaction FAILED.</div>` +
-        `<a href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a>`;
+        txExplorerMarkup(hash);
       return;
     }
     if (tx.status === 'SUCCESS') {
@@ -1678,12 +1709,12 @@ async function pollTransactionResult(hash, methodName, consoleDiv, spec) {
         const pre = document.createElement('pre');
         pre.textContent = outputs.join('\n');
         consoleDiv.innerHTML =
-          `<div>Success TX: <a class="tx-hash-link" href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a></div>` +
+          `<div>Success TX: ${txExplorerMarkup(hash, 'tx-hash-link')}</div>` +
           `<div class="tx-output-label">Output:</div>`;
         consoleDiv.appendChild(pre);
       } else {
         consoleDiv.innerHTML =
-          `<div>Success TX: <a class="tx-hash-link" href="https://stellar.expert/explorer/${network.toLowerCase()}/tx/${hash}" target="_blank">${hash}</a></div>` +
+          `<div>Success TX: ${txExplorerMarkup(hash, 'tx-hash-link')}</div>` +
           `<div class="tx-output-label">Output: No return value.</div>`;
       }
       return;
@@ -1701,6 +1732,7 @@ async function getContractSpec(contractId) {
     contractId,
     rpcUrl,
     networkPassphrase,
+    allowHttp: shouldAllowHttp(rpcUrl),
   });
   const spec = client.spec;
   contractSpecCache.set(cacheKey, spec);
@@ -1810,7 +1842,7 @@ function renderContractFormFromSpec(contractId, spec, divId = 'explore-form') {
           argsObj[arg.name] = value;
         });
         const convertedArgs = spec.funcArgsToScVals(methodName, argsObj);
-        const sourceAccount = await horizon.loadAccount(publicKey);
+        const sourceAccount = await loadSourceAccount(publicKey);
         const op = contract.call(methodName, ...convertedArgs);
         const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
           fee: StellarSdk.BASE_FEE,
@@ -1891,6 +1923,11 @@ async function loadContract(contractId) {
   localStorage.setItem('last-explore-network', network);
   try {
     exploreForm.innerText = 'Loading contract interface...';
+    if (network === 'LOCAL') {
+      const spec = await getContractSpec(contractId);
+      renderContractFormFromSpec(contractId, spec);
+      return;
+    }
     const interfacePromise = fetch('/interface', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1913,29 +1950,129 @@ async function loadContract(contractId) {
   }
 }
 
+function normalizeLocalNetworkConfig(config) {
+  const normalized = {
+    rpcUrl: DEFAULT_LOCAL_NETWORK_CONFIG.rpcUrl,
+    horizonUrl: DEFAULT_LOCAL_NETWORK_CONFIG.horizonUrl,
+    networkPassphrase: DEFAULT_LOCAL_NETWORK_CONFIG.networkPassphrase,
+  };
+  if (!config || typeof config !== 'object') {
+    return normalized;
+  }
+  if (typeof config.rpcUrl === 'string' && config.rpcUrl.trim()) {
+    normalized.rpcUrl = config.rpcUrl.trim();
+  }
+  if (typeof config.horizonUrl === 'string' && config.horizonUrl.trim()) {
+    normalized.horizonUrl = config.horizonUrl.trim();
+  }
+  if (typeof config.networkPassphrase === 'string' && config.networkPassphrase.trim()) {
+    normalized.networkPassphrase = config.networkPassphrase.trim();
+  }
+  return normalized;
+}
+
+function loadLocalNetworkConfig() {
+  try {
+    const stored = localStorage.getItem(LOCAL_NETWORK_CONFIG_KEY);
+    if (!stored) {
+      return normalizeLocalNetworkConfig({});
+    }
+    const parsed = JSON.parse(stored);
+    return normalizeLocalNetworkConfig(parsed);
+  } catch (error) {
+    console.error('Failed to load local network config:', error);
+    return normalizeLocalNetworkConfig({});
+  }
+}
+
+function saveLocalNetworkConfig(config) {
+  localNetworkConfig = normalizeLocalNetworkConfig(config);
+  localStorage.setItem(LOCAL_NETWORK_CONFIG_KEY, JSON.stringify(localNetworkConfig));
+  return localNetworkConfig;
+}
+
+function shouldAllowHttp(url) {
+  try {
+    return new URL(url).protocol === 'http:';
+  } catch {
+    return typeof url === 'string' && url.trim().toLowerCase().startsWith('http://');
+  }
+}
+
 function updateNetwork(value) {
   network = value;
-  if (network == 'TESTNET') {
+  if (network === 'TESTNET') {
     rpcUrl = 'https://soroban-testnet.stellar.org';
     horizonUrl = 'https://horizon-testnet.stellar.org';
     networkPassphrase = StellarSdk.Networks.TESTNET;
-  } else if (network == 'FUTURENET') {
+  } else if (network === 'FUTURENET') {
     rpcUrl = 'https://rpc-futurenet.stellar.org';
     horizonUrl = 'https://horizon-futurenet.stellar.org';
     networkPassphrase = StellarSdk.Networks.FUTURENET || 'Test SDF Future Network ; October 2022';
+  } else if (network === 'LOCAL') {
+    const currentLocalConfig = normalizeLocalNetworkConfig(localNetworkConfig);
+    rpcUrl = currentLocalConfig.rpcUrl;
+    horizonUrl = currentLocalConfig.horizonUrl;
+    networkPassphrase = currentLocalConfig.networkPassphrase;
   } else {
     rpcUrl = 'https://mainnet.sorobanrpc.com';
     horizonUrl = 'https://horizon.stellar.org';
     networkPassphrase = StellarSdk.Networks.PUBLIC;
   }
-  rpc = new StellarSdk.rpc.Server(rpcUrl);
-  horizon = new StellarSdk.Horizon.Server(horizonUrl);
+  rpc = new StellarSdk.rpc.Server(rpcUrl, { allowHttp: shouldAllowHttp(rpcUrl) });
+  horizon = new StellarSdk.Horizon.Server(horizonUrl, { allowHttp: shouldAllowHttp(horizonUrl) });
+}
+
+async function loadSourceAccount(address) {
+  try {
+    return await rpc.getAccount(address);
+  } catch (rpcError) {
+    try {
+      return await horizon.loadAccount(address);
+    } catch (horizonError) {
+      const rpcMessage = rpcError?.message || String(rpcError);
+      const horizonMessage = horizonError?.message || String(horizonError);
+      throw new Error(`Failed to load account ${address}. RPC: ${rpcMessage}. Horizon: ${horizonMessage}`);
+    }
+  }
+}
+
+function getLocalFriendbotUrlFromConfig() {
+  const localConfig = normalizeLocalNetworkConfig(localNetworkConfig);
+  const candidates = [localConfig.horizonUrl, localConfig.rpcUrl];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = new URL(candidate);
+      parsed.pathname = '/friendbot';
+      parsed.search = '';
+      parsed.hash = '';
+      return parsed.toString().replace(/\/$/, '');
+    } catch {
+      // Ignore invalid candidate URL and try next.
+    }
+  }
+  return null;
 }
 
 async function fundAddressOnNetwork(pubKey, networkName) {
-  const friendbotUrl = friendbotUrls[networkName];
+  let friendbotUrl = friendbotUrls[networkName];
+  if (networkName === 'LOCAL') {
+    friendbotUrl = getLocalFriendbotUrlFromConfig();
+    const params = new URLSearchParams({ addr: pubKey });
+    if (friendbotUrl) {
+      params.set('friendbot_url', friendbotUrl);
+    }
+    const response = await fetch(`/friendbot?${params.toString()}`);
+    if (!response.ok) {
+      const details = await response.text().catch(() => '');
+      throw new Error(`Failed to fund LOCAL account, status ${response.status}${details ? `: ${details}` : ''}`);
+    }
+    return;
+  }
   if (!friendbotUrl) return;
-  const url = `${friendbotUrl}/?addr=${pubKey}`;
+  const separator = friendbotUrl.includes('?') ? '&' : '?';
+  const url = `${friendbotUrl}${separator}addr=${encodeURIComponent(pubKey)}`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fund ${networkName} account, status ${response.status}`);
@@ -2083,6 +2220,77 @@ function setShareStatus(message, isError = false) {
   statusEl.classList.toggle('error', isError);
 }
 
+function setLocalNetworkStatus(message, isError = false) {
+  const statusEl = document.getElementById('local-network-status');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.toggle('error', isError);
+}
+
+function setLocalNetworkInputs(config) {
+  const rpcInput = document.getElementById('local-network-rpc-url');
+  const horizonInput = document.getElementById('local-network-horizon-url');
+  const passphraseInput = document.getElementById('local-network-passphrase');
+  if (rpcInput) rpcInput.value = config.rpcUrl;
+  if (horizonInput) horizonInput.value = config.horizonUrl;
+  if (passphraseInput) passphraseInput.value = config.networkPassphrase;
+}
+
+function validateNetworkUrl(url, fieldName) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`${fieldName} must be a valid URL.`);
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`${fieldName} must use http or https.`);
+  }
+}
+
+function getLocalNetworkInputConfig() {
+  const rpcInput = document.getElementById('local-network-rpc-url');
+  const horizonInput = document.getElementById('local-network-horizon-url');
+  const passphraseInput = document.getElementById('local-network-passphrase');
+  if (!rpcInput || !horizonInput || !passphraseInput) return null;
+  return {
+    rpcUrl: rpcInput.value.trim(),
+    horizonUrl: horizonInput.value.trim(),
+    networkPassphrase: passphraseInput.value.trim(),
+  };
+}
+
+function applyCurrentLocalNetworkConfig() {
+  if (network === 'LOCAL') {
+    updateNetwork('LOCAL');
+  }
+}
+
+function handleSaveLocalNetworkConfig() {
+  try {
+    const inputConfig = getLocalNetworkInputConfig();
+    if (!inputConfig) return;
+    if (!inputConfig.rpcUrl || !inputConfig.horizonUrl || !inputConfig.networkPassphrase) {
+      throw new Error('RPC URL, Horizon URL, and network passphrase are required.');
+    }
+    validateNetworkUrl(inputConfig.rpcUrl, 'RPC URL');
+    validateNetworkUrl(inputConfig.horizonUrl, 'Horizon URL');
+    saveLocalNetworkConfig(inputConfig);
+    setLocalNetworkInputs(localNetworkConfig);
+    applyCurrentLocalNetworkConfig();
+    setLocalNetworkStatus('Local/custom network configuration saved.');
+  } catch (error) {
+    setLocalNetworkStatus(error.message || 'Failed to save local network configuration.', true);
+  }
+}
+
+function handleResetLocalNetworkConfig() {
+  saveLocalNetworkConfig(DEFAULT_LOCAL_NETWORK_CONFIG);
+  setLocalNetworkInputs(localNetworkConfig);
+  applyCurrentLocalNetworkConfig();
+  setLocalNetworkStatus('Local/custom network configuration reset to defaults.');
+}
+
 function handleShareLink() {
   const input = document.getElementById('share-url-input');
   if (!input) return;
@@ -2148,6 +2356,7 @@ document.querySelectorAll('.wallet-generate').forEach(button => {
     await Promise.allSettled([
       fundAddressOnNetwork(publicKey, 'TESTNET'),
       fundAddressOnNetwork(publicKey, 'FUTURENET'),
+      fundAddressOnNetwork(publicKey, 'LOCAL'),
     ]);
   });
 });
@@ -2186,6 +2395,7 @@ document.querySelectorAll('.wallet-fund').forEach(button => {
     await Promise.allSettled([
       fundAddressOnNetwork(publicKey, 'TESTNET'),
       fundAddressOnNetwork(publicKey, 'FUTURENET'),
+      fundAddressOnNetwork(publicKey, 'LOCAL'),
     ]);
   });
 });
@@ -2259,7 +2469,7 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
     }
     const wasmBuffer = new Uint8Array(await file.arrayBuffer());
     try {
-      const sourceAccount = await horizon.loadAccount(publicKey);
+      const sourceAccount = await loadSourceAccount(publicKey);
       const op = StellarSdk.Operation.uploadContractWasm({ wasm: wasmBuffer });
       const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
         fee: StellarSdk.BASE_FEE,
@@ -2333,7 +2543,7 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
           );
         document.getElementById('deploy-console').innerHTML += `Contract Deployed!<br />
         Contract ID: ${contractAddress}<br />
-        Block Explorer: <a href="https://stellar.expert/explorer/${network.toLowerCase()}/contract/${contractAddress}" target="_blank">Stellar.Expert</a><br />
+        ${contractExplorerMarkup(contractAddress)}
         SoroPG Explorer: <a href="#" onclick="loadContract('${contractAddress}'); return false;">Load Contract</a><br />`;
         } else {
           document.getElementById('deploy-console').innerHTML += 'Transaction 2/2 failed.<br />';
@@ -2417,6 +2627,21 @@ async function init() {
       setShareStatus('');
     });
   }
+  setLocalNetworkInputs(localNetworkConfig);
+  const saveLocalNetworkConfigButton = document.getElementById('save-local-network-config');
+  if (saveLocalNetworkConfigButton) {
+    saveLocalNetworkConfigButton.addEventListener('click', () => handleSaveLocalNetworkConfig());
+  }
+  const resetLocalNetworkConfigButton = document.getElementById('reset-local-network-config');
+  if (resetLocalNetworkConfigButton) {
+    resetLocalNetworkConfigButton.addEventListener('click', () => handleResetLocalNetworkConfig());
+  }
+  ['local-network-rpc-url', 'local-network-horizon-url', 'local-network-passphrase'].forEach((id) => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener('input', () => setLocalNetworkStatus(''));
+    }
+  });
   document.getElementById('run-tests').onclick = () => runTests();
   document.getElementById('compile-code').onclick = () => compileCode();
 

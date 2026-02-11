@@ -70,12 +70,6 @@ cargo build --release
 cargo build --release; ./target/release/Soroban-Playground --port 3003
 ```
 
-## Local oneliner
-
-```bash
-cargo build --release; sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground; ./target/release/Soroban-Playground
-```
-
 ## Production
 Additional steps to run it up on a remote server
 
@@ -173,6 +167,12 @@ git fetch --tags
 git checkout v14.0.0-rc.3
 npm install --save @stellar/stellar-sdk
 npm run build:browser
+```
+
+## Running a local dev environment with stellar/quickstart
+```bash
+sudo dockerd
+docker run -i -p 8000:8000 stellar/quickstart --local --limits unlimited --enable core,rpc,lab,horizon,friendbot
 ```
 
 ## 2 do

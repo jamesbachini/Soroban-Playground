@@ -471,6 +471,28 @@ select option {
   margin-right: 0;
 }
 
+.settings-controls.settings-controls-stacked {
+  align-items: stretch;
+  gap: 8px;
+}
+
+.settings-controls.settings-controls-stacked label {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.settings-controls.settings-controls-stacked input[type="text"] {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
 .settings-status {
   margin-top: 8px;
   font-size: 12px;
