@@ -936,13 +936,13 @@ function renderContractForm(contractId, interfaceString, divId = 'explore-form')
           const hash = response.hash;
           if (response.status === 'ERROR') {
             console.error('Transaction rejected', response);
-            consoleDiv.innerHTML = `<pre style="color:red;">Transaction rejected by RPC. Check console for details.</pre>`;
+            renderMethodConsoleError(consoleDiv, 'Transaction rejected by RPC. Check console for details.');
             return;
           }
           await pollTransactionResult(hash, methodName, consoleDiv, null);
         }
       } catch (err) {
-        consoleDiv.innerHTML = `<pre style="color:red;">${err.message || err}</pre>`;
+        renderMethodConsoleError(consoleDiv, err?.message || err);
         console.error(err);
       }
     });
@@ -1679,13 +1679,27 @@ function getExplorerBaseUrl() {
   return `https://stellar.expert/explorer/${network.toLowerCase()}`;
 }
 
-function txExplorerMarkup(hash, className = '') {
+function createTxExplorerNode(hash, className = '') {
   const explorerBase = getExplorerBaseUrl();
   if (!explorerBase) {
-    return `<code>${hash}</code>`;
+    const code = document.createElement('code');
+    code.textContent = hash;
+    return code;
   }
-  const classAttr = className ? ` class="${className}"` : '';
-  return `<a${classAttr} href="${explorerBase}/tx/${hash}" target="_blank">${hash}</a>`;
+  const link = document.createElement('a');
+  if (className) link.className = className;
+  link.href = `${explorerBase}/tx/${hash}`;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = hash;
+  return link;
+}
+
+function renderMethodConsoleError(consoleDiv, error) {
+  const pre = document.createElement('pre');
+  pre.style.color = 'red';
+  pre.textContent = String(error || 'Unknown error');
+  consoleDiv.replaceChildren(pre);
 }
 
 function contractExplorerMarkup(contractAddress) {
@@ -1697,9 +1711,9 @@ function contractExplorerMarkup(contractAddress) {
 }
 
 async function pollTransactionResult(hash, methodName, consoleDiv, spec) {
-  consoleDiv.innerHTML =
-    `<div>Transaction Submitted (PENDING). Waiting for confirmation...</div>` +
-    txExplorerMarkup(hash);
+  const pending = document.createElement('div');
+  pending.textContent = 'Transaction Submitted (PENDING). Waiting for confirmation...';
+  consoleDiv.replaceChildren(pending, createTxExplorerNode(hash));
   while (true) {
     const tx = await rpc.getTransaction(hash);
     if (tx.status === 'NOT_FOUND') {
@@ -1707,24 +1721,29 @@ async function pollTransactionResult(hash, methodName, consoleDiv, spec) {
       continue;
     }
     if (tx.status === 'FAILED') {
-      consoleDiv.innerHTML =
-        `<div style="color:red;">Transaction FAILED.</div>` +
-        txExplorerMarkup(hash);
+      const failed = document.createElement('div');
+      failed.style.color = 'red';
+      failed.textContent = 'Transaction FAILED.';
+      consoleDiv.replaceChildren(failed, createTxExplorerNode(hash));
       return;
     }
     if (tx.status === 'SUCCESS') {
       const outputs = formatReturnValues(methodName, tx.returnValue, spec);
+      const success = document.createElement('div');
+      success.textContent = 'Success TX: ';
+      success.appendChild(createTxExplorerNode(hash, 'tx-hash-link'));
       if (outputs !== null) {
         const pre = document.createElement('pre');
         pre.textContent = outputs.join('\n');
-        consoleDiv.innerHTML =
-          `<div>Success TX: ${txExplorerMarkup(hash, 'tx-hash-link')}</div>` +
-          `<div class="tx-output-label">Output:</div>`;
-        consoleDiv.appendChild(pre);
+        const label = document.createElement('div');
+        label.className = 'tx-output-label';
+        label.textContent = 'Output:';
+        consoleDiv.replaceChildren(success, label, pre);
       } else {
-        consoleDiv.innerHTML =
-          `<div>Success TX: ${txExplorerMarkup(hash, 'tx-hash-link')}</div>` +
-          `<div class="tx-output-label">Output: No return value.</div>`;
+        const label = document.createElement('div');
+        label.className = 'tx-output-label';
+        label.textContent = 'Output: No return value.';
+        consoleDiv.replaceChildren(success, label);
       }
       return;
     }
@@ -1884,13 +1903,13 @@ function renderContractFormFromSpec(contractId, spec, divId = 'explore-form') {
           const hash = response.hash;
           if (response.status === 'ERROR') {
             console.error('Transaction rejected', response);
-            consoleDiv.innerHTML = `<pre style="color:red;">Transaction rejected by RPC. Check console for details.</pre>`;
+            renderMethodConsoleError(consoleDiv, 'Transaction rejected by RPC. Check console for details.');
             return;
           }
           await pollTransactionResult(hash, methodName, consoleDiv, spec);
         }
       } catch (err) {
-        consoleDiv.innerHTML = `<pre style="color:red;">${err.message || err}</pre>`;
+        renderMethodConsoleError(consoleDiv, err?.message || err);
         console.error(err);
       }
     });
