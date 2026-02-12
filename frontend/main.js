@@ -14,6 +14,9 @@ const friendbotUrls = {
   FUTURENET: 'https://friendbot-futurenet.stellar.org',
 };
 const LOCAL_NETWORK_CONFIG_KEY = 'local-network-config';
+const SELECTED_NETWORK_KEY = 'selected-network';
+const LEGACY_EXPLORE_NETWORK_KEY = 'last-explore-network';
+const SUPPORTED_NETWORKS = new Set(['TESTNET', 'LOCAL', 'FUTURENET', 'PUBLIC']);
 const DEFAULT_LOCAL_NETWORK_CONFIG = Object.freeze({
   rpcUrl: 'http://localhost:8000/rpc',
   horizonUrl: 'http://localhost:8000',
@@ -1920,7 +1923,7 @@ async function loadContract(contractId) {
   document.getElementById('explore-contract-id').value = contractId;
   // Save to local storage
   localStorage.setItem('last-contract-id', contractId);
-  localStorage.setItem('last-explore-network', network);
+  persistNetworkSelection(network);
   try {
     exploreForm.innerText = 'Loading contract interface...';
     if (network === 'LOCAL') {
@@ -1999,8 +2002,37 @@ function shouldAllowHttp(url) {
   }
 }
 
+function normalizeNetworkSelection(value) {
+  return SUPPORTED_NETWORKS.has(value) ? value : 'TESTNET';
+}
+
+function getStoredNetworkSelection() {
+  const stored = localStorage.getItem(SELECTED_NETWORK_KEY) || localStorage.getItem(LEGACY_EXPLORE_NETWORK_KEY);
+  return normalizeNetworkSelection(stored);
+}
+
+function persistNetworkSelection(value) {
+  const selected = normalizeNetworkSelection(value);
+  localStorage.setItem(SELECTED_NETWORK_KEY, selected);
+  // Keep writing the legacy key so existing behavior relying on it does not break.
+  localStorage.setItem(LEGACY_EXPLORE_NETWORK_KEY, selected);
+  return selected;
+}
+
+function syncNetworkSelectors(value) {
+  const selected = normalizeNetworkSelection(value);
+  const deploySelect = document.getElementById('deploy-network');
+  const exploreSelect = document.getElementById('explore-network');
+  if (deploySelect && deploySelect.value !== selected) {
+    deploySelect.value = selected;
+  }
+  if (exploreSelect && exploreSelect.value !== selected) {
+    exploreSelect.value = selected;
+  }
+}
+
 function updateNetwork(value) {
-  network = value;
+  network = normalizeNetworkSelection(value);
   if (network === 'TESTNET') {
     rpcUrl = 'https://soroban-testnet.stellar.org';
     horizonUrl = 'https://horizon-testnet.stellar.org';
@@ -2021,6 +2053,22 @@ function updateNetwork(value) {
   }
   rpc = new StellarSdk.rpc.Server(rpcUrl, { allowHttp: shouldAllowHttp(rpcUrl) });
   horizon = new StellarSdk.Horizon.Server(horizonUrl, { allowHttp: shouldAllowHttp(horizonUrl) });
+}
+
+function setActiveNetwork(value, options = {}) {
+  const { persist = true, logToDeployConsole = false } = options;
+  const selected = normalizeNetworkSelection(value);
+  syncNetworkSelectors(selected);
+  updateNetwork(selected);
+  if (persist) {
+    persistNetworkSelection(selected);
+  }
+  if (logToDeployConsole) {
+    const deployConsole = document.getElementById('deploy-console');
+    if (deployConsole) {
+      deployConsole.innerHTML += `Network switched to ${network}<br />`;
+    }
+  }
 }
 
 async function loadSourceAccount(address) {
@@ -2204,14 +2252,12 @@ document.getElementById('add-arg-btn').addEventListener('click', () => {
   argsContainer.appendChild(createArgRow());
 });
 
-updateNetwork(document.getElementById('deploy-network').value);
+setActiveNetwork(getStoredNetworkSelection(), { persist: true });
 document.getElementById('deploy-network').addEventListener('change', (e) => {
-  updateNetwork(e.target.value);
-  document.getElementById('deploy-console').innerHTML += `Network switched to ${network}<br />`;
+  setActiveNetwork(e.target.value, { persist: true, logToDeployConsole: true });
 });
 document.getElementById('explore-network').addEventListener('change', (e) => {
-  updateNetwork(e.target.value);
-  localStorage.setItem('last-explore-network', network);
+  setActiveNetwork(e.target.value, { persist: true });
 });
 
 function setShareStatus(message, isError = false) {
@@ -2590,10 +2636,7 @@ async function init() {
   if (lastContractId) {
     document.getElementById('explore-contract-id').value = lastContractId;
   }
-  const lastExploreNetwork = localStorage.getItem('last-explore-network');
-  if (lastExploreNetwork) {
-    document.getElementById('explore-network').value = lastExploreNetwork;
-  }
+  setActiveNetwork(getStoredNetworkSelection(), { persist: false });
 
   const urlParams = new URLSearchParams(window.location.search);
   const codeUrl = urlParams.get("codeUrl");
