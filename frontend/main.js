@@ -1055,9 +1055,9 @@ function specTypeHint(typeDef, spec, depth = 0) {
     case 'scSpecTypeMuxedAddress':
       return '"M..."';
     case 'scSpecTypeBytes':
-      return '"0xdeadbeef"';
+      return '"ABC..123"';
     case 'scSpecTypeBytesN':
-      return `"0x${'00'.repeat(typeDef.bytesN().n())}"`;
+      return `"${'00'.repeat(typeDef.bytesN().n())}"`;
     case 'scSpecTypeTimepoint':
       return '"1700000000"';
     case 'scSpecTypeDuration':
