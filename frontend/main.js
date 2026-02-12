@@ -1605,8 +1605,13 @@ function parseInputValue(raw, typeDef, spec) {
 }
 
 function safeSerialize(value) {
-  return JSON.parse(JSON.stringify(value, (key, val) => {
-    if (typeof val === 'bigint') return val.toString();
+  const seen = new WeakSet();
+  const json = JSON.stringify(value, (key, val) => {
+    if (typeof val === "bigint") return val.toString();
+    if (val && typeof val === "object") {
+      if (seen.has(val)) return "[Circular]";
+      seen.add(val);
+    }
     if (val instanceof Uint8Array) return Array.from(val);
     if (val instanceof Map) return Object.fromEntries(val.entries());
     if (val instanceof StellarSdk.contract.Ok) {
@@ -1616,7 +1621,8 @@ function safeSerialize(value) {
       return { err: val.error ?? val };
     }
     return val;
-  }));
+  });
+  return JSON.parse(json);
 }
 
 function sleep(ms) {
