@@ -2059,11 +2059,12 @@ async function fundAddressOnNetwork(pubKey, networkName) {
   let friendbotUrl = friendbotUrls[networkName];
   if (networkName === 'LOCAL') {
     friendbotUrl = getLocalFriendbotUrlFromConfig();
-    const params = new URLSearchParams({ addr: pubKey });
-    if (friendbotUrl) {
-      params.set('friendbot_url', friendbotUrl);
+    if (!friendbotUrl) {
+      throw new Error('Local friendbot URL is not configured. Check Local/Custom settings.');
     }
-    const response = await fetch(`/friendbot?${params.toString()}`);
+    const separator = friendbotUrl.includes('?') ? '&' : '?';
+    const url = `${friendbotUrl}${separator}addr=${encodeURIComponent(pubKey)}`;
+    const response = await fetch(url);
     if (!response.ok) {
       const details = await response.text().catch(() => '');
       throw new Error(`Failed to fund LOCAL account, status ${response.status}${details ? `: ${details}` : ''}`);

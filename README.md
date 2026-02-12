@@ -135,7 +135,7 @@ sudo reboot
 "cannot execute binary file: Exec format error"
 
 ```bash
-cargo clean 
+cargo clean
 cargo build --release
 sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 ```
