@@ -737,7 +737,10 @@ h1 {
 }
 
 .method-box {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  max-width: 100%;
   border: 1px solid #2a2d36;
   border-radius: 12px;
   margin-bottom: 8px;
@@ -747,7 +750,8 @@ h1 {
 }
 
 .method-left, .method-right {
-  width: 50%;
+  width: auto;
+  max-width: 100%;
   min-width: 0;
   padding: 8px 12px;
 }
@@ -772,15 +776,30 @@ h1 {
   height: auto;
   overflow-y: auto;
   overflow-x: auto;
-  word-wrap: break-word;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .method-right .console pre {
   white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   margin: 0;
   max-width: 100%;
+}
+
+.method-right .console a,
+.method-right .console code,
+.method-right .console div {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.method-right .console a,
+.method-right .console code {
+  white-space: normal;
 }
 
 .arg-row {
@@ -945,6 +964,15 @@ h1 {
 }
 
 @media (max-width: 900px) {
+  .method-box {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .method-left {
+    border-right: none;
+    border-bottom: 1px solid #2a2d36;
+  }
+
   .method-compact .method-left h3 {
     min-width: 140px;
     flex-basis: 140px;
