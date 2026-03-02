@@ -22,7 +22,7 @@ RUN rustup target add wasm32-unknown-unknown
 
 # Libdbus fix / needed if not using wasm32v1-none?
 RUN apt-get update
-RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev
+RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev clang lld
 
 # Install stellar cli
 RUN cargo install --locked stellar-cli
@@ -40,8 +40,8 @@ COPY frontend/templates/test.rs ./src/test.rs
 # Prerun cargo commands
 RUN cargo fetch
 RUN cargo test
-# Prewarm scout artifacts using lower-memory settings to avoid detector-helper stalls/OOMs.
-RUN CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 RUSTFLAGS="-C debuginfo=0" cargo scout-audit --debug -v
+# Prewarm scout artifacts with faster linking and low-optimization release settings.
+RUN CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256 RUSTFLAGS="-C debuginfo=0 -C link-arg=-fuse-ld=lld" cargo scout-audit --debug -v
 RUN stellar contract build
 
 CMD ["bash"]
