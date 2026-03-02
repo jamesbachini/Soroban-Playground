@@ -31,8 +31,7 @@ RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 RUN CARGO_BUILD_JOBS=2 cargo install --locked --debug cargo-scout-audit
 RUN install -m 0755 /mnt/cargo/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit
 RUN set -eux; \
-    SCOUT_VER="$(cargo-scout-audit --version | awk '{print $2}')"; \
-    git clone --depth 1 --branch "release/${SCOUT_VER}" https://github.com/CoinFabrik/scout-audit.git /opt/scout-audit; \
+    git clone --depth 1 https://github.com/CoinFabrik/scout-audit.git /opt/scout-audit; \
     cd /opt/scout-audit/apps/cargo-scout-audit/crates/scout-driver; \
     CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256 RUSTFLAGS="-C debuginfo=0 -C link-arg=-fuse-ld=lld" cargo +nightly-2025-08-07 build --release --bin detector-helper
 RUN mv /usr/local/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit-bin \
