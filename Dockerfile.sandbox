@@ -22,7 +22,7 @@ RUN rustup target add wasm32-unknown-unknown
 
 # Libdbus fix / needed if not using wasm32v1-none?
 RUN apt-get update
-RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev clang lld
+RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev clang lld git
 
 # Install stellar cli
 RUN cargo install --locked stellar-cli
@@ -30,6 +30,14 @@ RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 # Keep scout installation in image build, but use debug profile to avoid very slow release builds.
 RUN CARGO_BUILD_JOBS=2 cargo install --locked --debug cargo-scout-audit
 RUN install -m 0755 /mnt/cargo/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit
+RUN set -eux; \
+    SCOUT_VER="$(cargo-scout-audit --version | awk '{print $2}')"; \
+    git clone --depth 1 --branch "release/${SCOUT_VER}" https://github.com/CoinFabrik/scout-audit.git /opt/scout-audit; \
+    cd /opt/scout-audit/apps/cargo-scout-audit/crates/scout-driver; \
+    CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256 RUSTFLAGS="-C debuginfo=0 -C link-arg=-fuse-ld=lld" cargo +nightly-2025-08-07 build --release --bin detector-helper
+RUN mv /usr/local/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit-bin \
+    && printf '%s\n' '#!/bin/sh' 'exec /usr/local/bin/cargo-scout-audit-bin "$@" --scout-source /opt/scout-audit' > /usr/local/bin/cargo-scout-audit \
+    && chmod +x /usr/local/bin/cargo-scout-audit
 
 # Copy Cargo.toml and lib.rs templates
 RUN mkdir src
@@ -40,8 +48,8 @@ COPY frontend/templates/test.rs ./src/test.rs
 # Prerun cargo commands
 RUN cargo fetch
 RUN cargo test
-# Prewarm scout artifacts with faster linking and low-optimization release settings.
-RUN CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256 RUSTFLAGS="-C debuginfo=0 -C link-arg=-fuse-ld=lld" cargo scout-audit --debug -v
+# Optional prewarm disabled: this can take a long time on low-resource hosts.
+# RUN CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256 RUSTFLAGS="-C debuginfo=0 -C link-arg=-fuse-ld=lld" cargo scout-audit --debug -v
 RUN stellar contract build
 
 CMD ["bash"]
