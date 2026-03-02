@@ -28,7 +28,7 @@ RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libud
 RUN cargo install --locked stellar-cli
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 # Keep scout installation in image build, but use debug profile to avoid very slow release builds.
-RUN CARGO_BUILD_JOBS=2 cargo install --locked --debug --features docker_container cargo-scout-audit
+RUN CARGO_BUILD_JOBS=2 cargo install --locked --debug cargo-scout-audit
 RUN install -m 0755 /mnt/cargo/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit
 
 # Copy Cargo.toml and lib.rs templates
