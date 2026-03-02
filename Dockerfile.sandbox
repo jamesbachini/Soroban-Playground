@@ -40,7 +40,8 @@ COPY frontend/templates/test.rs ./src/test.rs
 # Prerun cargo commands
 RUN cargo fetch
 RUN cargo test
-RUN cargo scout-audit
+# Prewarm scout artifacts using lower-memory settings to avoid detector-helper stalls/OOMs.
+RUN CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 RUSTFLAGS="-C debuginfo=0" cargo scout-audit --debug -v
 RUN stellar contract build
 
 CMD ["bash"]
