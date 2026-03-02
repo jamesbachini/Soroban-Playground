@@ -22,21 +22,14 @@ RUN rustup target add wasm32-unknown-unknown
 
 # Libdbus fix / needed if not using wasm32v1-none?
 RUN apt-get update
-RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev clang lld git
+RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev
 
 # Install stellar cli
 RUN cargo install --locked stellar-cli
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
-# Keep scout installation in image build, but use debug profile to avoid very slow release builds.
-RUN CARGO_BUILD_JOBS=2 cargo install --locked --debug cargo-scout-audit
+# Install scout in the image. Do not prebuild detectors/helper here: that step can hang for a long time.
+RUN CARGO_BUILD_JOBS=2 cargo install --locked --debug cargo-scout-audit --version 0.3.16
 RUN install -m 0755 /mnt/cargo/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit
-RUN set -eux; \
-    git clone --depth 1 https://github.com/CoinFabrik/scout-audit.git /opt/scout-audit; \
-    cd /opt/scout-audit/apps/cargo-scout-audit/crates/scout-driver; \
-    CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256 RUSTFLAGS="-C debuginfo=0 -C link-arg=-fuse-ld=lld" cargo +nightly-2025-08-07 build --release --bin detector-helper
-RUN mv /usr/local/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit-bin \
-    && printf '%s\n' '#!/bin/sh' 'exec /usr/local/bin/cargo-scout-audit-bin "$@" --scout-source /opt/scout-audit' > /usr/local/bin/cargo-scout-audit \
-    && chmod +x /usr/local/bin/cargo-scout-audit
 
 # Copy Cargo.toml and lib.rs templates
 RUN mkdir src
