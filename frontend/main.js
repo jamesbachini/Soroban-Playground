@@ -741,11 +741,51 @@ async function compileCode() {
 }
 
 async function runTests() {
-  const testButton = document.getElementById('run-tests');
-  testButton.disabled = true;
-  scrollButtonToPanelTop(testButton);
+  await runTestPanelCommand({
+    buttonId: 'run-tests',
+    endpoint: '/test',
+    startStatus: 'Running tests... (This may take a minute or two)',
+    runningPrefix: 'Running tests...',
+    errorMarker: 'Test Errors:',
+    successStatus: 'Tests completed',
+    errorStatus: 'Errors in tests'
+  });
+}
 
-  // Save current file content and get all files
+async function runScoutAudit() {
+  await runTestPanelCommand({
+    buttonId: 'scout-audit',
+    endpoint: '/scout-audit',
+    startStatus: 'Running Scout audit... (This may take a minute or two)',
+    runningPrefix: 'Running Scout audit...',
+    errorMarker: 'Scout Audit Errors:',
+    successStatus: 'Scout audit completed',
+    errorStatus: 'Scout audit reported issues'
+  });
+}
+
+function setTestActionButtonsDisabled(disabled) {
+  ['run-tests', 'scout-audit'].forEach((id) => {
+    const button = document.getElementById(id);
+    if (button) {
+      button.disabled = disabled;
+    }
+  });
+}
+
+async function runTestPanelCommand({
+  buttonId,
+  endpoint,
+  startStatus,
+  runningPrefix,
+  errorMarker,
+  successStatus,
+  errorStatus
+}) {
+  const activeButton = document.getElementById(buttonId);
+  setTestActionButtonsDisabled(true);
+  scrollButtonToPanelTop(activeButton);
+
   saveCurrentFile();
   const allFiles = { ...files };
 
@@ -753,28 +793,30 @@ async function runTests() {
   const consoleEl = document.getElementById('test-console');
   consoleEl.innerText = '';
   consoleEl.style.display = 'block';
-  statusEl.innerText = 'Running tests... (This may take a minute or two)';
+  statusEl.innerText = startStatus;
   const interval = setInterval(() => {
     const msgIndex = Math.floor(Math.random() * funnyMessages.length);
-    document.getElementById('test-status').innerText = 'Running tests... '+funnyMessages[msgIndex];
+    statusEl.innerText = `${runningPrefix} ${funnyMessages[msgIndex]}`;
   }, 3000);
+
   try {
-    const response = await fetch('/test', {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: allFiles })
     });
+
     if (!response.ok) {
       const resultText = await response.text();
       appendConsoleText(consoleEl, resultText);
-      statusEl.innerText = 'Errors in tests';
+      statusEl.innerText = errorStatus;
       return;
     }
 
     if (!response.body) {
       const resultText = await response.text();
       appendConsoleText(consoleEl, resultText);
-      statusEl.innerText = 'Errors in tests';
+      statusEl.innerText = errorStatus;
       return;
     }
 
@@ -786,22 +828,24 @@ async function runTests() {
       const { value, done } = await reader.read();
       if (done) break;
       const chunk = decoder.decode(value, { stream: true });
-      if (chunk.includes('Test Errors:')) hasErrors = true;
+      if (chunk.includes(errorMarker)) hasErrors = true;
       appendConsoleText(consoleEl, chunk);
     }
+
     const tail = decoder.decode();
     if (tail) {
-      if (tail.includes('Test Errors:')) hasErrors = true;
+      if (tail.includes(errorMarker)) hasErrors = true;
       appendConsoleText(consoleEl, tail);
     }
 
-    statusEl.innerText = hasErrors ? 'Errors in tests' : 'Tests completed';
+    statusEl.innerText = hasErrors ? errorStatus : successStatus;
   } catch (err) {
     statusEl.innerText = `Network error: ${err.message}`;
     console.error(err);
+  } finally {
+    clearInterval(interval);
+    setTestActionButtonsDisabled(false);
   }
-  testButton.disabled = false;
-  clearInterval(interval);
 }
 
 function renderContractForm(contractId, interfaceString, divId = 'explore-form') {
@@ -2712,6 +2756,7 @@ async function init() {
     }
   });
   document.getElementById('run-tests').onclick = () => runTests();
+  document.getElementById('scout-audit').onclick = () => runScoutAudit();
   document.getElementById('compile-code').onclick = () => compileCode();
 
   const resizer = document.getElementById("resizer");

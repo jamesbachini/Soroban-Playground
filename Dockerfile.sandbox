@@ -23,6 +23,8 @@ RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libud
 # Install stellar cli
 RUN cargo install --locked stellar-cli
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
+RUN cargo install cargo-scout-audit
+RUN install -m 0755 /mnt/cargo/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit
 
 # Copy Cargo.toml and lib.rs templates
 RUN mkdir src
@@ -32,6 +34,7 @@ COPY frontend/templates/test.rs ./src/test.rs
 
 # Prerun cargo commands
 RUN cargo fetch
+RUN cargo scout-audit || true
 RUN cargo test
 RUN stellar contract build
 

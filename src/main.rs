@@ -51,6 +51,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(routes::compile::compile)
             .service(routes::test::test)
+            .service(routes::scout_audit::scout_audit)
             .service(routes::interface::interface)
             .service(routes::friendbot::friendbot)
             .service(Files::new("/", "./frontend").index_file("index.html"))

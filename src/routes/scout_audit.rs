@@ -1,0 +1,73 @@
+use actix_web::{post, web, HttpResponse, Responder};
+use bytes::Bytes;
+use futures_util::StreamExt;
+use std::time::Duration;
+use tokio::{sync::mpsc, time};
+use tokio_stream::wrappers::UnboundedReceiverStream;
+
+use crate::{docker::run_in_docker_with_files_and_id_stream, models::CompileRequest, semaphore::SEMAPHORE};
+
+#[post("/scout-audit")]
+pub async fn scout_audit(req: web::Json<CompileRequest>) -> impl Responder {
+    println!("Running scout audit");
+
+    let permit = match SEMAPHORE.acquire().await {
+        Ok(p) => p,
+        Err(_) => {
+            return HttpResponse::ServiceUnavailable().body("Server shutting down");
+        }
+    };
+
+    let (tx, rx) = mpsc::unbounded_channel::<Bytes>();
+
+    let code = match &req.code {
+        Some(c) => c.clone(),
+        None => match &req.files {
+            Some(files_map) => match files_map.get("lib.rs") {
+                Some(lib_rs_code) => lib_rs_code.clone(),
+                None => return HttpResponse::BadRequest().body("No code provided and no lib.rs file found"),
+            },
+            None => return HttpResponse::BadRequest().body("No code or files provided"),
+        },
+    };
+
+    let files = req.files.clone();
+
+    tokio::spawn(async move {
+        let _permit = permit;
+        let mut heartbeat = time::interval(Duration::from_secs(25));
+
+        let scout_fut = run_in_docker_with_files_and_id_stream(
+            code,
+            files,
+            "cargo scout-audit",
+            None,
+            tx.clone(),
+        );
+        tokio::pin!(scout_fut);
+
+        loop {
+            tokio::select! {
+                _ = heartbeat.tick() => {
+                    if tx.send(Bytes::from_static(b" ")).is_err() { break; }
+                }
+                res = &mut scout_fut => {
+                    match res {
+                        Ok((_tmp, _output_filename)) => {}
+                        Err(e) => {
+                            let msg = format!("Scout Audit Errors: \n{}\n", e);
+                            let _ = tx.send(Bytes::from(msg));
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    });
+
+    let stream = UnboundedReceiverStream::new(rx).map(|bytes| Ok::<Bytes, actix_web::Error>(bytes));
+
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .streaming(stream)
+}
