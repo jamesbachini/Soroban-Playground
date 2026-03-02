@@ -4,9 +4,13 @@ FROM rustlang/rust:nightly
 # Set build cache location
 ENV CARGO_HOME=/mnt/cargo
 ENV CARGO_TARGET_DIR=/mnt/cargo/target
+ENV PATH=/mnt/cargo/bin:/usr/local/cargo/bin:${PATH}
 
 # Create workspace
 WORKDIR /workspace
+
+# rustup must be reachable from CARGO_HOME/bin when CARGO_HOME is overridden.
+RUN mkdir -p /mnt/cargo/bin && ln -sf /usr/local/cargo/bin/rustup /mnt/cargo/bin/rustup
 
 # Ensure nightly is set as default
 RUN rustup default nightly

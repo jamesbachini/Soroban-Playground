@@ -12,6 +12,14 @@ struct PreparedDockerRun {
     target_dir: String,
 }
 
+fn with_rustup_bootstrap(command: &str, trace: bool) -> String {
+    let set_flags = if trace { "set -ex" } else { "set -e" };
+    format!(
+        "{}; mkdir -p /mnt/cargo/bin; [ -x /mnt/cargo/bin/rustup ] || ln -sf /usr/local/cargo/bin/rustup /mnt/cargo/bin/rustup; export PATH=/mnt/cargo/bin:$PATH; {}",
+        set_flags, command
+    )
+}
+
 fn is_safe_filename(filename: &str) -> bool {
     // Only allow alphanumeric, underscore, dash, and dot
     // Must not start with dot or dash
@@ -201,20 +209,23 @@ fn prepare_docker_run(
         )
     };
 
-    let mut final_command = format!("cd /workspace/project && {}", command);
+    let mut final_command = with_rustup_bootstrap(
+        &format!("cd /workspace/project && {}", command),
+        false,
+    );
     if command.contains("build") {
         // Cargo produces WASM files with snake_case names, even if the package name is CamelCase
         let wasm_filename = to_snake_case(&contract_name);
         eprintln!("Looking for WASM file: {}.wasm", wasm_filename);
         eprintln!("Target directory: {}", target_dir);
-        final_command = format!(
-            "set -ex; cd /workspace/project && {} && ls -la {}/wasm32v1-none/release/*.wasm && cp {}/wasm32v1-none/release/{}.wasm /host-tmp/{}",
+        final_command = with_rustup_bootstrap(&format!(
+            "cd /workspace/project && {} && ls -la {}/wasm32v1-none/release/*.wasm && cp {}/wasm32v1-none/release/{}.wasm /host-tmp/{}",
             command,
             target_dir,
             target_dir,
             wasm_filename,
             output_filename
-        )
+        ), true)
     }
 
     Ok(PreparedDockerRun {
@@ -227,6 +238,7 @@ fn prepare_docker_run(
 
 pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir), String> {
     let tmp = TempDir::new().map_err(|e| e.to_string())?;
+    let final_command = with_rustup_bootstrap(command, false);
 
     let output = tokio::process::Command::new("docker")
         .args(&[
@@ -235,7 +247,7 @@ pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir),
             "-v", "cargo-cache:/mnt/cargo",
             "-e", "CARGO_HOME=/mnt/cargo",
             "wasm_sandbox:latest", "bash", "-c",
-            command
+            &final_command
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
