@@ -42,9 +42,14 @@ RUN test -d /scout-audit/nightly/2025-08-07/detectors/soroban
 RUN set -eux; \
     cd /scout-audit/apps/cargo-scout-audit/crates/scout-driver; \
     CARGO_BUILD_JOBS=2 cargo +nightly-2025-08-07 build --bin scout-driver --bin detector-helper; \
+    mkdir -p /opt/scout-prebuilt; \
+    cp -f /mnt/cargo/target/debug/scout-driver /opt/scout-prebuilt/scout-driver; \
+    cp -f /mnt/cargo/target/debug/detector-helper /opt/scout-prebuilt/detector-helper; \
     mkdir -p /mnt/cargo/target/release; \
     cp -f /mnt/cargo/target/debug/scout-driver /mnt/cargo/target/release/scout-driver; \
     cp -f /mnt/cargo/target/debug/detector-helper /mnt/cargo/target/release/detector-helper; \
+    test -x /opt/scout-prebuilt/scout-driver; \
+    test -x /opt/scout-prebuilt/detector-helper; \
     test -x /mnt/cargo/target/release/scout-driver; \
     test -x /mnt/cargo/target/release/detector-helper
 

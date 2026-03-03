@@ -15,7 +15,7 @@ struct PreparedDockerRun {
 fn with_rustup_bootstrap(command: &str, trace: bool) -> String {
     let set_flags = if trace { "set -ex" } else { "set -e" };
     format!(
-        "{}; mkdir -p /mnt/cargo/bin; [ -x /mnt/cargo/bin/rustup ] || ln -sf /usr/local/cargo/bin/rustup /mnt/cargo/bin/rustup; export PATH=/mnt/cargo/bin:$PATH; {}",
+        "{}; mkdir -p /mnt/cargo/bin; [ -x /mnt/cargo/bin/rustup ] || ln -sf /usr/local/cargo/bin/rustup /mnt/cargo/bin/rustup; export PATH=/mnt/cargo/bin:$PATH; target_dir=\"$CARGO_TARGET_DIR\"; [ -n \"$target_dir\" ] || target_dir=/mnt/cargo/target; if [ -x /opt/scout-prebuilt/scout-driver ] && [ -x /opt/scout-prebuilt/detector-helper ]; then mkdir -p \"$target_dir/release\"; cp -f /opt/scout-prebuilt/scout-driver \"$target_dir/release/scout-driver\"; cp -f /opt/scout-prebuilt/detector-helper \"$target_dir/release/detector-helper\"; fi; {}",
         set_flags, command
     )
 }
