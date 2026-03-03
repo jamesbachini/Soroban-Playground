@@ -39,6 +39,14 @@ RUN CARGO_BUILD_JOBS=2 cargo install --locked --debug cargo-scout-audit --versio
 RUN install -m 0755 /mnt/cargo/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit
 RUN git clone --depth 1 --branch release/0.3.16 https://github.com/CoinFabrik/scout-audit.git /scout-audit
 RUN test -d /scout-audit/nightly/2025-08-07/detectors/soroban
+RUN set -eux; \
+    cd /scout-audit/apps/cargo-scout-audit/crates/scout-driver; \
+    CARGO_BUILD_JOBS=2 cargo +nightly-2025-08-07 build --bin scout-driver --bin detector-helper; \
+    mkdir -p /mnt/cargo/target/release; \
+    cp -f /mnt/cargo/target/debug/scout-driver /mnt/cargo/target/release/scout-driver; \
+    cp -f /mnt/cargo/target/debug/detector-helper /mnt/cargo/target/release/detector-helper; \
+    test -x /mnt/cargo/target/release/scout-driver; \
+    test -x /mnt/cargo/target/release/detector-helper
 
 # Copy Cargo.toml and lib.rs templates
 RUN mkdir src
