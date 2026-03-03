@@ -32,6 +32,19 @@ pub async fn scout_audit(req: web::Json<CompileRequest>) -> impl Responder {
     };
 
     let files = req.files.clone();
+    let build_hash = {
+        use sha2::{Digest, Sha256};
+        let mut h = Sha256::new();
+        if let Some(ref files_map) = req.files {
+            for (filename, content) in files_map.iter() {
+                h.update(filename.as_bytes());
+                h.update(content.as_bytes());
+            }
+        } else {
+            h.update(code.as_bytes());
+        }
+        hex::encode(h.finalize())
+    };
 
     tokio::spawn(async move {
         let _permit = permit;
@@ -40,8 +53,8 @@ pub async fn scout_audit(req: web::Json<CompileRequest>) -> impl Responder {
         let scout_fut = run_in_docker_with_files_and_id_stream(
             code,
             files,
-            "cargo scout-audit",
-            None,
+            "CARGO_BUILD_JOBS=1 cargo scout-audit --debug -v --scout-source /scout-audit --local-detectors /scout-audit/nightly",
+            Some(build_hash),
             tx.clone(),
         );
         tokio::pin!(scout_fut);

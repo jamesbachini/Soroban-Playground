@@ -12,6 +12,9 @@ WORKDIR /workspace
 # rustup must be reachable from CARGO_HOME/bin when CARGO_HOME is overridden.
 RUN mkdir -p /mnt/cargo/bin && ln -sf /usr/local/cargo/bin/rustup /mnt/cargo/bin/rustup
 
+# LLVM tooling
+RUN apt-get update && apt-get install -y clang lld
+
 # Ensure nightly is set as default
 RUN rustup default nightly
 RUN rustup override set nightly
@@ -22,14 +25,20 @@ RUN rustup target add wasm32-unknown-unknown
 
 # Libdbus fix / needed if not using wasm32v1-none?
 RUN apt-get update
-RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev
+RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libudev-dev git
+
+# Needed for rustc_private / rustc_driver (scout-audit)
+RUN rustup component add rustc-dev llvm-tools-preview
 
 # Install stellar cli
 RUN cargo install --locked stellar-cli
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
-# Install scout in the image. Do not prebuild detectors/helper here: that step can hang for a long time.
+
+# Install scout in the image.
 RUN CARGO_BUILD_JOBS=2 cargo install --locked --debug cargo-scout-audit --version 0.3.16
 RUN install -m 0755 /mnt/cargo/bin/cargo-scout-audit /usr/local/bin/cargo-scout-audit
+RUN git clone --depth 1 --branch release/0.3.16 https://github.com/CoinFabrik/scout-audit.git /scout-audit
+RUN test -d /scout-audit/nightly/2025-08-07/detectors/soroban
 
 # Copy Cargo.toml and lib.rs templates
 RUN mkdir src
@@ -40,8 +49,9 @@ COPY frontend/templates/test.rs ./src/test.rs
 # Prerun cargo commands
 RUN cargo fetch
 RUN cargo test
-# Optional prewarm disabled: this can take a long time on low-resource hosts.
-# RUN CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256 RUSTFLAGS="-C debuginfo=0 -C link-arg=-fuse-ld=lld" cargo scout-audit --debug -v
+# Scout sanity check without detector compilation.
+RUN cargo scout-audit --toolchain
+RUN CARGO_BUILD_JOBS=2 cargo scout-audit --debug -v --scout-source /scout-audit --local-detectors /scout-audit/nightly;
 RUN stellar contract build
 
 CMD ["bash"]
