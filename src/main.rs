@@ -4,7 +4,7 @@
 |-|          / | \    (/\|/\)   / | \         |-|
 | |---------/--|-voV---\>|</--Vov-|--\--------| |
 | |              '^'   (o o)  '^'             | |
-| |          Soroban Playground v0.7.6        | |
+| |          Soroban Playground v0.7.7        | |
 | |___________________________________________| |
 |-|   /   /\ /         ( (       \ /\   \     |-|
 (@)   | /   V           \ \       V   \ |     (@)
@@ -12,9 +12,9 @@
                         '\ /'
                           '
 */
-mod routes;
 mod docker;
 mod models;
+mod routes;
 mod semaphore;
 
 use actix_files::Files;

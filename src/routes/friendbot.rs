@@ -59,7 +59,8 @@ pub async fn friendbot(query: web::Query<FriendbotQuery>) -> impl Responder {
         }
     };
 
-    let status = StatusCode::from_u16(response.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+    let status =
+        StatusCode::from_u16(response.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
     let content_type = response
         .headers()
         .get(reqwest::header::CONTENT_TYPE)

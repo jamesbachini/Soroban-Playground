@@ -180,10 +180,13 @@ docker run -i -p 8000:8000 stellar/quickstart --local --limits unlimited --enabl
 ✅ Research safe way to edit cargo.toml - done v0.5.1
 ✅ Split contracts and tests - done v0.5.1
 ✅ Improve contract explorer - done v0.7.1
-- Export bindings
-- CustomGPT Chatbot integration
-- Rust linter
 ✅ More wallets supported - done v0.6.1
+✅ Workspaces for file directories & multiple projects - done v0.7.7
+- AI Integration
+- Examples & Lessons
+- Export bindings
+- Rust linter
+
 - History and undo system in localStorage
 
 ## License

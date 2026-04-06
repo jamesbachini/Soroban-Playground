@@ -1,11 +1,15 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use bytes::Bytes;
 use futures_util::StreamExt;
+use std::time::Duration;
 use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use std::time::Duration;
 
-use crate::{docker::run_in_docker_with_files_and_id_stream, models::CompileRequest, semaphore::SEMAPHORE};
+use crate::{
+    docker::run_in_docker_with_files_and_id_stream,
+    models::{extract_main_source, CompileRequest},
+    semaphore::SEMAPHORE,
+};
 
 #[post("/test")]
 pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
@@ -26,13 +30,14 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
         None => {
             // Extract lib.rs from files
             match &req.files {
-                Some(files_map) => {
-                    match files_map.get("lib.rs") {
-                        Some(lib_rs_code) => lib_rs_code.clone(),
-                        None => return HttpResponse::BadRequest().body("No code provided and no lib.rs file found")
+                Some(files_map) => match extract_main_source(files_map) {
+                    Some(lib_rs_code) => lib_rs_code,
+                    None => {
+                        return HttpResponse::BadRequest()
+                            .body("No code provided and no src/lib.rs or lib.rs file found")
                     }
-                }
-                None => return HttpResponse::BadRequest().body("No code or files provided")
+                },
+                None => return HttpResponse::BadRequest().body("No code or files provided"),
             }
         }
     };
@@ -43,13 +48,8 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
         let _permit = permit;
         let mut heartbeat = time::interval(Duration::from_secs(25));
 
-        let test_fut = run_in_docker_with_files_and_id_stream(
-            code,
-            files,
-            "cargo test",
-            None,
-            tx.clone(),
-        );
+        let test_fut =
+            run_in_docker_with_files_and_id_stream(code, files, "cargo test", None, tx.clone());
         tokio::pin!(test_fut);
 
         loop {
@@ -71,8 +71,7 @@ pub async fn test(req: web::Json<CompileRequest>) -> impl Responder {
         }
     });
 
-    let stream = UnboundedReceiverStream::new(rx)
-        .map(|bytes| Ok::<Bytes, actix_web::Error>(bytes));
+    let stream = UnboundedReceiverStream::new(rx).map(|bytes| Ok::<Bytes, actix_web::Error>(bytes));
 
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")

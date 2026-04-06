@@ -1,9 +1,9 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use bytes::Bytes;
 use futures_util::StreamExt;
+use std::time::Duration;
 use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::ReceiverStream;
-use std::time::Duration;
 
 use crate::{docker::run_in_docker_no_files, models::InterfaceRequest, semaphore::SEMAPHORE};
 
@@ -22,7 +22,10 @@ pub async fn interface(req: web::Json<InterfaceRequest>) -> impl Responder {
     let network = req.network.clone();
     let contract_id = req.contract.clone();
     let clean_network: String = network.chars().filter(|c| c.is_alphanumeric()).collect();
-    let clean_contract_id: String = contract_id.chars().filter(|c| c.is_alphanumeric()).collect();
+    let clean_contract_id: String = contract_id
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect();
     let mut clean_network_string = clean_network.clone();
     if clean_network_string == "public" {
         clean_network_string = "mainnet --rpc-url https://mainnet.sorobanrpc.com --network-passphrase \"Public Global Stellar Network ; September 2015\"".to_string();
@@ -31,8 +34,7 @@ pub async fn interface(req: web::Json<InterfaceRequest>) -> impl Responder {
     }
     let command = format!(
         "stellar contract info interface --network {} --contract-id {}",
-        clean_network_string,
-        clean_contract_id
+        clean_network_string, clean_contract_id
     );
     // let command = format!("{}", contract_id);
 
@@ -64,11 +66,9 @@ pub async fn interface(req: web::Json<InterfaceRequest>) -> impl Responder {
         }
     });
 
-    let stream = ReceiverStream::new(rx).map(|chunk| {
-        match chunk {
-            Ok(bytes) => Ok::<Bytes, actix_web::Error>(bytes),
-            Err(_) => unreachable!(),
-        }
+    let stream = ReceiverStream::new(rx).map(|chunk| match chunk {
+        Ok(bytes) => Ok::<Bytes, actix_web::Error>(bytes),
+        Err(_) => unreachable!(),
     });
 
     HttpResponse::Ok()

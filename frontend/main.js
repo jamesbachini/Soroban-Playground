@@ -16,6 +16,7 @@ const friendbotUrls = {
 const LOCAL_NETWORK_CONFIG_KEY = 'local-network-config';
 const SELECTED_NETWORK_KEY = 'selected-network';
 const LEGACY_EXPLORE_NETWORK_KEY = 'last-explore-network';
+const THEME_STORAGE_KEY = 'soropg-theme';
 const SUPPORTED_NETWORKS = new Set(['TESTNET', 'LOCAL', 'FUTURENET', 'PUBLIC']);
 const DEFAULT_LOCAL_NETWORK_CONFIG = Object.freeze({
   rpcUrl: 'http://localhost:8000/rpc',
@@ -30,6 +31,9 @@ const PANEL_MIN_HEIGHT = 200;
 let defaultPanelSplitRatio = null;
 let lastPanelSplitRatio = null;
 let isPanelCollapsed = false;
+let currentTheme = getStoredTheme();
+
+document.body.dataset.theme = currentTheme;
 
 // Initialize Stellar Wallet Kit
 const { StellarWalletsKit, KitEventType, SwkAppDarkTheme, defaultModules } = window.MyWalletKit;
@@ -38,12 +42,166 @@ StellarWalletsKit.init({
   modules: defaultModules(),
 });
 
-// Multi-file editor state
-let files = {};
-let currentFile = null; // Start with null so first switchToFile always works
-let isLoadingFile = false;
+const WORKSPACE_STORAGE_KEY = 'soropg-workspaces';
+const LEGACY_FILES_STORAGE_KEY = 'soroban-files';
+const WORKSPACE_SCHEMA_VERSION = 1;
+const MAIN_SOURCE_CANDIDATES = ['src/lib.rs', 'lib.rs'];
 
-// Function to load default file templates
+let workspaces = [];
+let activeWorkspaceId = null;
+let files = {};
+let currentFile = null;
+let isLoadingFile = false;
+let tabsInitialized = false;
+let openTabs = new Set();
+
+function createWorkspaceId() {
+  return `workspace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function sanitizeWorkspaceName(name) {
+  const trimmed = String(name || '').trim();
+  return trimmed || 'Untitled Workspace';
+}
+
+function normalizeFilePath(filePath) {
+  const normalized = String(filePath || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!normalized) {
+    throw new Error('File path cannot be empty.');
+  }
+
+  const segments = normalized.split('/').filter(Boolean);
+  if (!segments.length) {
+    throw new Error('File path cannot be empty.');
+  }
+
+  segments.forEach((segment) => {
+    if (segment === '.' || segment === '..') {
+      throw new Error(`Invalid file path: ${filePath}`);
+    }
+    if (!/^[A-Za-z0-9._-]+$/.test(segment)) {
+      throw new Error(`Unsupported characters in file path: ${filePath}`);
+    }
+  });
+
+  return segments.join('/');
+}
+
+function normalizeWorkspaceFiles(inputFiles) {
+  const normalizedFiles = {};
+  if (!inputFiles || typeof inputFiles !== 'object') {
+    return normalizedFiles;
+  }
+
+  Object.entries(inputFiles).forEach(([rawPath, rawContent]) => {
+    const path = normalizeFilePath(rawPath);
+    normalizedFiles[path] = typeof rawContent === 'string' ? rawContent : String(rawContent ?? '');
+  });
+
+  return normalizedFiles;
+}
+
+function sortFileRank(filePath) {
+  if (filePath === 'Cargo.toml') return 0;
+  if (filePath === 'src/lib.rs') return 1;
+  if (filePath === 'src/test.rs') return 2;
+  if (filePath === 'lib.rs') return 3;
+  if (filePath === 'test.rs') return 4;
+  return 10;
+}
+
+function sortFilePaths(filePaths) {
+  return [...filePaths].sort((a, b) => {
+    const rankDiff = sortFileRank(a) - sortFileRank(b);
+    if (rankDiff !== 0) return rankDiff;
+    return a.localeCompare(b);
+  });
+}
+
+function getPreferredFile(fileMap, preferredFile = null) {
+  if (preferredFile && fileMap[preferredFile]) {
+    return preferredFile;
+  }
+
+  // Prefer .rs files for editor focus: lib.rs first, then any .rs
+  for (const candidate of ['src/lib.rs', 'lib.rs', 'src/test.rs', 'test.rs']) {
+    if (fileMap[candidate]) {
+      return candidate;
+    }
+  }
+
+  // Fall back to any .rs file
+  const rsFile = Object.keys(fileMap).find((p) => p.endsWith('.rs'));
+  if (rsFile) return rsFile;
+
+  // Last resort: Cargo.toml or first file
+  if (fileMap['Cargo.toml']) return 'Cargo.toml';
+  return sortFilePaths(Object.keys(fileMap))[0] || null;
+}
+
+function getInitialTabs(fileMap, maxTabs = 5) {
+  const tabs = [];
+  const allPaths = sortFilePaths(Object.keys(fileMap));
+
+  // Cargo.toml always first if it exists
+  if (fileMap['Cargo.toml']) tabs.push('Cargo.toml');
+
+  // Then prioritized source files
+  const priorities = ['src/lib.rs', 'lib.rs', 'src/test.rs', 'test.rs'];
+  for (const candidate of priorities) {
+    if (fileMap[candidate] && !tabs.includes(candidate) && tabs.length < maxTabs) {
+      tabs.push(candidate);
+    }
+  }
+
+  // Fill remaining slots with other files
+  for (const fp of allPaths) {
+    if (tabs.length >= maxTabs) break;
+    if (!tabs.includes(fp)) tabs.push(fp);
+  }
+
+  return tabs;
+}
+
+function createWorkspaceRecord({
+  id = createWorkspaceId(),
+  name = 'Untitled Workspace',
+  files: workspaceFiles = {},
+  createdAt = Date.now(),
+  updatedAt = Date.now(),
+  lastOpenFile = null,
+  source = null,
+}) {
+  const normalizedFiles = normalizeWorkspaceFiles(workspaceFiles);
+  return {
+    id,
+    name: sanitizeWorkspaceName(name),
+    files: normalizedFiles,
+    createdAt,
+    updatedAt,
+    lastOpenFile: getPreferredFile(normalizedFiles, lastOpenFile),
+    source,
+  };
+}
+
+function getActiveWorkspace() {
+  return workspaces.find((workspace) => workspace.id === activeWorkspaceId) || null;
+}
+
+function syncWorkspaceFiles() {
+  const workspace = getActiveWorkspace();
+  files = workspace ? workspace.files : {};
+}
+
+function persistWorkspaceState() {
+  syncWorkspaceFiles();
+  localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({
+    version: WORKSPACE_SCHEMA_VERSION,
+    activeWorkspaceId,
+    workspaces,
+  }));
+}
+
 async function loadDefaultFiles() {
   const defaultFiles = {};
   const templateFiles = ['Cargo.toml', 'lib.rs', 'test.rs'];
@@ -51,11 +209,12 @@ async function loadDefaultFiles() {
     for (const fileName of templateFiles) {
       const response = await fetch(`./templates/${fileName}`);
       if (response.ok) {
-        defaultFiles[fileName] = await response.text();
+        const targetPath = fileName === 'Cargo.toml' ? 'Cargo.toml' : `src/${fileName}`;
+        defaultFiles[targetPath] = await response.text();
       } else {
         console.error(`Failed to load template ${fileName}: ${response.status}`);
-        // Fallback to empty file if template fails to load
-        defaultFiles[fileName] = '';
+        const targetPath = fileName === 'Cargo.toml' ? 'Cargo.toml' : `src/${fileName}`;
+        defaultFiles[targetPath] = '';
       }
     }
   } catch (error) {
@@ -64,27 +223,163 @@ async function loadDefaultFiles() {
   return defaultFiles;
 }
 
-// File management functions
-async function loadFiles() {
-  const storedFiles = localStorage.getItem('soroban-files');
-  if (storedFiles) {
-    files = JSON.parse(storedFiles);
-  } else {
-    const defaultFiles = await loadDefaultFiles();
-    files = { ...defaultFiles };
-    saveFiles();
-  }
+async function createDefaultWorkspace(name = 'Workspace 1') {
+  return createWorkspaceRecord({
+    name,
+    files: await loadDefaultFiles(),
+  });
 }
 
-function saveFiles() {
-  localStorage.setItem('soroban-files', JSON.stringify(files));
+function migrateLegacyFiles(legacyFiles) {
+  const normalized = normalizeWorkspaceFiles(legacyFiles);
+  const migrated = {};
+
+  Object.entries(normalized).forEach(([path, content]) => {
+    if (path === 'lib.rs' && !normalized['src/lib.rs']) {
+      migrated['src/lib.rs'] = content;
+      return;
+    }
+    if (path === 'test.rs' && !normalized['src/test.rs']) {
+      migrated['src/test.rs'] = content;
+      return;
+    }
+    migrated[path] = content;
+  });
+
+  return migrated;
+}
+
+function hydrateWorkspaceState(storedState) {
+  const storedWorkspaces = Array.isArray(storedState?.workspaces) ? storedState.workspaces : [];
+  const normalizedWorkspaces = storedWorkspaces
+    .map((workspace) => {
+      try {
+        return createWorkspaceRecord(workspace);
+      } catch (error) {
+        console.error('Skipping invalid workspace:', error);
+        return null;
+      }
+    })
+    .filter((workspace) => workspace && Object.keys(workspace.files).length > 0);
+
+  return {
+    workspaces: normalizedWorkspaces,
+    activeWorkspaceId: storedState?.activeWorkspaceId || null,
+  };
+}
+
+async function loadWorkspaceState() {
+  let hydrated = null;
+
+  try {
+    const stored = localStorage.getItem(WORKSPACE_STORAGE_KEY);
+    if (stored) {
+      hydrated = hydrateWorkspaceState(JSON.parse(stored));
+    }
+  } catch (error) {
+    console.error('Failed to load workspace state:', error);
+  }
+
+  if (!hydrated || hydrated.workspaces.length === 0) {
+    try {
+      const legacyFiles = localStorage.getItem(LEGACY_FILES_STORAGE_KEY);
+      if (legacyFiles) {
+        hydrated = {
+          workspaces: [
+            createWorkspaceRecord({
+              name: 'Imported Workspace',
+              files: migrateLegacyFiles(JSON.parse(legacyFiles)),
+            }),
+          ],
+          activeWorkspaceId: null,
+        };
+        localStorage.removeItem(LEGACY_FILES_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.error('Failed to migrate legacy workspace state:', error);
+    }
+  }
+
+  if (!hydrated || hydrated.workspaces.length === 0) {
+    const defaultWorkspace = await createDefaultWorkspace();
+    hydrated = {
+      workspaces: [defaultWorkspace],
+      activeWorkspaceId: defaultWorkspace.id,
+    };
+  }
+
+  workspaces = hydrated.workspaces;
+  activeWorkspaceId = hydrated.activeWorkspaceId && workspaces.some((workspace) => workspace.id === hydrated.activeWorkspaceId)
+    ? hydrated.activeWorkspaceId
+    : workspaces[0].id;
+
+  syncWorkspaceFiles();
+  currentFile = getPreferredFile(files, getActiveWorkspace()?.lastOpenFile || null);
+  persistWorkspaceState();
 }
 
 function saveCurrentFile() {
-  if (currentFile && editor && !isLoadingFile) {
-    files[currentFile] = editor.getValue();
-    saveFiles();
+  if (!currentFile || !editor || isLoadingFile) {
+    return;
   }
+
+  const workspace = getActiveWorkspace();
+  if (!workspace) {
+    return;
+  }
+
+  files[currentFile] = editor.getValue();
+  workspace.files = files;
+  workspace.lastOpenFile = currentFile;
+  workspace.updatedAt = Date.now();
+  persistWorkspaceState();
+}
+
+function getStoredTheme() {
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  return storedTheme === 'light' ? 'light' : 'dark';
+}
+
+function getMonacoTheme(theme) {
+  return theme === 'light' ? 'vs' : 'vs-dark';
+}
+
+function updateThemeToggle() {
+  const toggle = document.getElementById('theme-toggle');
+  if (!toggle) return;
+  const isLight = currentTheme === 'light';
+  const icon = toggle.querySelector('i');
+  if (icon) {
+    icon.classList.toggle('fa-sun', !isLight);
+    icon.classList.toggle('fa-moon', isLight);
+  }
+  const nextMode = isLight ? 'dark' : 'light';
+  const label = `Switch to ${nextMode} mode`;
+  toggle.title = label;
+  toggle.setAttribute('aria-label', label);
+  toggle.setAttribute('aria-pressed', String(isLight));
+}
+
+function applyTheme(theme, options = {}) {
+  const { persist = true } = options;
+  currentTheme = theme === 'light' ? 'light' : 'dark';
+  document.body.dataset.theme = currentTheme;
+  updateThemeToggle();
+  if (persist) {
+    localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
+  }
+  if (editor && window.monaco?.editor) {
+    monaco.editor.setTheme(getMonacoTheme(currentTheme));
+  }
+}
+
+function setupThemeToggle() {
+  const toggle = document.getElementById('theme-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', () => {
+    applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+  });
+  updateThemeToggle();
 }
 
 function getWalletToolbars() {
@@ -220,29 +515,31 @@ function showFundingStatus(durationMs = 20000) {
 }
 
 function switchToFile(fileName) {
-  if (currentFile === fileName) return;
+  const workspace = getActiveWorkspace();
+  if (!workspace || currentFile === fileName || !Object.prototype.hasOwnProperty.call(files, fileName)) return;
 
-  // Save current file content
   saveCurrentFile();
 
-  // Switch to new file
+  // Auto-open a tab if not already open
+  if (!openTabs.has(fileName)) {
+    openTabs.add(fileName);
+    addTab(fileName);
+  }
+
   currentFile = fileName;
+  workspace.lastOpenFile = fileName;
   const fileContent = files[fileName] || '';
 
-  // Set flag to prevent saving during load
   isLoadingFile = true;
   editor.setValue(fileContent);
   isLoadingFile = false;
 
-  // Update language mode based on file extension
   const language = getLanguageFromFileName(fileName);
   monaco.editor.setModelLanguage(editor.getModel(), language);
-
-  // Update tab UI
   updateActiveTab();
-
-  // Check if menu should be hidden due to overflow
+  persistWorkspaceState();
   setTimeout(() => checkMenuOverflow(), 10);
+  renderWorkspaceManager();
 }
 
 function getLanguageFromFileName(fileName) {
@@ -417,21 +714,195 @@ function setPanelCollapsed(collapsed, options = {}) {
   });
 }
 
-function createNewFile(fileName) {
-  if (files.hasOwnProperty(fileName)) {
-    alert('File already exists!');
+function formatWorkspaceTimestamp(timestamp) {
+  if (!timestamp) return 'saved just now';
+  const elapsedMs = Math.max(0, Date.now() - timestamp);
+  if (elapsedMs < 60_000) return 'saved just now';
+  const minutes = Math.round(elapsedMs / 60_000);
+  if (minutes < 60) return `saved ${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `saved ${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `saved ${days}d ago`;
+}
+
+function setWorkspaceStatus(message, isError = false) {
+  const statusEl = document.getElementById('workspace-status');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.toggle('error', isError);
+}
+
+function getMainSourcePath(fileMap = files) {
+  for (const candidate of MAIN_SOURCE_CANDIDATES) {
+    if (fileMap[candidate]) {
+      return candidate;
+    }
+  }
+
+  const rustFile = sortFilePaths(Object.keys(fileMap).filter((path) => path.endsWith('.rs')))[0];
+  if (rustFile) {
+    return rustFile;
+  }
+
+  return sortFilePaths(Object.keys(fileMap))[0] || null;
+}
+
+function getMainSourceContent(fileMap = files) {
+  const mainPath = getMainSourcePath(fileMap);
+  return mainPath ? fileMap[mainPath] || '' : '';
+}
+
+function refreshWorkspaceEditor(options = {}) {
+  const workspace = getActiveWorkspace();
+  syncWorkspaceFiles();
+  initializeTabs({ preferredFile: options.preferredFile || workspace?.lastOpenFile || null });
+  renderWorkspaceManager();
+}
+
+function setActiveWorkspace(workspaceId, options = {}) {
+  const workspace = workspaces.find((item) => item.id === workspaceId);
+  if (!workspace) return;
+
+  if (activeWorkspaceId === workspaceId && !options.force) {
+    renderWorkspaceManager();
     return;
   }
 
-  files[fileName] = '';
-  saveFiles();
-  addTab(fileName);
-  switchToFile(fileName);
+  saveCurrentFile();
+  activeWorkspaceId = workspaceId;
+  currentFile = null;
+  openTabs = new Set();
+  persistWorkspaceState();
+  refreshWorkspaceEditor({ preferredFile: options.preferredFile });
+}
+
+function createNewFile(fileName, content = '') {
+  let normalizedPath;
+  try {
+    normalizedPath = normalizeFilePath(fileName);
+  } catch (error) {
+    alert(error.message || 'Invalid file path.');
+    return;
+  }
+
+  if (files.hasOwnProperty(normalizedPath)) {
+    alert('File already exists in this workspace.');
+    return;
+  }
+
+  const workspace = getActiveWorkspace();
+  if (!workspace) return;
+
+  files[normalizedPath] = content;
+  openTabs.add(normalizedPath);
+  workspace.files = files;
+  workspace.lastOpenFile = normalizedPath;
+  workspace.updatedAt = Date.now();
+  persistWorkspaceState();
+  refreshWorkspaceEditor({ preferredFile: normalizedPath });
+}
+
+function renameActiveWorkspace(name) {
+  const workspace = getActiveWorkspace();
+  if (!workspace) return;
+
+  workspace.name = sanitizeWorkspaceName(name);
+  workspace.updatedAt = Date.now();
+  persistWorkspaceState();
+  renderWorkspaceList();
+}
+
+async function createWorkspace(name = null, workspaceFiles = null, source = null) {
+  const workspace = workspaceFiles
+    ? createWorkspaceRecord({
+      name: name || `Workspace ${workspaces.length + 1}`,
+      files: workspaceFiles,
+      source,
+    })
+    : await createDefaultWorkspace(name || `Workspace ${workspaces.length + 1}`);
+
+  workspace.source = source;
+  workspaces = [workspace, ...workspaces];
+  activeWorkspaceId = workspace.id;
+  persistWorkspaceState();
+  refreshWorkspaceEditor({ preferredFile: workspace.lastOpenFile });
+  return workspace;
+}
+
+async function deleteWorkspace(workspaceId) {
+  const workspace = workspaces.find((item) => item.id === workspaceId);
+  if (!workspace) return;
+
+  if (!confirm(`Delete workspace "${workspace.name}"? This cannot be undone.`)) {
+    return;
+  }
+
+  if (workspaces.length === 1) {
+    const replacement = await createDefaultWorkspace();
+    workspaces = [replacement];
+    activeWorkspaceId = replacement.id;
+  } else {
+    workspaces = workspaces.filter((item) => item.id !== workspaceId);
+    if (activeWorkspaceId === workspaceId) {
+      activeWorkspaceId = workspaces[0].id;
+    }
+  }
+
+  openTabs = new Set();
+  persistWorkspaceState();
+  setWorkspaceStatus('Workspace deleted.');
+  refreshWorkspaceEditor();
+}
+
+function mergeFilesIntoActiveWorkspace(importedFiles, options = {}) {
+  const workspace = getActiveWorkspace();
+  if (!workspace) return;
+
+  const normalizedFiles = normalizeWorkspaceFiles(importedFiles);
+  const filePaths = sortFilePaths(Object.keys(normalizedFiles));
+  if (!filePaths.length) {
+    throw new Error('No files were found to import.');
+  }
+
+  filePaths.forEach((filePath) => {
+    files[filePath] = normalizedFiles[filePath];
+  });
+
+  workspace.files = files;
+  workspace.updatedAt = Date.now();
+  workspace.lastOpenFile = options.preferredFile || filePaths[0];
+  openTabs = new Set();
+  persistWorkspaceState();
+  refreshWorkspaceEditor({ preferredFile: workspace.lastOpenFile });
+}
+
+function replaceActiveWorkspaceFiles(nextFiles, options = {}) {
+  const workspace = getActiveWorkspace();
+  if (!workspace) return;
+
+  files = normalizeWorkspaceFiles(nextFiles);
+  openTabs = new Set();
+  workspace.files = files;
+  workspace.updatedAt = Date.now();
+  workspace.lastOpenFile = getPreferredFile(files, options.preferredFile || null);
+  if (options.name) {
+    workspace.name = sanitizeWorkspaceName(options.name);
+  }
+  if (options.source !== undefined) {
+    workspace.source = options.source;
+  }
+  persistWorkspaceState();
+  refreshWorkspaceEditor({ preferredFile: workspace.lastOpenFile });
 }
 
 function addTab(fileName) {
   const tabsContainer = document.getElementById('editor-tabs');
   const addButton = document.getElementById('add-tab');
+  if (!tabsContainer || !addButton) return;
+
+  // Don't add duplicate tabs
+  if (tabsContainer.querySelector(`.editor-tab[data-file="${CSS.escape(fileName)}"]`)) return;
 
   const tab = document.createElement('div');
   tab.className = 'editor-tab';
@@ -440,113 +911,422 @@ function addTab(fileName) {
   const tabName = document.createElement('span');
   tabName.className = 'tab-name';
   tabName.textContent = fileName;
-
   tab.appendChild(tabName);
 
-  // Only add close button if it's not Cargo.toml
-  if (fileName !== 'Cargo.toml') {
-    const tabClose = document.createElement('span');
-    tabClose.className = 'tab-close';
-    tabClose.innerHTML = '×';
-    tabClose.title = 'Close tab';
+  const tabClose = document.createElement('span');
+  tabClose.className = 'tab-close';
+  tabClose.innerHTML = '&times;';
+  tabClose.title = 'Close tab';
+  tab.appendChild(tabClose);
 
-    tab.appendChild(tabClose);
+  tabClose.addEventListener('click', (event) => {
+    event.stopPropagation();
+    closeTab(fileName);
+  });
 
-    tabClose.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeFile(fileName);
-    });
+  tab.addEventListener('click', () => {
+    switchToFile(fileName);
+  });
 
-    // Tab click listener needs to check for close button
-    tab.addEventListener('click', (e) => {
-      if (e.target !== tabClose) {
-        switchToFile(fileName);
-      }
-    });
-  } else {
-    // For Cargo.toml, just switch to file on click
-    tab.addEventListener('click', () => {
-      switchToFile(fileName);
-    });
-  }
-
-  // Insert before the add button
   tabsContainer.insertBefore(tab, addButton);
-
-  // Check overflow after adding tab
   setTimeout(() => checkMenuOverflow(), 10);
 }
 
-function closeFile(fileName) {
-  // Prevent closing Cargo.toml
+function closeTab(fileName) {
+  openTabs.delete(fileName);
+
+  // Remove the tab element
+  const tab = document.querySelector(`.editor-tab[data-file="${CSS.escape(fileName)}"]`);
+  if (tab) tab.remove();
+
+  // If this was the active file, switch to another open tab
+  if (currentFile === fileName) {
+    currentFile = null;
+    const remaining = [...openTabs];
+    if (remaining.length > 0) {
+      const next = getPreferredFile(
+        Object.fromEntries(remaining.filter((f) => files[f]).map((f) => [f, files[f]])),
+        null
+      );
+      if (next) {
+        switchToFile(next);
+        return;
+      }
+    }
+    // No tabs left — clear editor
+    if (editor) {
+      isLoadingFile = true;
+      editor.setValue('');
+      isLoadingFile = false;
+    }
+  }
+
+  setTimeout(() => checkMenuOverflow(), 10);
+  renderWorkspaceManager();
+}
+
+function deleteFile(fileName) {
   if (fileName === 'Cargo.toml') {
-    alert('Cannot close Cargo.toml - it is required for the project!');
+    alert('Cannot delete Cargo.toml. The project manifest is required.');
     return;
   }
 
   if (Object.keys(files).length <= 1) {
-    alert('Cannot close the last file!');
+    alert('Cannot delete the last file in the workspace.');
     return;
   }
 
-  if (confirm(`Are you sure you want to delete: ${fileName}?`)) {
-    // If we're deleting the current file, clear currentFile to prevent saveCurrentFile from restoring it
-    if (currentFile === fileName) {
-      currentFile = null;
+  if (!confirm(`Delete "${fileName}" from this workspace?`)) {
+    return;
+  }
+
+  const workspace = getActiveWorkspace();
+  if (!workspace) return;
+
+  // Close the tab if open
+  if (openTabs.has(fileName)) {
+    closeTab(fileName);
+  }
+
+  if (currentFile === fileName) {
+    currentFile = null;
+  }
+
+  delete files[fileName];
+  workspace.files = files;
+  workspace.updatedAt = Date.now();
+  workspace.lastOpenFile = getPreferredFile(files, currentFile);
+  persistWorkspaceState();
+  refreshWorkspaceEditor({ preferredFile: workspace.lastOpenFile });
+}
+
+function renameFile(oldPath) {
+  const newName = prompt('Rename file to:', oldPath);
+  if (!newName || newName.trim() === oldPath) return;
+
+  let normalizedPath;
+  try {
+    normalizedPath = normalizeFilePath(newName.trim());
+  } catch (error) {
+    alert(error.message || 'Invalid file path.');
+    return;
+  }
+
+  if (normalizedPath === oldPath) return;
+
+  if (files.hasOwnProperty(normalizedPath)) {
+    alert('A file with that name already exists.');
+    return;
+  }
+
+  const workspace = getActiveWorkspace();
+  if (!workspace) return;
+
+  const content = files[oldPath];
+  delete files[oldPath];
+  files[normalizedPath] = content;
+
+  // Update open tabs
+  if (openTabs.has(oldPath)) {
+    openTabs.delete(oldPath);
+    openTabs.add(normalizedPath);
+  }
+
+  if (currentFile === oldPath) {
+    currentFile = normalizedPath;
+  }
+
+  workspace.files = files;
+  workspace.lastOpenFile = currentFile || normalizedPath;
+  workspace.updatedAt = Date.now();
+  persistWorkspaceState();
+  refreshWorkspaceEditor({ preferredFile: workspace.lastOpenFile });
+}
+
+function renderWorkspaceList() {
+  const listEl = document.getElementById('workspace-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  workspaces.forEach((workspace) => {
+    const isActive = workspace.id === activeWorkspaceId;
+
+    const item = document.createElement('div');
+    item.className = 'workspace-list-item';
+    if (isActive) {
+      item.classList.add('active');
     }
 
-    delete files[fileName];
-    saveFiles();
+    const title = document.createElement('span');
+    title.className = 'workspace-list-name';
+    title.textContent = workspace.name;
 
-    // Remove tab
-    const tab = document.querySelector(`[data-file="${fileName}"]`);
-    if (tab) tab.remove();
+    const meta = document.createElement('span');
+    meta.className = 'workspace-list-meta';
+    meta.textContent = `${Object.keys(workspace.files).length} files · ${formatWorkspaceTimestamp(workspace.updatedAt)}`;
 
-    // Check overflow after removing tab
-    setTimeout(() => checkMenuOverflow(), 10);
+    item.appendChild(title);
+    item.appendChild(meta);
 
-    // If we deleted the current file, switch to another
-    if (currentFile === null) {
-      const remainingFiles = Object.keys(files);
-      if (remainingFiles.length > 0) {
-        switchToFile(remainingFiles[0]);
+    if (isActive) {
+      title.title = 'Click to rename';
+      title.style.cursor = 'text';
+      title.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (item.querySelector('.ws-rename-input')) return;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'ws-rename-input';
+        input.value = workspace.name;
+        const commitRename = () => {
+          const newName = input.value.trim();
+          if (newName && newName !== workspace.name) {
+            renameActiveWorkspace(newName);
+          }
+          renderWorkspaceList();
+        };
+        input.addEventListener('blur', commitRename);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+          if (e.key === 'Escape') { input.value = workspace.name; input.blur(); }
+        });
+        title.replaceWith(input);
+        input.focus();
+        input.select();
+      });
+    } else {
+      item.style.cursor = 'pointer';
+      item.addEventListener('click', () => {
+        setActiveWorkspace(workspace.id);
+      });
+    }
+
+    listEl.appendChild(item);
+  });
+}
+
+const _expandedDirs = new Set();
+
+function _buildFileTree(filePaths) {
+  const tree = {};
+  filePaths.forEach((fp) => {
+    const parts = fp.split('/');
+    let node = tree;
+    parts.forEach((part, i) => {
+      if (i === parts.length - 1) {
+        node[part] = fp;
+      } else {
+        if (!node[part] || typeof node[part] === 'string') {
+          node[part] = {};
+        }
+        node[part] = node[part];
+        node = node[part];
       }
-    }
+    });
+  });
+  return tree;
+}
+
+function _getFileIcon(fileName) {
+  if (fileName.endsWith('.rs')) return 'fas fa-code';
+  if (fileName.endsWith('.toml')) return 'fas fa-cog';
+  if (fileName.endsWith('.json')) return 'fas fa-code';
+  if (fileName.endsWith('.md')) return 'fas fa-file-alt';
+  if (fileName.endsWith('.lock')) return 'fas fa-lock';
+  return 'fas fa-file-code';
+}
+
+function _autoExpandForCurrentFile() {
+  if (!currentFile || !currentFile.includes('/')) return;
+  const parts = currentFile.split('/');
+  let path = '';
+  for (let i = 0; i < parts.length - 1; i++) {
+    path = path ? path + '/' + parts[i] : parts[i];
+    _expandedDirs.add(path);
   }
 }
 
-function initializeTabs() {
-  // Clear existing tabs except add button
-  const tabsContainer = document.getElementById('editor-tabs');
-  const tabs = tabsContainer.querySelectorAll('.editor-tab');
-  tabs.forEach(tab => tab.remove());
+function _renderTreeNode(container, tree, depth, parentPath) {
+  const dirs = [];
+  const fileEntries = [];
+  Object.keys(tree).forEach((key) => {
+    if (typeof tree[key] === 'object') {
+      dirs.push(key);
+    } else {
+      fileEntries.push({ name: key, fullPath: tree[key] });
+    }
+  });
+  dirs.sort((a, b) => a.localeCompare(b));
+  fileEntries.sort((a, b) => {
+    const ra = sortFileRank(a.fullPath);
+    const rb = sortFileRank(b.fullPath);
+    if (ra !== rb) return ra - rb;
+    return a.name.localeCompare(b.name);
+  });
 
-  // Add tabs for all files
-  Object.keys(files).forEach(fileName => {
+  dirs.forEach((dirName) => {
+    const dirPath = parentPath ? parentPath + '/' + dirName : dirName;
+    const isExpanded = _expandedDirs.has(dirPath);
+
+    const dirRow = document.createElement('div');
+    dirRow.className = 'ws-tree-dir';
+
+    const dirButton = document.createElement('button');
+    dirButton.type = 'button';
+    dirButton.className = 'ws-tree-dir-btn';
+    dirButton.style.paddingLeft = (8 + depth * 16) + 'px';
+    dirButton.innerHTML =
+      '<span class="ws-tree-chevron' + (isExpanded ? ' expanded' : '') + '"><i class="fas fa-chevron-right"></i></span>' +
+      '<span class="ws-tree-dir-icon"><i class="fas fa-folder' + (isExpanded ? '-open' : '') + '"></i></span>' +
+      '<span class="ws-tree-label">' + dirName + '</span>';
+    dirButton.addEventListener('click', () => {
+      if (_expandedDirs.has(dirPath)) {
+        _expandedDirs.delete(dirPath);
+      } else {
+        _expandedDirs.add(dirPath);
+      }
+      renderWorkspaceFiles();
+    });
+    dirRow.appendChild(dirButton);
+    container.appendChild(dirRow);
+
+    if (isExpanded) {
+      _renderTreeNode(container, tree[dirName], depth + 1, dirPath);
+    }
+  });
+
+  fileEntries.forEach(({ name, fullPath }) => {
+    const row = document.createElement('div');
+    row.className = 'ws-tree-file' + (fullPath === currentFile ? ' active' : '');
+
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'ws-tree-file-btn';
+    openButton.style.paddingLeft = (28 + depth * 16) + 'px';
+    openButton.innerHTML =
+      '<span class="ws-tree-file-icon"><i class="' + _getFileIcon(name) + '"></i></span>' +
+      '<span class="ws-tree-label">' + name + '</span>';
+    openButton.addEventListener('click', () => switchToFile(fullPath));
+    row.appendChild(openButton);
+
+    if (fullPath !== 'Cargo.toml') {
+      const actions = document.createElement('div');
+      actions.className = 'ws-tree-actions';
+
+      const renameBtn = document.createElement('button');
+      renameBtn.type = 'button';
+      renameBtn.className = 'ws-tree-action-btn';
+      renameBtn.innerHTML = '<i class="fas fa-pen"></i>';
+      renameBtn.title = 'Rename / Move';
+      renameBtn.addEventListener('click', (e) => { e.stopPropagation(); renameFile(fullPath); });
+      actions.appendChild(renameBtn);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'ws-tree-action-btn ws-tree-action-danger';
+      deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+      deleteBtn.title = 'Delete';
+      deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteFile(fullPath); });
+      actions.appendChild(deleteBtn);
+
+      row.appendChild(actions);
+    }
+
+    container.appendChild(row);
+  });
+}
+
+function renderWorkspaceFiles() {
+  const workspace = getActiveWorkspace();
+  const filesEl = document.getElementById('workspace-files');
+  if (!filesEl || !workspace) return;
+  filesEl.innerHTML = '';
+  _autoExpandForCurrentFile();
+
+  const filePaths = sortFilePaths(Object.keys(workspace.files));
+  if (!filePaths.length) {
+    const empty = document.createElement('div');
+    empty.className = 'workspace-empty-state';
+    empty.textContent = 'This workspace has no files yet.';
+    filesEl.appendChild(empty);
+    return;
+  }
+
+  const tree = _buildFileTree(filePaths);
+  _renderTreeNode(filesEl, tree, 0, '');
+}
+
+function renderWorkspaceManager() {
+  const workspace = getActiveWorkspace();
+  if (!workspace) return;
+
+  const deleteButton = document.getElementById('delete-workspace');
+  if (deleteButton) {
+    deleteButton.disabled = workspaces.length === 1;
+  }
+
+  renderWorkspaceList();
+  renderWorkspaceFiles();
+}
+
+function initializeTabs(options = {}) {
+  const tabsContainer = document.getElementById('editor-tabs');
+  if (!tabsContainer) return;
+
+  tabsContainer.querySelectorAll('.editor-tab').forEach((tab) => tab.remove());
+
+  // If we have a specific preferred file from user action, ensure it's in the open tabs
+  const preferred = options.preferredFile || null;
+
+  // On workspace load (no preferredFile override), pick smart initial tabs
+  if (!preferred && openTabs.size === 0) {
+    const initial = getInitialTabs(files);
+    initial.forEach((fp) => openTabs.add(fp));
+  }
+
+  // If preferred file is specified, make sure it's in open tabs
+  if (preferred && files[preferred]) {
+    openTabs.add(preferred);
+  }
+
+  // Remove any tabs for files that no longer exist
+  for (const fp of openTabs) {
+    if (!files[fp]) openTabs.delete(fp);
+  }
+
+  // Render tabs in sorted order
+  sortFilePaths([...openTabs]).forEach((fileName) => {
     addTab(fileName);
   });
 
-  // Set up add button
-  document.getElementById('add-tab').addEventListener('click', () => {
-    const fileName = prompt('Enter file name (e.g., lib.rs, mod.rs, test.rs):');
-    if (fileName && fileName.trim()) {
-      createNewFile(fileName.trim());
+  if (!tabsInitialized) {
+    const addButton = document.getElementById('add-tab');
+    if (addButton) {
+      addButton.addEventListener('click', () => {
+        const fileName = prompt('Enter a file path (for example: src/lib.rs, src/utils.rs, shop/lib.rs):');
+        if (fileName && fileName.trim()) {
+          createNewFile(fileName.trim());
+        }
+      });
     }
-  });
-
-  // Switch to current file
-  if (files['lib.rs']) {
-    switchToFile('lib.rs');
-  } else if (files[currentFile]) {
-    switchToFile(currentFile);
-  } else {
-    const firstFile = Object.keys(files)[0];
-    if (firstFile) {
-      switchToFile(firstFile);
-    }
+    tabsInitialized = true;
   }
 
-  // Initial overflow check
+  const focusFile = getPreferredFile(files, preferred || currentFile);
+  currentFile = null;
+  if (focusFile) {
+    // Ensure the focus file has a tab
+    if (!openTabs.has(focusFile)) {
+      openTabs.add(focusFile);
+      addTab(focusFile);
+    }
+    switchToFile(focusFile);
+  } else if (editor) {
+    isLoadingFile = true;
+    editor.setValue('');
+    isLoadingFile = false;
+  }
+
   setTimeout(() => checkMenuOverflow(), 100);
 }
 
@@ -555,7 +1335,7 @@ require(['vs/editor/editor.main'], async function () {
   editor = monaco.editor.create(document.getElementById('editor'), {
     value: ``,
     language: 'rust',
-    theme: 'vs-dark',
+    theme: getMonacoTheme(currentTheme),
     automaticLayout: true,
     fontSize: 14,
     minimap: {
@@ -566,19 +1346,16 @@ require(['vs/editor/editor.main'], async function () {
     fontFamily: 'monospace',
   });
 
-  // Initialize file management
-  await loadFiles();
+  await loadWorkspaceState();
 
-  // Add content change listener to save current file
   editor.onDidChangeModelContent(() => {
     saveCurrentFile();
   });
 
-  // Initialize tabs and then call init() to handle URL parameters
   initializeTabs();
+  renderWorkspaceManager();
   init();
 
-  // Add window resize listener for menu overflow
   window.addEventListener('resize', () => {
     checkMenuOverflow();
   });
@@ -898,8 +1675,29 @@ function elapsedSeconds(startMs) {
   return Math.max(0, Math.round((performance.now() - startMs) / 1000));
 }
 
+function trackAnalyticsEvent(eventName, params = {}) {
+  if (typeof window.gtag !== 'function') return;
+  window.gtag('event', eventName, params);
+}
+
+function getAnalyticsNetworkName(networkName) {
+  switch (normalizeNetworkSelection(networkName)) {
+    case 'PUBLIC':
+      return 'mainnet';
+    case 'TESTNET':
+      return 'testnet';
+    case 'FUTURENET':
+      return 'futurenet';
+    case 'LOCAL':
+      return 'local';
+    default:
+      return 'unknown';
+  }
+}
+
 async function compileCode() {
   const compileButton = document.getElementById('compile-code');
+  trackAnalyticsEvent('compile_to_wasm_click');
   compileButton.disabled = true;
   scrollButtonToPanelTop(compileButton);
   const startTime = performance.now();
@@ -936,7 +1734,7 @@ async function compileCode() {
       return;
     }
 
-    const contractName = extractContractName(allFiles['lib.rs'] || '');
+    const contractName = extractContractName(getMainSourceContent(allFiles));
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let pending = '';
@@ -2015,7 +2813,7 @@ function createTxExplorerNode(hash, className = '') {
 
 function renderMethodConsoleError(consoleDiv, error) {
   const pre = document.createElement('pre');
-  pre.style.color = 'red';
+  pre.style.color = 'var(--danger-color)';
   pre.textContent = String(error || 'Unknown error');
   consoleDiv.replaceChildren(pre);
 }
@@ -2040,7 +2838,7 @@ async function pollTransactionResult(hash, methodName, consoleDiv, spec) {
     }
     if (tx.status === 'FAILED') {
       const failed = document.createElement('div');
-      failed.style.color = 'red';
+      failed.style.color = 'var(--danger-color)';
       failed.textContent = 'Transaction FAILED.';
       consoleDiv.replaceChildren(failed, createTxExplorerNode(hash));
       return;
@@ -2719,6 +3517,362 @@ function toRawUrl(url) {
   }
 }
 
+function deriveWorkspaceNameFromPath(path, fallback = 'Workspace') {
+  const parts = String(path || '').split('/').filter(Boolean);
+  return sanitizeWorkspaceName(parts[parts.length - 1] || fallback);
+}
+
+function fileEntriesToWorkspaceFiles(fileEntries) {
+  const workspaceFiles = {};
+  fileEntries.forEach(({ path, content }) => {
+    workspaceFiles[path] = content;
+  });
+  return workspaceFiles;
+}
+
+function stripCommonLeadingDirectory(fileEntries) {
+  if (fileEntries.length < 2) {
+    return fileEntries;
+  }
+
+  const splitPaths = fileEntries.map((entry) => entry.path.split('/'));
+  if (splitPaths.some((segments) => segments.length < 2)) {
+    return fileEntries;
+  }
+
+  const rootSegment = splitPaths[0][0];
+  if (!splitPaths.every((segments) => segments[0] === rootSegment)) {
+    return fileEntries;
+  }
+
+  return fileEntries.map((entry) => ({
+    ...entry,
+    path: entry.path.split('/').slice(1).join('/'),
+  }));
+}
+
+async function readFileSelection(fileList) {
+  const entries = [];
+  for (const file of Array.from(fileList || [])) {
+    if (!file) continue;
+    const filePath = normalizeFilePath(file.webkitRelativePath || file.name);
+    entries.push({
+      path: filePath,
+      content: await file.text(),
+    });
+  }
+  return stripCommonLeadingDirectory(entries);
+}
+
+function readEntryFile(entry) {
+  return new Promise((resolve, reject) => {
+    entry.file(resolve, reject);
+  });
+}
+
+function readAllDirectoryEntries(reader) {
+  return new Promise((resolve, reject) => {
+    const entries = [];
+    const readBatch = () => {
+      reader.readEntries((batch) => {
+        if (!batch.length) {
+          resolve(entries);
+          return;
+        }
+        entries.push(...batch);
+        readBatch();
+      }, reject);
+    };
+    readBatch();
+  });
+}
+
+async function readDroppedEntry(entry, prefix = '') {
+  if (entry.isFile) {
+    const file = await readEntryFile(entry);
+    return [{
+      path: normalizeFilePath(`${prefix}${entry.name}`),
+      content: await file.text(),
+    }];
+  }
+
+  if (entry.isDirectory) {
+    const children = await readAllDirectoryEntries(entry.createReader());
+    let collected = [];
+    const nextPrefix = `${prefix}${entry.name}/`;
+    for (const child of children) {
+      collected = collected.concat(await readDroppedEntry(child, nextPrefix));
+    }
+    return collected;
+  }
+
+  return [];
+}
+
+async function collectDroppedWorkspaceFiles(dataTransfer) {
+  const itemEntries = Array.from(dataTransfer?.items || [])
+    .map((item) => item.webkitGetAsEntry?.())
+    .filter(Boolean);
+
+  if (itemEntries.length) {
+    let collected = [];
+    for (const entry of itemEntries) {
+      collected = collected.concat(await readDroppedEntry(entry));
+    }
+    return stripCommonLeadingDirectory(collected);
+  }
+
+  return readFileSelection(dataTransfer?.files || []);
+}
+
+async function importFileEntriesIntoActiveWorkspace(fileEntries) {
+  const workspaceFiles = fileEntriesToWorkspaceFiles(stripCommonLeadingDirectory(fileEntries));
+  mergeFilesIntoActiveWorkspace(workspaceFiles);
+  setWorkspaceStatus(`Imported ${Object.keys(workspaceFiles).length} file(s) into the active workspace.`);
+}
+
+function downloadBlob(blob, fileName) {
+  const link = document.createElement('a');
+  const url = window.URL.createObjectURL(blob);
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => window.URL.revokeObjectURL(url), 0);
+}
+
+function slugifyWorkspaceName(name) {
+  return sanitizeWorkspaceName(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'workspace';
+}
+
+function downloadActiveWorkspaceZip() {
+  const workspace = getActiveWorkspace();
+  if (!workspace) return;
+  if (!window.fflate) {
+    throw new Error('ZIP export is not available right now.');
+  }
+
+  const zipEntries = {};
+  Object.entries(workspace.files).forEach(([filePath, content]) => {
+    zipEntries[filePath] = window.fflate.strToU8(content);
+  });
+
+  const archive = window.fflate.zipSync(zipEntries, { level: 6 });
+  downloadBlob(new Blob([archive], { type: 'application/zip' }), `${slugifyWorkspaceName(workspace.name)}.zip`);
+}
+
+async function uploadWorkspaceZip(file) {
+  if (!window.fflate) {
+    throw new Error('ZIP import is not available right now.');
+  }
+
+  const buffer = await file.arrayBuffer();
+  const unzipped = window.fflate.unzipSync(new Uint8Array(buffer));
+
+  const importedFiles = {};
+  Object.entries(unzipped).forEach(([path, data]) => {
+    // Skip directories (empty entries ending with /) and hidden/system files
+    if (path.endsWith('/') || path.startsWith('__MACOSX') || path.startsWith('.')) return;
+
+    // Strip a single common root directory prefix if every entry shares one
+    let cleanPath = path;
+    const content = window.fflate.strFromU8(data);
+    importedFiles[cleanPath] = content;
+  });
+
+  if (!Object.keys(importedFiles).length) {
+    throw new Error('The ZIP file contained no usable files.');
+  }
+
+  // Strip common root folder prefix if all files share one
+  const paths = Object.keys(importedFiles);
+  const firstSegments = paths.map((p) => p.split('/')[0]);
+  const commonRoot = firstSegments.every((s) => s === firstSegments[0]) && paths.every((p) => p.includes('/'))
+    ? firstSegments[0] + '/'
+    : null;
+
+  const finalFiles = {};
+  paths.forEach((p) => {
+    const key = commonRoot ? p.slice(commonRoot.length) : p;
+    if (key) finalFiles[key] = importedFiles[p];
+  });
+
+  const name = file.name.replace(/\.zip$/i, '') || 'Imported Workspace';
+  await createWorkspace(name, finalFiles, { type: 'zip' });
+  setWorkspaceStatus(`Imported "${name}" from ZIP (${Object.keys(finalFiles).length} files).`);
+}
+
+function encodeGithubContentPath(path) {
+  return path.split('/').filter(Boolean).map((segment) => encodeURIComponent(segment)).join('/');
+}
+
+async function fetchGithubApiJson(url) {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || `GitHub request failed (${response.status}).`);
+  }
+  return payload;
+}
+
+async function fetchGithubFileText(downloadUrl) {
+  const response = await fetch(downloadUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch GitHub file (${response.status}).`);
+  }
+  return response.text();
+}
+
+function parseGithubWorkspaceUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== 'github.com') {
+      return null;
+    }
+
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    if (parts.length < 2) {
+      return null;
+    }
+
+    const [owner, repo, type, ref, ...rest] = parts;
+    if (!type) {
+      return { owner, repo, type: 'repo', ref: null, path: '' };
+    }
+    if (type === 'tree' || type === 'blob') {
+      if (!ref) {
+        return null;
+      }
+      return { owner, repo, type, ref, path: rest.join('/') };
+    }
+
+    return { owner, repo, type: 'repo', ref: null, path: '' };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchGithubWorkspaceFiles(owner, repo, ref, rootPath = '') {
+  const workspaceFiles = {};
+
+  async function walk(currentPath) {
+    const suffix = currentPath ? `/${encodeGithubContentPath(currentPath)}` : '';
+    const payload = await fetchGithubApiJson(`https://api.github.com/repos/${owner}/${repo}/contents${suffix}?ref=${encodeURIComponent(ref)}`);
+
+    if (Array.isArray(payload)) {
+      for (const item of payload) {
+        if (item.type === 'dir') {
+          await walk(item.path);
+        } else if (item.type === 'file' && item.download_url) {
+          const relativePath = rootPath ? item.path.slice(rootPath.length).replace(/^\/+/, '') : item.path;
+          workspaceFiles[normalizeFilePath(relativePath || item.name)] = await fetchGithubFileText(item.download_url);
+        }
+      }
+      return;
+    }
+
+    if (payload.type === 'file' && payload.download_url) {
+      const relativePath = rootPath
+        ? currentPath.slice(rootPath.length).replace(/^\/+/, '')
+        : currentPath || payload.name;
+      workspaceFiles[normalizeFilePath(relativePath || payload.name)] = await fetchGithubFileText(payload.download_url);
+    }
+  }
+
+  await walk(rootPath);
+  return workspaceFiles;
+}
+
+async function loadWorkspaceFromGithub(url, options = {}) {
+  const parsed = parseGithubWorkspaceUrl(url);
+  if (!parsed) {
+    throw new Error('Paste a GitHub repository, tree, or file URL.');
+  }
+
+  const repoInfo = await fetchGithubApiJson(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}`);
+  const ref = parsed.ref || repoInfo.default_branch;
+  const workspaceName = deriveWorkspaceNameFromPath(parsed.path || repoInfo.name, repoInfo.name);
+  let importedFiles = await fetchGithubWorkspaceFiles(parsed.owner, parsed.repo, ref, parsed.path || '');
+  const source = {
+    type: 'github',
+    url,
+    owner: parsed.owner,
+    repo: parsed.repo,
+    ref,
+    path: parsed.path || '',
+  };
+
+  if (!Object.keys(importedFiles).length) {
+    throw new Error('No files were found in that GitHub location.');
+  }
+
+  if (!importedFiles['Cargo.toml']) {
+    const fallbackWorkspace = await loadDefaultFiles();
+    const importedMainPath = getMainSourcePath(importedFiles);
+    const fallbackMainPath = getMainSourcePath(fallbackWorkspace) || 'src/lib.rs';
+    if (importedMainPath) {
+      fallbackWorkspace[fallbackMainPath] = importedFiles[importedMainPath];
+    }
+    importedFiles = {
+      ...fallbackWorkspace,
+      ...importedFiles,
+    };
+  }
+
+  if (options.createNew === false) {
+    replaceActiveWorkspaceFiles(importedFiles, {
+      name: workspaceName,
+      preferredFile: getMainSourcePath(importedFiles),
+      source,
+    });
+  } else {
+    await createWorkspace(workspaceName, importedFiles, source);
+  }
+
+  setWorkspaceStatus(`Imported ${Object.keys(importedFiles).length} file(s) from GitHub.`);
+}
+
+async function loadWorkspaceFromUrl(url, options = {}) {
+  const parsedGithub = parseGithubWorkspaceUrl(url);
+  if (parsedGithub) {
+    await loadWorkspaceFromGithub(url, options);
+    return;
+  }
+
+  const fixedCodeUrl = toRawUrl(url);
+  const response = await fetch(fixedCodeUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch shared code (${response.status}).`);
+  }
+
+  const code = await response.text();
+  const importedFiles = await loadDefaultFiles();
+  const mainSourcePath = getMainSourcePath(importedFiles) || 'src/lib.rs';
+  importedFiles[mainSourcePath] = code;
+
+  if (options.createNew === false) {
+    replaceActiveWorkspaceFiles(importedFiles, {
+      name: deriveWorkspaceNameFromPath(fixedCodeUrl, 'Imported Workspace'),
+      preferredFile: mainSourcePath,
+      source: { type: 'url', url },
+    });
+  } else {
+    await createWorkspace(
+      deriveWorkspaceNameFromPath(fixedCodeUrl, 'Imported Workspace'),
+      importedFiles,
+      { type: 'url', url }
+    );
+  }
+
+  setWorkspaceStatus('Imported shared code into a workspace.');
+}
+
 // Setup Wallet Kit event listener for state updates
 StellarWalletsKit.on(KitEventType.STATE_UPDATED, event => {
   if (event.payload.address) {
@@ -2840,6 +3994,9 @@ async function signTransaction(preparedTx) {
 }
 
 document.getElementById('deploy-button').addEventListener('click', async () => {
+  trackAnalyticsEvent('deploy_click', {
+    network: getAnalyticsNetworkName(network),
+  });
   document.getElementById('deploy-button').disabled = true;
   setTimeout(() => document.getElementById('deploy-button').disabled = false, 3000);
   document.getElementById('panel-container').scrollTo({
@@ -2956,6 +4113,9 @@ document.getElementById('load-contract-button').addEventListener('click', async 
 });
 
 async function init() {
+  applyTheme(currentTheme, { persist: false });
+  setupThemeToggle();
+
   // Create Wallet Kit buttons
   const deployButtonWrapper = document.getElementById('wallet-button-deploy');
   const exploreButtonWrapper = document.getElementById('wallet-button-explore');
@@ -2985,22 +4145,179 @@ async function init() {
   const codeUrl = urlParams.get("codeUrl");
   if (codeUrl) {
     try {
-      console.log(`Converting: ${codeUrl}`);
-      const fixedCodeUrl = toRawUrl(codeUrl);
-      console.log(`Fetching: ${fixedCodeUrl}`);
-      const resp = await fetch(fixedCodeUrl);
-      if (resp.ok) {
-        const code = await resp.text();
-        // Update the lib.rs file with the shared code
-        files['lib.rs'] = code;
-        saveFiles();
-        switchToFile('lib.rs');
-      }
-    } catch(e) {
-      alert("Failed to fetch shared code:", e);
+      await loadWorkspaceFromUrl(codeUrl, { createNew: false });
+    } catch (error) {
+      alert(error?.message || 'Failed to fetch shared code.');
     }
   }
-  // Note: File loading and editor initialization is now handled in the Monaco editor callback
+
+  const newWorkspaceButton = document.getElementById('new-workspace');
+  if (newWorkspaceButton) {
+    newWorkspaceButton.addEventListener('click', async () => {
+      const name = prompt('Name the new workspace:', `Workspace ${workspaces.length + 1}`);
+      if (name === null) return;
+      await createWorkspace(name.trim() || null);
+      setWorkspaceStatus('Created a new workspace.');
+    });
+  }
+
+  const deleteWorkspaceButton = document.getElementById('delete-workspace');
+  if (deleteWorkspaceButton) {
+    deleteWorkspaceButton.addEventListener('click', async () => {
+      await deleteWorkspace(activeWorkspaceId);
+    });
+  }
+
+  const downloadWorkspaceButton = document.getElementById('download-workspace');
+  if (downloadWorkspaceButton) {
+    downloadWorkspaceButton.addEventListener('click', () => {
+      try {
+        downloadActiveWorkspaceZip();
+        setWorkspaceStatus('Workspace ZIP downloaded.');
+      } catch (error) {
+        setWorkspaceStatus(error?.message || 'Failed to download workspace ZIP.', true);
+      }
+    });
+  }
+
+  const zipInput = document.getElementById('workspace-zip-input');
+  const uploadZipButton = document.getElementById('upload-workspace-zip');
+  if (uploadZipButton && zipInput) {
+    uploadZipButton.addEventListener('click', () => zipInput.click());
+  }
+  if (zipInput) {
+    zipInput.addEventListener('change', async () => {
+      const file = zipInput.files[0];
+      if (!file) return;
+      try {
+        await uploadWorkspaceZip(file);
+      } catch (error) {
+        setWorkspaceStatus(error?.message || 'Failed to import ZIP.', true);
+      } finally {
+        zipInput.value = '';
+      }
+    });
+  }
+
+  const githubWorkspaceInput = document.getElementById('github-workspace-url');
+  const importGithubButton = document.getElementById('import-github-workspace');
+  const handleGithubImport = async () => {
+    const url = githubWorkspaceInput?.value.trim();
+    if (!url) {
+      setWorkspaceStatus('Paste a GitHub URL first.', true);
+      return;
+    }
+
+    try {
+      await loadWorkspaceFromGithub(url);
+      if (githubWorkspaceInput) {
+        githubWorkspaceInput.value = '';
+      }
+    } catch (error) {
+      setWorkspaceStatus(error?.message || 'Failed to import from GitHub.', true);
+    }
+  };
+  if (importGithubButton) {
+    importGithubButton.addEventListener('click', handleGithubImport);
+  }
+  if (githubWorkspaceInput) {
+    githubWorkspaceInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleGithubImport();
+      }
+    });
+    githubWorkspaceInput.addEventListener('input', () => {
+      setWorkspaceStatus('');
+    });
+  }
+
+  const importToggle = document.getElementById('ws-import-toggle');
+  const importPopover = document.getElementById('ws-import-popover');
+  if (importToggle && importPopover) {
+    importToggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      importPopover.classList.toggle('open');
+      if (importPopover.classList.contains('open') && githubWorkspaceInput) {
+        githubWorkspaceInput.focus();
+      }
+    });
+    document.addEventListener('click', (event) => {
+      if (!importPopover.contains(event.target) && event.target !== importToggle) {
+        importPopover.classList.remove('open');
+      }
+    });
+  }
+
+  const fileInput = document.getElementById('workspace-file-input');
+  const folderInput = document.getElementById('workspace-folder-input');
+  const uploadFilesButton = document.getElementById('upload-workspace-files');
+  const uploadFolderButton = document.getElementById('upload-workspace-folder');
+  const addWorkspaceFileButton = document.getElementById('add-workspace-file');
+
+  if (uploadFilesButton && fileInput) {
+    uploadFilesButton.addEventListener('click', () => fileInput.click());
+  }
+  if (uploadFolderButton && folderInput) {
+    uploadFolderButton.addEventListener('click', () => folderInput.click());
+  }
+  if (addWorkspaceFileButton) {
+    addWorkspaceFileButton.addEventListener('click', () => {
+      const fileName = prompt('Enter a file path (for example: src/lib.rs, src/utils.rs, shop/lib.rs):');
+      if (fileName && fileName.trim()) {
+        createNewFile(fileName.trim());
+      }
+    });
+  }
+  if (fileInput) {
+    fileInput.addEventListener('change', async () => {
+      try {
+        const fileEntries = await readFileSelection(fileInput.files);
+        await importFileEntriesIntoActiveWorkspace(fileEntries);
+      } catch (error) {
+        setWorkspaceStatus(error?.message || 'Failed to import files.', true);
+      } finally {
+        fileInput.value = '';
+      }
+    });
+  }
+  if (folderInput) {
+    folderInput.addEventListener('change', async () => {
+      try {
+        const fileEntries = await readFileSelection(folderInput.files);
+        await importFileEntriesIntoActiveWorkspace(fileEntries);
+      } catch (error) {
+        setWorkspaceStatus(error?.message || 'Failed to import folder.', true);
+      } finally {
+        folderInput.value = '';
+      }
+    });
+  }
+
+  const dropzone = document.getElementById('workspace-dropzone');
+  if (dropzone) {
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.remove('dragover');
+      });
+    });
+    dropzone.addEventListener('drop', async (event) => {
+      try {
+        const fileEntries = await collectDroppedWorkspaceFiles(event.dataTransfer);
+        await importFileEntriesIntoActiveWorkspace(fileEntries);
+      } catch (error) {
+        setWorkspaceStatus(error?.message || 'Failed to import dropped files.', true);
+      }
+    });
+  }
+
   const resetButton = document.getElementById('reset-code');
   if (resetButton) resetButton.onclick = async () => { await resetCode() };
   const shareButton = document.getElementById('share-link');

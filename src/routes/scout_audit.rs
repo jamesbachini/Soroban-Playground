@@ -5,7 +5,11 @@ use std::time::Duration;
 use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{docker::run_in_docker_with_files_and_id_stream, models::CompileRequest, semaphore::SEMAPHORE};
+use crate::{
+    docker::run_in_docker_with_files_and_id_stream,
+    models::{extract_main_source, CompileRequest},
+    semaphore::SEMAPHORE,
+};
 
 #[post("/scout-audit")]
 pub async fn scout_audit(req: web::Json<CompileRequest>) -> impl Responder {
@@ -23,9 +27,12 @@ pub async fn scout_audit(req: web::Json<CompileRequest>) -> impl Responder {
     let code = match &req.code {
         Some(c) => c.clone(),
         None => match &req.files {
-            Some(files_map) => match files_map.get("lib.rs") {
-                Some(lib_rs_code) => lib_rs_code.clone(),
-                None => return HttpResponse::BadRequest().body("No code provided and no lib.rs file found"),
+            Some(files_map) => match extract_main_source(files_map) {
+                Some(lib_rs_code) => lib_rs_code,
+                None => {
+                    return HttpResponse::BadRequest()
+                        .body("No code provided and no src/lib.rs or lib.rs file found")
+                }
             },
             None => return HttpResponse::BadRequest().body("No code or files provided"),
         },
@@ -36,7 +43,9 @@ pub async fn scout_audit(req: web::Json<CompileRequest>) -> impl Responder {
         use sha2::{Digest, Sha256};
         let mut h = Sha256::new();
         if let Some(ref files_map) = req.files {
-            for (filename, content) in files_map.iter() {
+            let mut entries: Vec<_> = files_map.iter().collect();
+            entries.sort_by(|a, b| a.0.cmp(b.0));
+            for (filename, content) in entries {
                 h.update(filename.as_bytes());
                 h.update(content.as_bytes());
             }
