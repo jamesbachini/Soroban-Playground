@@ -16,6 +16,8 @@ It's simple but capable with the ability to create stellar smart contracts, all 
 
 ## Crates Available
 
+ You can modify the Cargo.toml file directly in the workspace and import whatever you need with specific versions. As standard it comes with:
+
 - soroban-sdk
 - sep-41-token
 - soroban-fixed-point-math
@@ -25,10 +27,12 @@ It's simple but capable with the ability to create stellar smart contracts, all 
 - stellar-contract-utils
 - stellar-macros
 - stellar-accounts
+- stellar-fee-abstraction
+- stellar-governance
 
 Full version info available here: https://github.com/jamesbachini/Soroban-Playground/blob/main/src/templates/Cargo.toml.template
 
-If you want something else submit a pull request (preferably with a link to a 3rd party audit)
+If you want something else submit a pull request (preferably with a link to a 3rd party audit).
 
 
 ## Requirements

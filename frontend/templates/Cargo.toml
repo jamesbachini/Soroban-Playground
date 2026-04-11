@@ -11,22 +11,26 @@ soroban-sdk = "25.3.1"
 sep-41-token = "1.4.0"
 soroban-fixed-point-math = "1.5.0"
 blend-contract-sdk = "2.25.0"
-stellar-tokens = "0.6.0"
-stellar-access = "0.6.0"
-stellar-contract-utils = "0.6.0"
-stellar-macros = "0.6.0"
-stellar-accounts = "0.6.0"
+stellar-tokens = "0.7.1"
+stellar-access = "0.7.1"
+stellar-contract-utils = "0.7.1"
+stellar-macros = "0.7.1"
+stellar-accounts = "0.7.1"
+stellar-fee-abstraction = "0.7.1"
+stellar-governance = "0.7.1"
 
 [dev-dependencies]
 soroban-sdk = { version = "25.3.1", features = ["testutils"] }
 sep-41-token = { version = "1.4.0", features = ["testutils"] }
 soroban-fixed-point-math = { version = "1.5.0" }
 blend-contract-sdk = { version = "2.25.0", features = ["testutils"] }
-stellar-tokens = "0.6.0"
-stellar-access = "0.6.0"
-stellar-contract-utils = "0.6.0"
-stellar-macros = "0.6.0"
-stellar-accounts = "0.6.0"
+stellar-tokens = "0.7.1"
+stellar-access = "0.7.1"
+stellar-contract-utils = "0.7.1"
+stellar-macros = "0.7.1"
+stellar-accounts = "0.7.1"
+stellar-fee-abstraction = "0.7.1"
+stellar-governance = "0.7.1"
 
 [profile.release]
 opt-level = "z"
