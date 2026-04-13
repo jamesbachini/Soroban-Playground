@@ -63,7 +63,7 @@ sudo usermod -aG docker $USER
 sudo systemctl start docker
 exit
 docker volume create cargo-cache
-docker build -f Dockerfile.sandbox -t wasm_sandbox .
+docker build --pull --no-cache -f Dockerfile.sandbox -t wasm_sandbox .
 
 # Build the app, authorize port 80 using setcap and run the binary
 cargo build --release
@@ -121,7 +121,7 @@ git reset --hard origin/main
 docker system prune -a
 docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /cache/target/tmp"
 docker volume create cargo-cache
-docker build -f Dockerfile.sandbox -t wasm_sandbox .
+docker build --pull --no-cache -f Dockerfile.sandbox -t wasm_sandbox .
 
 # build a release binary
 cargo build --release
@@ -152,7 +152,7 @@ After messing with different docker builds it can use a lot of HD
 docker system prune -a
 docker volume rm cargo-cache
 docker volume create cargo-cache
-docker build -f Dockerfile.sandbox -t wasm_sandbox .
+docker build --pull --no-cache -f Dockerfile.sandbox -t wasm_sandbox .
 ```
 ## Crontab -e
 
