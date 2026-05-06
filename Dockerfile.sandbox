@@ -15,7 +15,8 @@ RUN mkdir -p /mnt/cargo/bin && ln -sf /usr/local/cargo/bin/rustup /mnt/cargo/bin
 # LLVM tooling
 RUN apt-get update && apt-get install -y clang lld
 
-# Ensure nightly is set as default
+# Ensure nightly is set as default, stable for stellar-cli
+RUN rustup toolchain install stable
 RUN rustup default nightly
 RUN rustup override set nightly
 
@@ -31,7 +32,8 @@ RUN apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev libud
 RUN rustup component add rustc-dev llvm-tools-preview
 
 # Install stellar cli
-RUN cargo install --locked stellar-cli
+
+RUN cargo +stable install --locked stellar-cli
 RUN install -m 0755 /mnt/cargo/bin/stellar /usr/local/bin/stellar
 
 # Install scout in the image.
