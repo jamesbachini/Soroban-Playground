@@ -257,7 +257,8 @@ fn prepare_docker_run(
     filenames.sort();
 
     for filename in filenames {
-        if filename == "Cargo.toml" {
+        if filename == "Cargo.toml" || filename == "Cargo.lock" || filename.ends_with("/Cargo.lock")
+        {
             continue;
         }
 

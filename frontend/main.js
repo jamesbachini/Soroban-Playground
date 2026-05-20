@@ -3525,9 +3525,15 @@ function deriveWorkspaceNameFromPath(path, fallback = 'Workspace') {
 function fileEntriesToWorkspaceFiles(fileEntries) {
   const workspaceFiles = {};
   fileEntries.forEach(({ path, content }) => {
+    if (!shouldImportWorkspaceFile(path)) return;
     workspaceFiles[path] = content;
   });
   return workspaceFiles;
+}
+
+function shouldImportWorkspaceFile(path) {
+  const normalizedPath = normalizeFilePath(path);
+  return normalizedPath !== 'Cargo.lock' && !normalizedPath.endsWith('/Cargo.lock');
 }
 
 function stripCommonLeadingDirectory(fileEntries) {
@@ -3675,6 +3681,7 @@ async function uploadWorkspaceZip(file) {
   Object.entries(unzipped).forEach(([path, data]) => {
     // Skip directories (empty entries ending with /) and hidden/system files
     if (path.endsWith('/') || path.startsWith('__MACOSX') || path.startsWith('.')) return;
+    if (!shouldImportWorkspaceFile(path)) return;
 
     // Strip a single common root directory prefix if every entry shares one
     let cleanPath = path;
@@ -3771,6 +3778,7 @@ async function fetchGithubWorkspaceFiles(owner, repo, ref, rootPath = '') {
           await walk(item.path);
         } else if (item.type === 'file' && item.download_url) {
           const relativePath = rootPath ? item.path.slice(rootPath.length).replace(/^\/+/, '') : item.path;
+          if (!shouldImportWorkspaceFile(relativePath || item.name)) continue;
           workspaceFiles[normalizeFilePath(relativePath || item.name)] = await fetchGithubFileText(item.download_url);
         }
       }
@@ -3781,6 +3789,7 @@ async function fetchGithubWorkspaceFiles(owner, repo, ref, rootPath = '') {
       const relativePath = rootPath
         ? currentPath.slice(rootPath.length).replace(/^\/+/, '')
         : currentPath || payload.name;
+      if (!shouldImportWorkspaceFile(relativePath || payload.name)) return;
       workspaceFiles[normalizeFilePath(relativePath || payload.name)] = await fetchGithubFileText(payload.download_url);
     }
   }
