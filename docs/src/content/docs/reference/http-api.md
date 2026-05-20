@@ -103,6 +103,34 @@ Example:
 
 Responses preserve the upstream status code and content type where possible.
 
+## MCP bridge API
+
+The MCP bridge API is used by the local TypeScript MCP server in `mcp/`. It is authenticated with:
+
+```text
+Authorization: Bearer USER_API_KEY
+```
+
+The browser IDE generates the key from **Settings > AI / MCP Access** and keeps the user's current workspaces connected while the tab is open. The v1 bridge does not persist remote projects after the browser session expires.
+
+Project endpoints:
+
+- `GET /api/mcp/v1/projects`
+- `GET /api/mcp/v1/projects/{project_id}`
+- `GET /api/mcp/v1/projects/{project_id}/files`
+- `GET /api/mcp/v1/projects/{project_id}/file?path=src/lib.rs`
+- `POST /api/mcp/v1/projects/{project_id}/file`
+- `DELETE /api/mcp/v1/projects/{project_id}/file?path=src/lib.rs`
+- `POST /api/mcp/v1/projects/{project_id}/move`
+- `POST /api/mcp/v1/projects/{project_id}/commands`
+
+Browser relay endpoints:
+
+- `POST /api/mcp/v1/browser/heartbeat`
+- `GET /api/mcp/v1/browser/changes?session_id=...&since=0`
+
+File paths use the same safe relative path rules as the IDE. Command execution is whitelisted to `build`, `test`, and `audit`; `deploy` returns an unsupported v1 error so transaction signing remains in the browser wallet flow.
+
 ## Static routes
 
 The same Rust process also serves:

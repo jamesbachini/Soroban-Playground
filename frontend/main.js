@@ -49,6 +49,13 @@ StellarWalletsKit.init({
 const WORKSPACE_STORAGE_KEY = 'soropg-workspaces';
 const LEGACY_FILES_STORAGE_KEY = 'soroban-files';
 const WORKSPACE_SCHEMA_VERSION = 1;
+const MCP_API_KEY_STORAGE_KEY = 'soropg-mcp-api-key';
+const MCP_SESSION_STORAGE_KEY = 'soropg-mcp-session-id';
+const MCP_SERVER_PATH_STORAGE_KEY = 'soropg-mcp-server-path';
+const MCP_HEARTBEAT_MS = 25_000;
+const MCP_POLL_MS = 4_000;
+const MCP_PUBLISH_DEBOUNCE_MS = 1_000;
+const DEFAULT_MCP_SERVER_PATH = '/path/to/Soroban-Playground/mcp/dist/index.js';
 const MAIN_SOURCE_CANDIDATES = ['src/lib.rs', 'lib.rs'];
 const ACADEMY_TESTNET_RPC_URL = 'https://soroban-testnet.stellar.org';
 const ACADEMY_TESTNET_EXPERT_BASE = 'https://stellar.expert/explorer/testnet/contract';
@@ -73,6 +80,13 @@ let currentFile = null;
 let isLoadingFile = false;
 let tabsInitialized = false;
 let openTabs = new Set();
+let isApplyingMcpUpdate = false;
+let isPublishingMcpSnapshot = false;
+let mcpPublishTimer = null;
+let mcpHeartbeatTimer = null;
+let mcpPollTimer = null;
+let mcpLastSeq = 0;
+let mcpLastSyncAt = null;
 
 function createWorkspaceId() {
   return `workspace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -219,6 +233,354 @@ function persistWorkspaceState() {
     activeWorkspaceId,
     workspaces,
   }));
+  scheduleMcpPublish();
+}
+
+function getMcpSessionId() {
+  let sessionId = sessionStorage.getItem(MCP_SESSION_STORAGE_KEY);
+  if (!sessionId) {
+    sessionId = `mcp-session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    sessionStorage.setItem(MCP_SESSION_STORAGE_KEY, sessionId);
+  }
+  return sessionId;
+}
+
+function getMcpApiKey() {
+  return localStorage.getItem(MCP_API_KEY_STORAGE_KEY) || '';
+}
+
+function generateMcpApiKey() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function getMcpServerPath() {
+  return localStorage.getItem(MCP_SERVER_PATH_STORAGE_KEY) || DEFAULT_MCP_SERVER_PATH;
+}
+
+function setMcpServerPath(path) {
+  const trimmed = String(path || '').trim();
+  localStorage.setItem(MCP_SERVER_PATH_STORAGE_KEY, trimmed || DEFAULT_MCP_SERVER_PATH);
+}
+
+function escapeTomlString(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function shellQuote(value) {
+  const raw = String(value || '');
+  if (/^[A-Za-z0-9_/:.,@%+=-]+$/.test(raw)) return raw;
+  return `'${raw.replace(/'/g, `'\\''`)}'`;
+}
+
+function formatMcpTime(timestamp) {
+  if (!timestamp) return 'Never';
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function setMcpStatus(message, isError = false) {
+  const statusEl = document.getElementById('mcp-status');
+  if (statusEl) {
+    statusEl.textContent = message;
+    statusEl.classList.toggle('error', isError);
+    statusEl.classList.toggle('success', Boolean(message) && !isError && Boolean(getMcpApiKey()));
+  }
+  updateMcpConnectionUi(isError ? 'error' : null, message);
+}
+
+function getMcpConfigSnippet() {
+  const apiKey = getMcpApiKey();
+  const apiUrl = window.location.origin;
+  const serverPath = getMcpServerPath();
+  return JSON.stringify({
+    mcpServers: {
+      soropg: {
+        type: "stdio",
+        command: "node",
+        args: [serverPath],
+        env: {
+          SOROPG_API_URL: apiUrl,
+          SOROPG_API_KEY: apiKey || "generate-a-key-in-soropg",
+        },
+      },
+    },
+  }, null, 2);
+}
+
+function getMcpInstallCommand() {
+  const serverPath = getMcpServerPath();
+  const mcpDir = serverPath.endsWith('/dist/index.js')
+    ? serverPath.slice(0, -'/dist/index.js'.length)
+    : '/path/to/Soroban-Playground/mcp';
+  return [
+    `cd ${shellQuote(mcpDir)}`,
+    'npm install',
+    'npm run build',
+  ].join('\n');
+}
+
+function getClaudeMcpCommand() {
+  const apiKey = getMcpApiKey() || 'generate-a-key-in-soropg';
+  const apiUrl = window.location.origin;
+  const serverPath = getMcpServerPath();
+  return [
+    'claude mcp add --transport stdio --scope user \\',
+    `  --env SOROPG_API_URL=${shellQuote(apiUrl)} \\`,
+    `  --env SOROPG_API_KEY=${shellQuote(apiKey)} \\`,
+    `  soropg -- node ${shellQuote(serverPath)}`,
+  ].join('\n');
+}
+
+function getCodexMcpConfig() {
+  const apiKey = getMcpApiKey() || 'generate-a-key-in-soropg';
+  const apiUrl = window.location.origin;
+  const serverPath = getMcpServerPath();
+  return [
+    '[mcp_servers.soropg]',
+    'command = "node"',
+    `args = ["${escapeTomlString(serverPath)}"]`,
+    `env = { SOROPG_API_URL = "${escapeTomlString(apiUrl)}", SOROPG_API_KEY = "${escapeTomlString(apiKey)}" }`,
+  ].join('\n');
+}
+
+function updateMcpConnectionUi(stateOverride = null, detailOverride = '') {
+  const key = getMcpApiKey();
+  const state = document.getElementById('mcp-connection-state');
+  const detail = document.getElementById('mcp-connection-detail');
+  const dot = document.getElementById('mcp-connection-dot');
+  const apiUrl = document.getElementById('mcp-api-url');
+  const workspaceCount = document.getElementById('mcp-workspace-count');
+  const activeWorkspace = document.getElementById('mcp-active-workspace');
+  const lastSync = document.getElementById('mcp-last-sync');
+  const workspace = getActiveWorkspace();
+  const resolvedState = stateOverride || (key ? (mcpLastSyncAt ? 'connected' : 'configured') : 'idle');
+
+  if (state) {
+    state.textContent = resolvedState === 'connected'
+      ? 'Browser bridge online'
+      : resolvedState === 'error'
+        ? 'Connection issue'
+        : key
+          ? 'Ready to connect'
+          : 'Not configured';
+  }
+  if (detail) {
+    detail.textContent = detailOverride || (key
+      ? 'Start the local MCP server from your AI client and keep this tab open.'
+      : 'Generate a key to start the browser bridge.');
+  }
+  if (dot) {
+    dot.classList.toggle('connected', resolvedState === 'connected');
+    dot.classList.toggle('error', resolvedState === 'error');
+  }
+  if (apiUrl) apiUrl.textContent = window.location.origin;
+  if (workspaceCount) workspaceCount.textContent = String(workspaces.length);
+  if (activeWorkspace) activeWorkspace.textContent = workspace?.name || '-';
+  if (lastSync) lastSync.textContent = formatMcpTime(mcpLastSyncAt);
+}
+
+function refreshMcpSettingsUi() {
+  const keyInput = document.getElementById('mcp-api-key');
+  const pathInput = document.getElementById('mcp-server-path');
+  const preview = document.getElementById('mcp-config-preview');
+  const installCommand = document.getElementById('mcp-install-command');
+  const claudeCommand = document.getElementById('mcp-claude-command');
+  const codexConfig = document.getElementById('mcp-codex-config');
+  const key = getMcpApiKey();
+  if (keyInput) keyInput.value = key;
+  if (pathInput && pathInput.value !== getMcpServerPath()) pathInput.value = getMcpServerPath();
+  if (preview) preview.value = getMcpConfigSnippet();
+  if (installCommand) installCommand.textContent = getMcpInstallCommand();
+  if (claudeCommand) claudeCommand.textContent = getClaudeMcpCommand();
+  if (codexConfig) codexConfig.textContent = getCodexMcpConfig();
+  updateMcpConnectionUi();
+  if (!key) {
+    setMcpStatus('Generate a key to expose this browser session to MCP clients.');
+  }
+}
+
+function setupMcpSettings() {
+  refreshMcpSettingsUi();
+
+  const generateButton = document.getElementById('generate-mcp-key');
+  if (generateButton) {
+    generateButton.addEventListener('click', () => {
+      const key = generateMcpApiKey();
+      localStorage.setItem(MCP_API_KEY_STORAGE_KEY, key);
+      mcpLastSeq = 0;
+      refreshMcpSettingsUi();
+      publishMcpWorkspaces();
+      setMcpStatus('MCP key generated. Keep this browser tab open while agents work.');
+    });
+  }
+
+  const pathInput = document.getElementById('mcp-server-path');
+  if (pathInput) {
+    pathInput.addEventListener('input', () => {
+      setMcpServerPath(pathInput.value);
+      refreshMcpSettingsUi();
+    });
+  }
+
+  document.querySelectorAll('.ai-copy-button[data-copy-target]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const target = document.getElementById(button.dataset.copyTarget);
+      const value = target?.value ?? target?.textContent ?? '';
+      if (!value.trim()) return;
+      try {
+        await navigator.clipboard.writeText(value);
+        setMcpStatus('Copied to clipboard.');
+      } catch (error) {
+        setMcpStatus('Could not copy automatically. Select the text instead.', true);
+      }
+    });
+  });
+
+  const copyButton = document.getElementById('copy-mcp-config');
+  if (copyButton) {
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(getMcpConfigSnippet());
+        setMcpStatus('MCP config copied.');
+      } catch (error) {
+        setMcpStatus('Could not copy automatically. Select the config text instead.', true);
+      }
+    });
+  }
+}
+
+function scheduleMcpPublish() {
+  refreshMcpSettingsUi();
+  if (isApplyingMcpUpdate || isPublishingMcpSnapshot || !getMcpApiKey()) return;
+  clearTimeout(mcpPublishTimer);
+  mcpPublishTimer = setTimeout(() => {
+    publishMcpWorkspaces();
+  }, MCP_PUBLISH_DEBOUNCE_MS);
+}
+
+function getMcpWorkspacePayload() {
+  saveCurrentFile();
+  return workspaces.map((workspace) => ({
+    id: workspace.id,
+    name: workspace.name,
+    files: workspace.files,
+    lastOpenFile: workspace.lastOpenFile,
+    updatedAt: workspace.updatedAt,
+  }));
+}
+
+async function publishMcpWorkspaces() {
+  const apiKey = getMcpApiKey();
+  if (!apiKey || isApplyingMcpUpdate) return;
+
+  try {
+    isPublishingMcpSnapshot = true;
+    const workspacePayload = getMcpWorkspacePayload();
+    isPublishingMcpSnapshot = false;
+
+    const response = await fetch('/api/mcp/v1/browser/heartbeat', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        session_id: getMcpSessionId(),
+        active_workspace_id: activeWorkspaceId,
+        workspaces: workspacePayload,
+      }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `MCP publish failed (${response.status})`);
+    }
+    mcpLastSyncAt = Date.now();
+    refreshMcpSettingsUi();
+    setMcpStatus('MCP bridge connected. Keep this browser tab open while agents work.');
+  } catch (error) {
+    isPublishingMcpSnapshot = false;
+    setMcpStatus(error?.message || 'MCP bridge publish failed.', true);
+  }
+}
+
+async function pollMcpChanges() {
+  const apiKey = getMcpApiKey();
+  if (!apiKey || isApplyingMcpUpdate) return;
+
+  try {
+    const params = new URLSearchParams({
+      session_id: getMcpSessionId(),
+      since: String(mcpLastSeq),
+    });
+    const response = await fetch(`/api/mcp/v1/browser/changes?${params.toString()}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    if (typeof payload.seq === 'number') {
+      mcpLastSeq = payload.seq;
+    }
+    if (Array.isArray(payload.projects) && payload.projects.length) {
+      applyMcpProjectUpdates(payload.projects);
+    }
+  } catch (error) {
+    console.warn('MCP change polling failed:', error);
+  }
+}
+
+function applyMcpProjectUpdates(projects) {
+  isApplyingMcpUpdate = true;
+  try {
+    let activeChanged = false;
+    projects.forEach((project) => {
+      const index = workspaces.findIndex((workspace) => workspace.id === project.id);
+      if (index === -1) return;
+      const nextFiles = normalizeWorkspaceFiles(project.files || {});
+      const nextWorkspace = {
+        ...workspaces[index],
+        name: sanitizeWorkspaceName(project.name || workspaces[index].name),
+        files: nextFiles,
+        lastOpenFile: getPreferredFile(nextFiles, project.lastOpenFile || workspaces[index].lastOpenFile),
+        updatedAt: project.updatedAt || Date.now(),
+      };
+      workspaces[index] = nextWorkspace;
+      if (project.id === activeWorkspaceId) {
+        activeChanged = true;
+      }
+    });
+
+    localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({
+      version: WORKSPACE_SCHEMA_VERSION,
+      activeWorkspaceId,
+      workspaces,
+    }));
+
+    if (activeChanged) {
+      syncWorkspaceFiles();
+      if (currentFile && !files[currentFile]) {
+        currentFile = getPreferredFile(files, null);
+        openTabs = new Set();
+      }
+      refreshWorkspaceEditor({ preferredFile: currentFile || getActiveWorkspace()?.lastOpenFile });
+    } else {
+      renderWorkspaceManager();
+    }
+    setMcpStatus('Applied remote MCP workspace edits.');
+  } finally {
+    isApplyingMcpUpdate = false;
+  }
+}
+
+function startMcpBridge() {
+  setupMcpSettings();
+  publishMcpWorkspaces();
+  clearInterval(mcpHeartbeatTimer);
+  clearInterval(mcpPollTimer);
+  mcpHeartbeatTimer = setInterval(() => publishMcpWorkspaces(), MCP_HEARTBEAT_MS);
+  mcpPollTimer = setInterval(() => pollMcpChanges(), MCP_POLL_MS);
 }
 
 async function loadDefaultFiles() {
@@ -4639,6 +5001,7 @@ async function init() {
       setShareStatus('');
     });
   }
+  startMcpBridge();
   setLocalNetworkInputs(localNetworkConfig);
   const saveLocalNetworkConfigButton = document.getElementById('save-local-network-config');
   if (saveLocalNetworkConfigButton) {

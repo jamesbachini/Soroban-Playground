@@ -18,7 +18,7 @@ mod routes;
 mod semaphore;
 
 use actix_files::Files;
-use actix_web::{middleware::Logger, App, HttpServer};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use std::env;
 
 #[actix_web::main]
@@ -46,14 +46,27 @@ async fn main() -> std::io::Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    HttpServer::new(|| {
+    let mcp_state = web::Data::new(routes::mcp::McpState::default());
+
+    HttpServer::new(move || {
         App::new()
+            .app_data(mcp_state.clone())
             .wrap(Logger::default())
             .service(routes::compile::compile)
             .service(routes::test::test)
             .service(routes::scout_audit::scout_audit)
             .service(routes::interface::interface)
             .service(routes::friendbot::friendbot)
+            .service(routes::mcp::browser_heartbeat)
+            .service(routes::mcp::browser_changes)
+            .service(routes::mcp::list_projects)
+            .service(routes::mcp::get_project)
+            .service(routes::mcp::list_files)
+            .service(routes::mcp::read_file)
+            .service(routes::mcp::upsert_file)
+            .service(routes::mcp::delete_file)
+            .service(routes::mcp::move_file)
+            .service(routes::mcp::run_command)
             .service(Files::new("/docs", "./docs/dist").index_file("index.html"))
             .service(Files::new("/", "./frontend").index_file("index.html"))
     })

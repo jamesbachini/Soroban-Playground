@@ -116,7 +116,7 @@ pub async fn compile(req: web::Json<CompileRequest>) -> impl Responder {
         }
     });
 
-    let stream = UnboundedReceiverStream::new(rx).map(|bytes| Ok::<Bytes, actix_web::Error>(bytes));
+    let stream = UnboundedReceiverStream::new(rx).map(Ok::<Bytes, actix_web::Error>);
 
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")

@@ -315,7 +315,7 @@ pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir),
     let final_command = with_rustup_bootstrap(command, false);
 
     let output = tokio::process::Command::new("docker")
-        .args(&[
+        .args([
             "run",
             "--rm",
             "--memory=2G",
@@ -337,11 +337,20 @@ pub async fn run_in_docker_no_files(command: &str) -> Result<(Vec<u8>, TempDir),
         .await
         .map_err(|e| e.to_string())?;
 
-    if !output.stdout.is_empty() {
-        Ok((output.stdout, tmp))
-    } else {
-        Ok((output.stderr, tmp))
+    let mut combined_output = output.stdout;
+    if !output.stderr.is_empty() {
+        combined_output.extend_from_slice(&output.stderr);
     }
+
+    if !output.status.success() {
+        return Err(format!(
+            "Docker exited with status: {}\n{}",
+            output.status,
+            String::from_utf8_lossy(&combined_output)
+        ));
+    }
+
+    Ok((combined_output, tmp))
 }
 
 #[allow(dead_code)]
@@ -362,7 +371,7 @@ pub async fn run_in_docker_with_files_and_id(
 ) -> Result<(Vec<u8>, TempDir, String), String> {
     let prepared = prepare_docker_run(code, files, command, build_id)?;
     let output = tokio::process::Command::new("docker")
-        .args(&[
+        .args([
             "run",
             "--rm",
             "--memory=2G",
@@ -388,15 +397,20 @@ pub async fn run_in_docker_with_files_and_id(
         .await
         .map_err(|e| e.to_string())?;
 
-    //let stdout = String::from_utf8_lossy(&output.stdout);
-    //let stderr = String::from_utf8_lossy(&output.stderr);
-    //println!("Docker stdout:\n{}", stdout);
-    //println!("Docker stderr:\n{}", stderr);
-    if !output.stdout.is_empty() {
-        Ok((output.stdout, prepared.tmp, prepared.output_filename))
-    } else {
-        Ok((output.stderr, prepared.tmp, prepared.output_filename))
+    let mut combined_output = output.stdout;
+    if !output.stderr.is_empty() {
+        combined_output.extend_from_slice(&output.stderr);
     }
+
+    if !output.status.success() {
+        return Err(format!(
+            "Docker exited with status: {}\n{}",
+            output.status,
+            String::from_utf8_lossy(&combined_output)
+        ));
+    }
+
+    Ok((combined_output, prepared.tmp, prepared.output_filename))
 }
 
 async fn stream_pipe<R>(mut reader: R, tx: mpsc::UnboundedSender<Bytes>) -> Result<(), String>
@@ -426,7 +440,7 @@ pub async fn run_in_docker_with_files_and_id_stream(
     let prepared = prepare_docker_run(code, files, command, build_id)?;
 
     let mut child = tokio::process::Command::new("docker")
-        .args(&[
+        .args([
             "run",
             "--rm",
             "--memory=2G",
