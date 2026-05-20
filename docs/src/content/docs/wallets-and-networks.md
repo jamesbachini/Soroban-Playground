@@ -16,6 +16,8 @@ SoroPG supports these network choices:
 
 The selected network is saved in browser storage.
 
+SoroPG uses Stellar RPC for transaction preparation, submission, simulation, and contract reads. It can fall back to Horizon for loading source accounts when needed.
+
 ## Generated wallets
 
 Click **Generate Wallet** to create a local Stellar keypair in the browser. SoroPG can use this keypair to sign deploy and invocation transactions.
@@ -25,6 +27,8 @@ Generated wallets are convenient for development but must be exported if you nee
 ## Browser wallets
 
 SoroPG integrates with Stellar Wallet Kit for browser wallet connections. When a browser wallet is connected, signing requests are sent to that wallet instead of using a local secret key.
+
+Browser wallets are the better choice when you do not want SoroPG to store a secret key locally. Review each wallet prompt before signing.
 
 ## Funding wallets
 
@@ -50,3 +54,5 @@ RPC URL: http://localhost:8000/rpc
 Horizon URL: http://localhost:8000
 Network passphrase: Standalone Network ; February 2017
 ```
+
+SoroPG allows HTTP URLs for local development. For remote or production network services, prefer HTTPS endpoints.

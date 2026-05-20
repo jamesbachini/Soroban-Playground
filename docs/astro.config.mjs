@@ -10,6 +10,7 @@ export default defineConfig({
 		starlight({
 			title: 'SoroPG Docs',
 			description: 'Developer documentation for SoroPG, the Soroban Playground.',
+			customCss: ['/src/styles/soropg.css'],
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/jamesbachini/Soroban-Playground' }],
 			sidebar: [
 				{
@@ -34,6 +35,11 @@ export default defineConfig({
 					label: 'Reference',
 					items: [
 						{ label: 'HTTP API', slug: 'reference/http-api' },
+						{
+							label: 'llms.txt',
+							link: '/llms.txt',
+							attrs: { target: '_blank', rel: 'noopener noreferrer' },
+						},
 						{ label: 'Troubleshooting', slug: 'troubleshooting' },
 					],
 				},

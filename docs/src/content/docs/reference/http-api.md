@@ -5,6 +5,8 @@ description: Reference for SoroPG server endpoints used by the frontend.
 
 The SoroPG frontend calls these endpoints on the same origin as the editor. Build, test, audit, and interface endpoints stream plain text responses.
 
+These endpoints are primarily internal to the SoroPG frontend. They are useful for understanding behavior or building local tooling, but request and stream formats are optimized for the browser UI.
+
 ## POST /compile
 
 Compiles the active contract project to WASM.
@@ -32,9 +34,11 @@ Legacy single-file requests can use:
 Response:
 
 - `200 text/plain` streaming build output.
-- On success, the stream includes an encoded WASM payload used by the frontend to download the `.wasm` file.
+- On success, the stream includes an encoded WASM payload between SoroPG markers. The frontend extracts that payload and downloads the `.wasm` file.
 - `400` if no source code or main source file is provided.
 - `503` if the sandbox semaphore is unavailable.
+
+The server hashes the submitted files for build caching. File entries are sorted before hashing so equivalent file maps produce stable cache keys.
 
 ## POST /test
 
@@ -98,3 +102,11 @@ Example:
 ```
 
 Responses preserve the upstream status code and content type where possible.
+
+## Static routes
+
+The same Rust process also serves:
+
+- `/` from the SoroPG frontend directory.
+- `/docs/` from the generated Starlight documentation build.
+- `/llms.txt` from the frontend static directory for AI-agent context.

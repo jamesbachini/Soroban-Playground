@@ -7,6 +7,8 @@ description: Common SoroPG errors and how to resolve them.
 
 Make sure your workspace contains `src/lib.rs` or `lib.rs`. SoroPG uses those paths as the main contract source.
 
+If you imported from GitHub or ZIP, check whether the project was nested inside an extra folder.
+
 ## Build or test takes a long time
 
 The sandbox may be compiling Rust dependencies. Wait for the console output to finish. Repeated builds are usually faster because the server uses a shared Cargo cache volume.
@@ -14,6 +16,12 @@ The sandbox may be compiling Rust dependencies. Wait for the console output to f
 ## WASM did not download
 
 Check the build console for errors. The WASM download only starts after `stellar contract build` completes successfully.
+
+Some browsers may block automatic downloads. If the build succeeded but no file appeared, check the browser download shelf and permissions for the SoroPG site.
+
+## Deploy asks for a file
+
+This is expected. SoroPG deploys a `.wasm` file from your browser. Compile first in the **Build** panel, then select the downloaded WASM when deploying.
 
 ## Wallet funding failed
 
@@ -32,6 +40,8 @@ If you use Stellar quickstart locally, confirm that ports are exposed to the bro
 ## Contract interface does not load
 
 Verify the contract ID and network. If the contract exists on a local network, make sure the local configuration is selected before loading the contract.
+
+Also confirm the contract was created successfully, not only that the WASM upload transaction succeeded.
 
 ## Browser state disappeared
 

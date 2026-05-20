@@ -1,40 +1,45 @@
 ---
 title: SoroPG Developer Documentation
-description: Learn how to build, test, deploy, and interact with Soroban smart contracts in SoroPG.
-template: splash
-hero:
-  tagline: Build, test, deploy, and explore Soroban contracts from your browser.
-  actions:
-    - text: Get started
-      link: /docs/getting-started/
-      icon: right-arrow
-    - text: Open SoroPG
-      link: /
-      icon: external
-      variant: minimal
+description: Learn how to build, test, deploy, and interact with Stellar smart contracts in SoroPG.
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkButton } from '@astrojs/starlight/components';
 
-SoroPG is a browser-based Soroban playground for Stellar smart contract developers. It gives you a Rust editor, project workspaces, Docker-backed build and test execution, wallet tooling, contract deployment, and an interface explorer for deployed contracts.
+SoroPG is a browser-based development environment for Stellar smart contract developers. It combines a Rust editor, multi-file workspaces, Docker-backed build and test execution, wallet tooling, contract deployment, and an interface explorer for deployed contracts.
 
 <CardGrid stagger>
-	<Card title="Create projects" icon="pencil">
-		Manage multi-file Soroban projects with workspaces, tabs, imports, uploads, and ZIP export.
-	</Card>
-	<Card title="Build and test" icon="setting">
-		Compile contracts to WASM, run `cargo test`, and launch Scout audit checks in the sandbox.
-	</Card>
-	<Card title="Deploy" icon="rocket">
-		Deploy compiled WASM to testnet, futurenet, mainnet, or a local network with generated or browser wallets.
-	</Card>
-	<Card title="Explore" icon="open-book">
-		Load a contract, inspect its interface, simulate read-only calls, and submit transactions.
-	</Card>
+  <Card title="Create projects" icon="pencil">
+    Manage Stellar project files with workspaces, tabs, folder upload, GitHub import, and ZIP export.
+  </Card>
+  <Card title="Build and test" icon="setting">
+    Compile contracts to WASM, run `cargo test`, and launch Scout audit checks in the server sandbox.
+  </Card>
+  <Card title="Deploy" icon="rocket">
+    Upload compiled WASM and create contract instances on testnet, futurenet, mainnet, or local networks.
+  </Card>
+  <Card title="Explore" icon="open-book">
+    Load a deployed contract, inspect its interface, simulate calls, and submit signed transactions.
+  </Card>
 </CardGrid>
+## Typical Workflow
 
-## What SoroPG is for
+1. Create or import a workspace.
+2. Edit `Cargo.toml`, `src/lib.rs`, and tests in the browser.
+3. Run unit tests and Scout audit from the **Test** panel.
+4. Compile the contract from the **Build** panel and download the `.wasm`.
+5. Deploy the downloaded `.wasm` from the **Deploy** panel.
+6. Load the new contract ID in **Explore** to inspect and call methods.
 
-Use SoroPG when you want a fast way to prototype Soroban contracts without setting up a complete local Stellar development environment. The editor stores projects in your browser, while build and test commands run on the SoroPG server inside an isolated Docker sandbox.
+## When to Use SoroPG
+
+Use SoroPG when you want a fast way to prototype Stellar smart contracts without setting up a complete local Stellar development environment. The editor stores projects in your browser, while build and test commands run on the SoroPG server inside an isolated Docker sandbox.
 
 For production deployments, keep your source code in version control, review generated transactions carefully, and test against the same network you plan to use.
+
+## What Runs Where
+
+- Browser: editor state, workspaces, generated local wallet keys, Stellar SDK transaction building, and wallet signing requests.
+- SoroPG server: static frontend/docs hosting, Docker sandbox orchestration, build/test/audit streams, contract interface CLI calls, and local friendbot proxying.
+- Stellar network: RPC/Horizon reads, transaction submission, account funding, and deployed contract execution.
+
+<LinkButton href="/" target="_blank" icon="external">Open SoroPG</LinkButton>

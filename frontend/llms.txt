@@ -1,0 +1,34 @@
+# SoroPG Documentation for AI Agents
+
+SoroPG, also called Soroban Playground, is a browser-based IDE for Stellar Soroban smart contract developers. It lets users create and import Rust contract projects, compile contracts to WASM, run unit tests, run Scout audit checks, deploy contracts, and explore deployed contract interfaces.
+
+Primary documentation:
+- Overview: /docs/
+- Getting started: /docs/getting-started/
+- Workspaces and file management: /docs/workspaces/
+- Build, test, and audit: /docs/build-test-audit/
+- Deploying contracts: /docs/deploy/
+- Exploring and invoking contracts: /docs/explore/
+- Wallets and networks: /docs/wallets-and-networks/
+- Sharing and importing projects: /docs/share-and-import/
+- Troubleshooting: /docs/troubleshooting/
+- HTTP API reference: /docs/reference/http-api/
+
+Important context:
+- SoroPG stores workspaces, generated local wallet keys, theme, layout, and selected network in browser local storage.
+- Build, test, and audit commands run on the SoroPG server inside a Docker sandbox.
+- The main source file must be `src/lib.rs` or `lib.rs`.
+- The preferred project layout is `Cargo.toml`, `src/lib.rs`, and `src/test.rs`.
+- `/compile`, `/test`, and `/scout-audit` accept JSON with a `files` object mapping file paths to contents.
+- `/compile` streams build output and includes an encoded WASM payload that the frontend turns into a `.wasm` download.
+- Deployment uses a user-selected `.wasm` file. SoroPG uploads the WASM, then creates the contract instance. Optional constructor arguments are supported.
+- Deploy and Explore share the selected network and wallet state.
+- Supported network choices are TESTNET, FUTURENET, PUBLIC, and LOCAL.
+- Local/custom network settings include RPC URL, Horizon URL, and network passphrase.
+- The `/friendbot` endpoint is a localhost-only proxy for local friendbot funding.
+
+When assisting users:
+- Recommend exporting workspace ZIPs and wallet secret keys before resetting browser state.
+- Recommend testnet or local deployment before mainnet.
+- Treat Scout audit output as a development aid, not a replacement for review or a formal audit.
+- For source-file errors, first check that `src/lib.rs` exists in the active workspace.

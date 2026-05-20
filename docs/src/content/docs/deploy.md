@@ -5,6 +5,8 @@ description: Deploy compiled Soroban contracts from SoroPG.
 
 The **Deploy** panel uploads contract WASM and creates a deployed contract instance on the selected network.
 
+Deploying from SoroPG uses a `.wasm` file selected from your browser. Build the contract first, keep the downloaded WASM, then choose that file when you click **Deploy WASM**.
+
 ## Supported networks
 
 SoroPG supports:
@@ -31,9 +33,15 @@ SoroPG performs deployment in two steps:
 
 The deploy console shows transaction progress, the WASM hash, and the deployed contract ID. Copy the contract ID before leaving the page if you plan to interact with it later.
 
+If your contract has a constructor, add constructor arguments before deployment. SoroPG converts those values into Soroban `ScVal` values and includes them in the create-contract transaction.
+
 ## Funding
 
 Generated wallets request funds for testnet and futurenet automatically. Local network funding uses the local friendbot configuration. Mainnet wallets must already hold enough XLM for fees and minimum balance.
+
+## After deployment
+
+Use the **Load Contract** link in the deploy console to open the contract in **Explore**, or copy the contract ID and load it later. The selected network in Deploy and Explore is shared, so make sure it still matches where the contract was deployed.
 
 ## Before deploying to mainnet
 
