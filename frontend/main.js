@@ -17,6 +17,7 @@ const LOCAL_NETWORK_CONFIG_KEY = 'local-network-config';
 const SELECTED_NETWORK_KEY = 'selected-network';
 const LEGACY_EXPLORE_NETWORK_KEY = 'last-explore-network';
 const THEME_STORAGE_KEY = 'soropg-theme';
+const ACADEMY_PROGRESS_KEY = 'soropg-academy-progress';
 const SUPPORTED_NETWORKS = new Set(['TESTNET', 'LOCAL', 'FUTURENET', 'PUBLIC']);
 const DEFAULT_LOCAL_NETWORK_CONFIG = Object.freeze({
   rpcUrl: 'http://localhost:8000/rpc',
@@ -27,6 +28,9 @@ let localNetworkConfig = loadLocalNetworkConfig();
 let fundingMessageTimeout = null;
 let fundingMessageInterval = null;
 let fundingMessageId = 0;
+let academyProgress = loadAcademyProgress();
+let academyYoutubeApiPromise = null;
+let academyYoutubePlayer = null;
 const PANEL_MIN_HEIGHT = 200;
 let defaultPanelSplitRatio = null;
 let lastPanelSplitRatio = null;
@@ -46,6 +50,21 @@ const WORKSPACE_STORAGE_KEY = 'soropg-workspaces';
 const LEGACY_FILES_STORAGE_KEY = 'soroban-files';
 const WORKSPACE_SCHEMA_VERSION = 1;
 const MAIN_SOURCE_CANDIDATES = ['src/lib.rs', 'lib.rs'];
+const ACADEMY_TESTNET_RPC_URL = 'https://soroban-testnet.stellar.org';
+const ACADEMY_TESTNET_EXPERT_BASE = 'https://stellar.expert/explorer/testnet/contract';
+const ACADEMY_LESSONS = Object.freeze({
+  'foundations-hello-world': Object.freeze({
+    id: 'foundations-hello-world',
+    title: 'Hello World on Testnet',
+    course: 'Foundations',
+    githubUrl: 'https://github.com/stellar/soroban-examples/tree/main/hello_world',
+    preferredFile: 'src/lib.rs',
+    expectedMethods: Object.freeze(['hello']),
+    videoId: '',
+    videoTitle: 'Hello World contract walkthrough',
+  }),
+});
+const ACTIVE_ACADEMY_LESSON_ID = 'foundations-hello-world';
 
 let workspaces = [];
 let activeWorkspaceId = null;
@@ -1328,6 +1347,282 @@ function initializeTabs(options = {}) {
   }
 
   setTimeout(() => checkMenuOverflow(), 100);
+}
+
+function loadAcademyProgress() {
+  try {
+    const stored = localStorage.getItem(ACADEMY_PROGRESS_KEY);
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    console.error('Failed to load academy progress:', error);
+    return {};
+  }
+}
+
+function saveAcademyProgress() {
+  localStorage.setItem(ACADEMY_PROGRESS_KEY, JSON.stringify(academyProgress));
+}
+
+function getAcademyLesson(lessonId = ACTIVE_ACADEMY_LESSON_ID) {
+  return ACADEMY_LESSONS[lessonId] || ACADEMY_LESSONS[ACTIVE_ACADEMY_LESSON_ID];
+}
+
+function getAcademyLessonProgress(lessonId = ACTIVE_ACADEMY_LESSON_ID) {
+  return academyProgress[lessonId] || {};
+}
+
+function setAcademyLessonProgress(lessonId, patch) {
+  academyProgress = {
+    ...academyProgress,
+    [lessonId]: {
+      ...getAcademyLessonProgress(lessonId),
+      ...patch,
+      updatedAt: Date.now(),
+    },
+  };
+  saveAcademyProgress();
+  renderAcademyProgress();
+}
+
+function setAcademyStatus(message, type = 'muted') {
+  const statusEl = document.getElementById('academy-verification-status');
+  if (!statusEl) return;
+  statusEl.textContent = message || '';
+  statusEl.classList.remove('error', 'success');
+  if (type === 'error' || type === 'success') {
+    statusEl.classList.add(type);
+  }
+}
+
+function setAcademyStepState(elementId, done, doneText, pendingText) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  element.textContent = done ? doneText : pendingText;
+  element.classList.toggle('complete', Boolean(done));
+}
+
+function renderAcademyProgress() {
+  const lesson = getAcademyLesson();
+  const progress = getAcademyLessonProgress(lesson.id);
+  const completed = Boolean(progress.completedAt);
+  const videoStarted = Boolean(progress.videoStartedAt);
+  const codeImported = Boolean(progress.codeImportedAt);
+  const completedSteps = [videoStarted, codeImported, completed].filter(Boolean).length;
+  const percent = Math.round((completedSteps / 3) * 100);
+
+  const percentEl = document.getElementById('academy-progress-percent');
+  const bottomPercentEl = document.getElementById('academy-bottom-progress-percent');
+  const completedCountEl = document.getElementById('academy-completed-count');
+  const ringEl = document.querySelector('.academy-ring');
+  const fillEl = document.getElementById('academy-progress-fill');
+  const stateEl = document.getElementById('academy-lesson-state');
+  const verifiedLink = document.getElementById('academy-verified-link');
+  const contractInput = document.getElementById('academy-contract-id');
+
+  if (percentEl) percentEl.textContent = `${percent}%`;
+  if (bottomPercentEl) bottomPercentEl.textContent = `${percent}%`;
+  if (completedCountEl) completedCountEl.textContent = completed ? '1' : '0';
+  if (ringEl) ringEl.style.background = `conic-gradient(var(--accent-color) ${percent * 3.6}deg, rgba(255, 255, 255, 0.12) ${percent * 3.6}deg)`;
+  if (fillEl) fillEl.style.width = `${percent}%`;
+  if (stateEl) {
+    stateEl.textContent = completed ? 'Completed' : percent > 0 ? 'In progress' : 'Not started';
+    stateEl.classList.toggle('complete', completed);
+  }
+
+  setAcademyStepState('academy-video-progress', videoStarted, 'Started', 'Not started');
+  setAcademyStepState('academy-import-progress', codeImported, 'Code imported', 'Code not imported');
+  setAcademyStepState('academy-complete-progress', completed, 'Deployment verified', 'Deployment not verified');
+
+  if (progress.contractId && contractInput && !contractInput.value) {
+    contractInput.value = progress.contractId;
+  }
+  if (verifiedLink) {
+    if (progress.contractId) {
+      verifiedLink.href = `${ACADEMY_TESTNET_EXPERT_BASE}/${progress.contractId}`;
+      verifiedLink.classList.add('visible');
+    } else {
+      verifiedLink.classList.remove('visible');
+    }
+  }
+}
+
+function loadYouTubeIframeApi() {
+  if (window.YT && window.YT.Player) {
+    return Promise.resolve(window.YT);
+  }
+  if (academyYoutubeApiPromise) {
+    return academyYoutubeApiPromise;
+  }
+  academyYoutubeApiPromise = new Promise((resolve) => {
+    const previousReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof previousReady === 'function') previousReady();
+      resolve(window.YT);
+    };
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(script);
+    }
+  });
+  return academyYoutubeApiPromise;
+}
+
+async function initAcademyVideo() {
+  const lesson = getAcademyLesson();
+  const stage = document.getElementById('academy-video-stage');
+  if (!stage) return;
+
+  if (!lesson.videoId) {
+    stage.innerHTML = `
+      <div class="academy-video-placeholder">
+        <i class="fab fa-youtube"></i>
+        <span>Video will appear here after a YouTube id is added to the lesson metadata.</span>
+      </div>
+    `;
+    return;
+  }
+
+  stage.innerHTML = '<div id="academy-youtube-player"></div>';
+  try {
+    const yt = await loadYouTubeIframeApi();
+    academyYoutubePlayer = new yt.Player('academy-youtube-player', {
+      videoId: lesson.videoId,
+      playerVars: {
+        modestbranding: 1,
+        rel: 0,
+      },
+      events: {
+        onStateChange: (event) => {
+          if (event.data === yt.PlayerState.PLAYING) {
+            setAcademyLessonProgress(lesson.id, { videoStartedAt: Date.now() });
+          }
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to initialize academy video:', error);
+    stage.innerHTML = `
+      <div class="academy-video-placeholder">
+        <i class="fab fa-youtube"></i>
+        <span>Video could not be loaded.</span>
+      </div>
+    `;
+  }
+}
+
+async function importAcademyLessonCode() {
+  const lesson = getAcademyLesson();
+  const button = document.getElementById('academy-import-code');
+  if (button) button.disabled = true;
+  setAcademyStatus('Importing hello world from GitHub...');
+  try {
+    await loadWorkspaceFromGithub(lesson.githubUrl, { createNew: true });
+    setAcademyLessonProgress(lesson.id, { codeImportedAt: Date.now() });
+    setWorkspaceStatus('Academy lesson code imported.');
+    activatePanel('create-panel', { resetSplit: true });
+    setAcademyStatus('Code imported. Run the tests next.', 'success');
+  } catch (error) {
+    setAcademyStatus(error?.message || 'Failed to import lesson code.', 'error');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function runAcademyTests() {
+  activatePanel('test-panel', { splitRatio: 0.38 });
+  await runTests();
+}
+
+async function compileAcademyCode() {
+  activatePanel('build-panel', { splitRatio: 0.38 });
+  await compileCode();
+}
+
+function openAcademyDeploy() {
+  setActiveNetwork('TESTNET', { persist: true, logToDeployConsole: true });
+  activatePanel('deploy-panel', { splitRatio: 0.38 });
+}
+
+function isValidContractId(contractId) {
+  if (!contractId) return false;
+  if (StellarSdk.StrKey?.isValidContract) {
+    return StellarSdk.StrKey.isValidContract(contractId);
+  }
+  try {
+    StellarSdk.StrKey.decodeContract(contractId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function verifyAcademyContract() {
+  const lesson = getAcademyLesson();
+  const input = document.getElementById('academy-contract-id');
+  const button = document.getElementById('academy-verify-contract');
+  const contractId = input?.value.trim();
+
+  if (!isValidContractId(contractId)) {
+    setAcademyStatus('Enter a valid Stellar contract id that starts with C.', 'error');
+    return;
+  }
+
+  if (button) button.disabled = true;
+  setAcademyStatus('Checking Testnet for the deployed hello world contract...');
+  try {
+    const client = await StellarSdk.contract.Client.from({
+      contractId,
+      rpcUrl: ACADEMY_TESTNET_RPC_URL,
+      networkPassphrase: StellarSdk.Networks.TESTNET,
+    });
+    const methodNames = client.spec.funcs().map((fn) => fn.name().toString());
+    const missingMethods = lesson.expectedMethods.filter((method) => !methodNames.includes(method));
+    if (missingMethods.length) {
+      throw new Error(`Contract found, but it is missing: ${missingMethods.join(', ')}.`);
+    }
+    setAcademyLessonProgress(lesson.id, {
+      completedAt: Date.now(),
+      contractId,
+    });
+    setAcademyStatus('Lesson complete. Testnet deployment verified.', 'success');
+  } catch (error) {
+    console.error(error);
+    setAcademyStatus(error?.message || 'Could not verify this Testnet contract.', 'error');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function setupAcademy() {
+  renderAcademyProgress();
+  initAcademyVideo();
+
+  const importButton = document.getElementById('academy-import-code');
+  const continueButton = document.getElementById('academy-continue-course');
+  const testButton = document.getElementById('academy-run-tests');
+  const compileButton = document.getElementById('academy-compile-code');
+  const deployButton = document.getElementById('academy-open-deploy');
+  const verifyButton = document.getElementById('academy-verify-contract');
+  const contractInput = document.getElementById('academy-contract-id');
+
+  if (importButton) importButton.addEventListener('click', importAcademyLessonCode);
+  if (continueButton) continueButton.addEventListener('click', importAcademyLessonCode);
+  if (testButton) testButton.addEventListener('click', runAcademyTests);
+  if (compileButton) compileButton.addEventListener('click', compileAcademyCode);
+  if (deployButton) deployButton.addEventListener('click', openAcademyDeploy);
+  if (verifyButton) verifyButton.addEventListener('click', verifyAcademyContract);
+  if (contractInput) {
+    contractInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        verifyAcademyContract();
+      }
+    });
+    contractInput.addEventListener('input', () => setAcademyStatus(''));
+  }
 }
 
 require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
@@ -3050,6 +3345,10 @@ function activatePanel(panelId, options = {}) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
 
   panelEl.classList.add('active');
+  const mainContent = document.getElementById('main-content');
+  if (mainContent) {
+    mainContent.classList.toggle('academy-mode', panelId === 'academy-panel');
+  }
   const panelKey = panelId.replace('-panel', '');
   const sidebarIcon = document.querySelector(`.sidebar-icon[data-panel="${panelKey}"]`);
   if (sidebarIcon) sidebarIcon.classList.add('active');
@@ -4358,6 +4657,7 @@ async function init() {
   document.getElementById('run-tests').onclick = () => runTests();
   document.getElementById('scout-audit').onclick = () => runScoutAudit();
   document.getElementById('compile-code').onclick = () => compileCode();
+  setupAcademy();
 
   const resizer = document.getElementById("resizer");
   const topPanel = document.getElementById("editor-container");

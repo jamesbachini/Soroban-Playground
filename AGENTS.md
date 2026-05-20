@@ -31,3 +31,12 @@
 ## Security & Configuration Tips
 - Docker is required; the app uses the `wasm_sandbox` image and `cargo-cache` volume for isolated builds.
 - If you can’t bind to port 80, run with `--port 8080` or apply `setcap` as shown above.
+
+## Academy Architecture
+- The Academy is a low-traffic frontend feature kept inside the existing static SPA. Its sidebar entry switches the editor area to `#academy-main-view` and opens `#academy-panel` for lesson tools; styling is scoped in `frontend/style.css`; behavior lives in `frontend/main.js`.
+- Lesson metadata is defined in `ACADEMY_LESSONS` in `frontend/main.js`. A lesson should include a stable `id`, `title`, `githubUrl`, `preferredFile`, optional `videoId`, and `expectedMethods` for deployment verification.
+- Academy progress is browser-local in `localStorage` under `soropg-academy-progress`. Current progress milestones are: video started, code imported, and deployment verified.
+- Code import reuses the existing GitHub workspace importer. Prefer GitHub tree URLs for future lessons so the importer can load all relevant files into a workspace.
+- Lesson action buttons should route learners into the existing Create, Test, Build, and Deploy panels instead of duplicating compile/test/deploy architecture inside Academy.
+- Deployment completion for Lesson 1 verifies a Testnet contract id in the browser with Stellar SDK. Future deployment-based lessons should add the expected exported method names to `expectedMethods`; if a lesson needs stronger validation than interface checks, add a narrowly scoped verifier rather than changing the global deploy flow.
+- To add a future lesson: add metadata to `ACADEMY_LESSONS`, add or render its curriculum/guide UI in the Academy main view and bottom panel, set a YouTube `videoId` when available, and add verification criteria that can be checked from the browser or through a small dedicated route.
