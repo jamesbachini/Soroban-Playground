@@ -1,0 +1,43 @@
+// @ts-check
+import { defineConfig } from 'astro/config';
+import starlight from '@astrojs/starlight';
+
+// https://astro.build/config
+export default defineConfig({
+	site: 'https://soropg.com',
+	base: '/docs',
+	integrations: [
+		starlight({
+			title: 'SoroPG Docs',
+			description: 'Developer documentation for SoroPG, the Soroban Playground.',
+			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/jamesbachini/Soroban-Playground' }],
+			sidebar: [
+				{
+					label: 'Start Here',
+					items: [
+						{ label: 'Overview', slug: '' },
+						{ label: 'Getting Started', slug: 'getting-started' },
+					],
+				},
+				{
+					label: 'Using SoroPG',
+					items: [
+						{ label: 'Workspaces', slug: 'workspaces' },
+						{ label: 'Build, Test, and Audit', slug: 'build-test-audit' },
+						{ label: 'Deploy Contracts', slug: 'deploy' },
+						{ label: 'Explore Contracts', slug: 'explore' },
+						{ label: 'Wallets and Networks', slug: 'wallets-and-networks' },
+						{ label: 'Share and Import Projects', slug: 'share-and-import' },
+					],
+				},
+				{
+					label: 'Reference',
+					items: [
+						{ label: 'HTTP API', slug: 'reference/http-api' },
+						{ label: 'Troubleshooting', slug: 'troubleshooting' },
+					],
+				},
+			],
+		}),
+	],
+});

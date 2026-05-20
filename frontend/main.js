@@ -4418,6 +4418,10 @@ document.querySelectorAll('.sidebar-icon').forEach(icon => {
       window.location = "/";
       return;
     }
+    if (panelId === 'docs-panel') {
+      window.open("/docs/", "_blank");
+      return;
+    }
     if (panelId === 'github-panel') {
       window.open("https://github.com/jamesbachini/Soroban-Playground", "_blank");
       return;

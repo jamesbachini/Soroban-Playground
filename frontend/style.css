@@ -296,8 +296,12 @@ textarea::placeholder {
   color: var(--text-light);
 }
 
-.settings-icon {
+.docs-icon {
   margin-top: auto;
+}
+
+.settings-icon {
+  margin-top: 0;
 }
 
 .github-icon {

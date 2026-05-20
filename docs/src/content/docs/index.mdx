@@ -1,0 +1,40 @@
+---
+title: SoroPG Developer Documentation
+description: Learn how to build, test, deploy, and interact with Soroban smart contracts in SoroPG.
+template: splash
+hero:
+  tagline: Build, test, deploy, and explore Soroban contracts from your browser.
+  actions:
+    - text: Get started
+      link: /docs/getting-started/
+      icon: right-arrow
+    - text: Open SoroPG
+      link: /
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+SoroPG is a browser-based Soroban playground for Stellar smart contract developers. It gives you a Rust editor, project workspaces, Docker-backed build and test execution, wallet tooling, contract deployment, and an interface explorer for deployed contracts.
+
+<CardGrid stagger>
+	<Card title="Create projects" icon="pencil">
+		Manage multi-file Soroban projects with workspaces, tabs, imports, uploads, and ZIP export.
+	</Card>
+	<Card title="Build and test" icon="setting">
+		Compile contracts to WASM, run `cargo test`, and launch Scout audit checks in the sandbox.
+	</Card>
+	<Card title="Deploy" icon="rocket">
+		Deploy compiled WASM to testnet, futurenet, mainnet, or a local network with generated or browser wallets.
+	</Card>
+	<Card title="Explore" icon="open-book">
+		Load a contract, inspect its interface, simulate read-only calls, and submit transactions.
+	</Card>
+</CardGrid>
+
+## What SoroPG is for
+
+Use SoroPG when you want a fast way to prototype Soroban contracts without setting up a complete local Stellar development environment. The editor stores projects in your browser, while build and test commands run on the SoroPG server inside an isolated Docker sandbox.
+
+For production deployments, keep your source code in version control, review generated transactions carefully, and test against the same network you plan to use.

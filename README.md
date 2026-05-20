@@ -37,10 +37,11 @@ If you want something else submit a pull request (preferably with a link to a 3r
 
 ## Requirements
 
-Docker & Rust and ideally some variation of linux, tested on Ubuntu 25.04 via gcloud instance and WSL on windows.
+Docker, Rust, Node.js/npm for the Starlight docs build, and ideally some variation of linux, tested on Ubuntu 25.04 via gcloud instance and WSL on windows.
 
 - https://www.docker.com/
 - https://www.rust-lang.org/
+- https://nodejs.org/
 
 
 ## Local Testing
@@ -65,13 +66,15 @@ exit
 docker volume create cargo-cache
 docker build --pull --no-cache -f Dockerfile.sandbox -t wasm_sandbox .
 
-# Build the app, authorize port 80 using setcap and run the binary
+# Build the docs and app, then run the binary
+npm --prefix docs run build
 cargo build --release
 ./target/release/Soroban-Playground --port 3003
 # Open up a browser on http://127.0.0.1:3003
+# Docs are served from http://127.0.0.1:3003/docs/
 
 # Rebuild and restart oneliner:
-cargo build --release; ./target/release/Soroban-Playground --port 3003
+npm --prefix docs run build; cargo build --release; ./target/release/Soroban-Playground --port 3003
 ```
 
 ## Production
@@ -83,7 +86,8 @@ Currently setup to handle 4 concurrent sandboxed builds, using 1 cpu and 1G ram 
 # Enable docker after reset
 sudo systemctl enable docker
 
-# build a release binary
+# Build the docs and release binary
+npm --prefix docs run build
 cargo build --release
 
 #  Enable that binary to bind to port 80

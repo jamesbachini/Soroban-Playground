@@ -54,6 +54,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::scout_audit::scout_audit)
             .service(routes::interface::interface)
             .service(routes::friendbot::friendbot)
+            .service(Files::new("/docs", "./docs/dist").index_file("index.html"))
             .service(Files::new("/", "./frontend").index_file("index.html"))
     })
     .bind(("0.0.0.0", port))?
