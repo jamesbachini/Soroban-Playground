@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod compile;
 pub mod friendbot;
 pub mod interface;

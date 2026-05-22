@@ -23,6 +23,8 @@ use std::env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenvy::dotenv().ok();
+
     let args: Vec<String> = env::args().collect();
     let mut port = 80;
 
@@ -47,10 +49,12 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let mcp_state = web::Data::new(routes::mcp::McpState::default());
+    let ai_state = web::Data::new(routes::ai::AiState::default());
 
     HttpServer::new(move || {
         App::new()
             .app_data(mcp_state.clone())
+            .app_data(ai_state.clone())
             .wrap(Logger::default())
             .service(routes::compile::compile)
             .service(routes::test::test)
@@ -67,6 +71,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::mcp::delete_file)
             .service(routes::mcp::move_file)
             .service(routes::mcp::run_command)
+            .service(routes::ai::assistant)
             .service(Files::new("/docs", "./docs/dist").index_file("index.html"))
             .service(Files::new("/", "./frontend").index_file("index.html"))
     })

@@ -57,6 +57,8 @@ struct ProjectRecord {
 pub struct BrowserHeartbeatRequest {
     pub session_id: String,
     pub active_workspace_id: Option<String>,
+    #[serde(rename = "lastSeq")]
+    pub last_seq: Option<u64>,
     pub workspaces: Vec<BrowserWorkspace>,
 }
 
@@ -90,41 +92,41 @@ struct BrowserChangesResponse {
 }
 
 #[derive(Serialize)]
-struct ProjectSummary {
-    id: String,
-    name: String,
-    files: usize,
-    revision: u64,
+pub struct ProjectSummary {
+    pub id: String,
+    pub name: String,
+    pub files: usize,
+    pub revision: u64,
     #[serde(rename = "updatedAt")]
-    updated_at: u64,
+    pub updated_at: u64,
     #[serde(rename = "lastOpenFile")]
-    last_open_file: Option<String>,
-    active: bool,
+    pub last_open_file: Option<String>,
+    pub active: bool,
 }
 
 #[derive(Serialize)]
-struct ProjectSnapshot {
-    id: String,
-    name: String,
-    files: HashMap<String, String>,
-    revision: u64,
+pub struct ProjectSnapshot {
+    pub id: String,
+    pub name: String,
+    pub files: HashMap<String, String>,
+    pub revision: u64,
     #[serde(rename = "updatedAt")]
-    updated_at: u64,
+    pub updated_at: u64,
     #[serde(rename = "lastOpenFile")]
-    last_open_file: Option<String>,
+    pub last_open_file: Option<String>,
 }
 
 #[derive(Serialize)]
-struct FileEntry {
-    path: String,
-    size: usize,
+pub struct FileEntry {
+    pub path: String,
+    pub size: usize,
 }
 
 #[derive(Serialize)]
-struct FileContent {
-    path: String,
-    content: String,
-    revision: u64,
+pub struct FileContent {
+    pub path: String,
+    pub content: String,
+    pub revision: u64,
 }
 
 #[derive(Deserialize)]
@@ -153,18 +155,18 @@ pub struct RunCommandRequest {
 }
 
 #[derive(Serialize)]
-struct MutationResponse {
-    ok: bool,
-    revision: u64,
-    seq: u64,
+pub struct MutationResponse {
+    pub ok: bool,
+    pub revision: u64,
+    pub seq: u64,
 }
 
 #[derive(Serialize)]
-struct CommandResponse {
-    ok: bool,
-    command: String,
-    output: String,
-    revision: u64,
+pub struct CommandResponse {
+    pub ok: bool,
+    pub command: String,
+    pub output: String,
+    pub revision: u64,
 }
 
 #[derive(Serialize)]
@@ -185,7 +187,7 @@ fn error_response(status: actix_web::http::StatusCode, message: impl Into<String
     })
 }
 
-fn bearer_hash(req: &HttpRequest) -> Result<String, HttpResponse> {
+pub(crate) fn bearer_hash(req: &HttpRequest) -> Result<String, HttpResponse> {
     let header = req
         .headers()
         .get(actix_web::http::header::AUTHORIZATION)
@@ -355,6 +357,312 @@ where
     })
 }
 
+pub(crate) fn project_summaries_for_user(
+    state: &Data<McpState>,
+    user_key: &str,
+) -> Result<Vec<ProjectSummary>, String> {
+    let mut store = state
+        .store
+        .lock()
+        .map_err(|_| "MCP store lock failed".to_string())?;
+    cleanup_expired(&mut store);
+    Ok(store
+        .users
+        .get(user_key)
+        .map(|user| {
+            user.projects
+                .values()
+                .map(|project| project_summary(project, None))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default())
+}
+
+pub(crate) fn project_snapshot_for_user(
+    state: &Data<McpState>,
+    user_key: &str,
+    project_id: &str,
+) -> Result<ProjectSnapshot, String> {
+    let mut store = state
+        .store
+        .lock()
+        .map_err(|_| "MCP store lock failed".to_string())?;
+    cleanup_expired(&mut store);
+    store
+        .users
+        .get(user_key)
+        .and_then(|user| user.projects.get(project_id))
+        .map(project_snapshot)
+        .ok_or_else(|| "Project is not connected".to_string())
+}
+
+pub(crate) fn list_project_files_for_user(
+    state: &Data<McpState>,
+    user_key: &str,
+    project_id: &str,
+) -> Result<Vec<FileEntry>, String> {
+    let snapshot = project_snapshot_for_user(state, user_key, project_id)?;
+    let mut files = snapshot
+        .files
+        .iter()
+        .map(|(path, content)| FileEntry {
+            path: path.clone(),
+            size: content.len(),
+        })
+        .collect::<Vec<_>>();
+    files.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(files)
+}
+
+pub(crate) fn read_project_file_for_user(
+    state: &Data<McpState>,
+    user_key: &str,
+    project_id: &str,
+    path: &str,
+) -> Result<FileContent, String> {
+    let file_path = normalize_mcp_path(path)?;
+    let snapshot = project_snapshot_for_user(state, user_key, project_id)?;
+    snapshot
+        .files
+        .get(&file_path)
+        .map(|content| FileContent {
+            path: file_path,
+            content: content.clone(),
+            revision: snapshot.revision,
+        })
+        .ok_or_else(|| "File not found".to_string())
+}
+
+pub(crate) fn upsert_project_file_for_user(
+    state: &Data<McpState>,
+    user_key: &str,
+    project_id: &str,
+    path: &str,
+    content: &str,
+    mode: &str,
+) -> Result<MutationResponse, String> {
+    let file_path = normalize_mcp_path(path)?;
+    if content.len() > MAX_FILE_BYTES {
+        return Err("File exceeds 1 MiB".to_string());
+    }
+    if mode != "create" && mode != "replace" {
+        return Err("mode must be create or replace".to_string());
+    }
+
+    let mut store = state
+        .store
+        .lock()
+        .map_err(|_| "MCP store lock failed".to_string())?;
+    cleanup_expired(&mut store);
+    let user = store
+        .users
+        .get_mut(user_key)
+        .ok_or_else(|| "Project is not connected".to_string())?;
+    {
+        let project = user
+            .projects
+            .get_mut(project_id)
+            .ok_or_else(|| "Project is not connected".to_string())?;
+        if mode == "create" && project.files.contains_key(&file_path) {
+            return Err("File already exists".to_string());
+        }
+        if mode == "replace" && !project.files.contains_key(&file_path) {
+            return Err("File not found".to_string());
+        }
+        let mut next_files = project.files.clone();
+        next_files.insert(file_path.clone(), content.to_string());
+        validate_files(&next_files)?;
+        project.files = next_files;
+        project.last_open_file = Some(file_path);
+    }
+    user.next_seq = user.next_seq.saturating_add(1);
+    let project = user
+        .projects
+        .get_mut(project_id)
+        .ok_or_else(|| "Project is not connected".to_string())?;
+    touch_project(project, user.next_seq);
+    Ok(MutationResponse {
+        ok: true,
+        revision: project.revision,
+        seq: project.change_seq,
+    })
+}
+
+pub(crate) fn delete_project_file_for_user(
+    state: &Data<McpState>,
+    user_key: &str,
+    project_id: &str,
+    path: &str,
+) -> Result<MutationResponse, String> {
+    let file_path = normalize_mcp_path(path)?;
+    let mut store = state
+        .store
+        .lock()
+        .map_err(|_| "MCP store lock failed".to_string())?;
+    cleanup_expired(&mut store);
+    let user = store
+        .users
+        .get_mut(user_key)
+        .ok_or_else(|| "Project is not connected".to_string())?;
+    {
+        let project = user
+            .projects
+            .get_mut(project_id)
+            .ok_or_else(|| "Project is not connected".to_string())?;
+        if file_path == "Cargo.toml" {
+            return Err("Cargo.toml cannot be deleted".to_string());
+        }
+        if project.files.len() <= 1 {
+            return Err("Cannot delete the last file".to_string());
+        }
+        if project.files.remove(&file_path).is_none() {
+            return Err("File not found".to_string());
+        }
+        if project.last_open_file.as_deref() == Some(&file_path) {
+            project.last_open_file = project.files.keys().min().cloned();
+        }
+    }
+    user.next_seq = user.next_seq.saturating_add(1);
+    let project = user
+        .projects
+        .get_mut(project_id)
+        .ok_or_else(|| "Project is not connected".to_string())?;
+    touch_project(project, user.next_seq);
+    Ok(MutationResponse {
+        ok: true,
+        revision: project.revision,
+        seq: project.change_seq,
+    })
+}
+
+pub(crate) fn move_project_file_for_user(
+    state: &Data<McpState>,
+    user_key: &str,
+    project_id: &str,
+    from_path: &str,
+    to_path: &str,
+) -> Result<MutationResponse, String> {
+    let from_path = normalize_mcp_path(from_path)?;
+    let to_path = normalize_mcp_path(to_path)?;
+    let mut store = state
+        .store
+        .lock()
+        .map_err(|_| "MCP store lock failed".to_string())?;
+    cleanup_expired(&mut store);
+    let user = store
+        .users
+        .get_mut(user_key)
+        .ok_or_else(|| "Project is not connected".to_string())?;
+    {
+        let project = user
+            .projects
+            .get_mut(project_id)
+            .ok_or_else(|| "Project is not connected".to_string())?;
+        if from_path == "Cargo.toml" {
+            return Err("Cargo.toml cannot be moved".to_string());
+        }
+        if project.files.contains_key(&to_path) {
+            return Err("Destination file already exists".to_string());
+        }
+        let Some(content) = project.files.remove(&from_path) else {
+            return Err("Source file not found".to_string());
+        };
+        project.files.insert(to_path.clone(), content);
+        if project.last_open_file.as_deref() == Some(&from_path) {
+            project.last_open_file = Some(to_path);
+        }
+    }
+    user.next_seq = user.next_seq.saturating_add(1);
+    let project = user
+        .projects
+        .get_mut(project_id)
+        .ok_or_else(|| "Project is not connected".to_string())?;
+    touch_project(project, user.next_seq);
+    Ok(MutationResponse {
+        ok: true,
+        revision: project.revision,
+        seq: project.change_seq,
+    })
+}
+
+pub(crate) async fn run_project_command_for_user(
+    state: &Data<McpState>,
+    user_key: &str,
+    project_id: &str,
+    command: &str,
+) -> Result<CommandResponse, String> {
+    let command_name = command.trim().to_ascii_lowercase();
+    if command_name == "deploy" {
+        return Err("Deploy is not supported by the MCP API in v1".to_string());
+    }
+    let docker_command = match command_name.as_str() {
+        "build" => "stellar contract build",
+        "test" => "cargo test",
+        "audit" => "CARGO_BUILD_JOBS=1 cargo scout-audit --debug -v --scout-source /scout-audit --local-detectors /scout-audit/nightly",
+        _ => return Err("Unsupported command. Allowed commands: build, test, audit, deploy".to_string()),
+    };
+
+    let (files, revision) = {
+        let mut store = state
+            .store
+            .lock()
+            .map_err(|_| "MCP store lock failed".to_string())?;
+        cleanup_expired(&mut store);
+        let Some(project) = store
+            .users
+            .get(user_key)
+            .and_then(|user| user.projects.get(project_id))
+        else {
+            return Err("Project is not connected".to_string());
+        };
+        (project.files.clone(), project.revision)
+    };
+
+    let Some(code) = extract_main_source(&files) else {
+        return Err("No src/lib.rs or lib.rs file found".to_string());
+    };
+
+    let permit = SEMAPHORE
+        .acquire()
+        .await
+        .map_err(|_| "Server shutting down".to_string())?;
+    let _permit = permit;
+
+    let build_id = if command_name == "build" || command_name == "audit" {
+        let mut hash = Sha256::new();
+        let mut entries: Vec<_> = files.iter().collect();
+        entries.sort_by(|a, b| a.0.cmp(b.0));
+        for (path, content) in entries {
+            hash.update(path.as_bytes());
+            hash.update(content.as_bytes());
+        }
+        Some(hex::encode(hash.finalize()))
+    } else {
+        None
+    };
+
+    match run_in_docker_with_files_and_id(code, Some(files), docker_command, build_id).await {
+        Ok((output, _tmp, output_filename)) => {
+            let mut output = String::from_utf8_lossy(&output).to_string();
+            if command_name == "build" {
+                output.push_str(&format!("\nBuild artifact: {}\n", output_filename));
+            }
+            Ok(CommandResponse {
+                ok: true,
+                command: command_name,
+                output,
+                revision,
+            })
+        }
+        Err(error) => Ok(CommandResponse {
+            ok: false,
+            command: command_name,
+            output: error,
+            revision,
+        }),
+    }
+}
+
 #[post("/api/mcp/v1/browser/heartbeat")]
 pub async fn browser_heartbeat(
     req: HttpRequest,
@@ -437,7 +745,11 @@ pub async fn browser_heartbeat(
             });
 
         let incoming_updated_at = workspace.updated_at.unwrap_or_else(now_ms);
-        if incoming_updated_at >= project.updated_at || project.session_id != session_id {
+        let browser_has_seen_project_changes =
+            body.last_seq.unwrap_or(0) >= project.change_seq || project.change_seq == 0;
+        if project.session_id != session_id
+            || (browser_has_seen_project_changes && incoming_updated_at >= project.updated_at)
+        {
             project.name = workspace.name.clone();
             project.files = workspace.files.clone();
             project.last_open_file = workspace.last_open_file.clone();
@@ -1009,5 +1321,162 @@ mod tests {
         let read_response: serde_json::Value =
             actix_test::call_and_read_body_json(&app, read).await;
         assert_eq!(read_response["content"], "pub fn new() {}\n");
+    }
+
+    #[actix_web::test]
+    async fn stale_browser_heartbeat_does_not_overwrite_mcp_mutation() {
+        let app = actix_test::init_service(
+            App::new()
+                .app_data(web::Data::new(McpState::default()))
+                .service(browser_heartbeat)
+                .service(upsert_file)
+                .service(read_file),
+        )
+        .await;
+        let token = "b".repeat(40);
+
+        let publish = actix_test::TestRequest::post()
+            .uri("/api/mcp/v1/browser/heartbeat")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(json!({
+                "session_id": "session-123",
+                "active_workspace_id": "workspace-1",
+                "lastSeq": 0,
+                "workspaces": [{
+                    "id": "workspace-1",
+                    "name": "Demo",
+                    "files": {
+                        "Cargo.toml": "[package]\nname = \"project\"\n",
+                        "src/lib.rs": "pub fn old() {}\n"
+                    },
+                    "lastOpenFile": "src/lib.rs",
+                    "updatedAt": 100
+                }]
+            }))
+            .to_request();
+        let publish_response = actix_test::call_service(&app, publish).await;
+        assert_eq!(publish_response.status(), StatusCode::OK);
+
+        let replace = actix_test::TestRequest::post()
+            .uri("/api/mcp/v1/projects/workspace-1/file")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(json!({
+                "path": "src/lib.rs",
+                "content": "pub fn new() {}\n",
+                "mode": "replace"
+            }))
+            .to_request();
+        let replace_response: serde_json::Value =
+            actix_test::call_and_read_body_json(&app, replace).await;
+        assert_eq!(replace_response["seq"], 1);
+
+        let stale_publish = actix_test::TestRequest::post()
+            .uri("/api/mcp/v1/browser/heartbeat")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(json!({
+                "session_id": "session-123",
+                "active_workspace_id": "workspace-1",
+                "lastSeq": 0,
+                "workspaces": [{
+                    "id": "workspace-1",
+                    "name": "Demo",
+                    "files": {
+                        "Cargo.toml": "[package]\nname = \"project\"\n",
+                        "src/lib.rs": "pub fn old() {}\n"
+                    },
+                    "lastOpenFile": "src/lib.rs",
+                    "updatedAt": now_ms() + 10_000
+                }]
+            }))
+            .to_request();
+        let stale_publish_response = actix_test::call_service(&app, stale_publish).await;
+        assert_eq!(stale_publish_response.status(), StatusCode::OK);
+
+        let read = actix_test::TestRequest::get()
+            .uri("/api/mcp/v1/projects/workspace-1/file?path=src%2Flib.rs")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+        let read_response: serde_json::Value =
+            actix_test::call_and_read_body_json(&app, read).await;
+        assert_eq!(read_response["content"], "pub fn new() {}\n");
+    }
+
+    #[actix_web::test]
+    async fn acknowledged_browser_heartbeat_can_update_after_mcp_mutation() {
+        let app = actix_test::init_service(
+            App::new()
+                .app_data(web::Data::new(McpState::default()))
+                .service(browser_heartbeat)
+                .service(upsert_file)
+                .service(read_file),
+        )
+        .await;
+        let token = "c".repeat(40);
+
+        let publish = actix_test::TestRequest::post()
+            .uri("/api/mcp/v1/browser/heartbeat")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(json!({
+                "session_id": "session-123",
+                "active_workspace_id": "workspace-1",
+                "lastSeq": 0,
+                "workspaces": [{
+                    "id": "workspace-1",
+                    "name": "Demo",
+                    "files": {
+                        "Cargo.toml": "[package]\nname = \"project\"\n",
+                        "src/lib.rs": "pub fn old() {}\n"
+                    },
+                    "lastOpenFile": "src/lib.rs",
+                    "updatedAt": 100
+                }]
+            }))
+            .to_request();
+        let publish_response = actix_test::call_service(&app, publish).await;
+        assert_eq!(publish_response.status(), StatusCode::OK);
+
+        let replace = actix_test::TestRequest::post()
+            .uri("/api/mcp/v1/projects/workspace-1/file")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(json!({
+                "path": "src/lib.rs",
+                "content": "pub fn new() {}\n",
+                "mode": "replace"
+            }))
+            .to_request();
+        let replace_response: serde_json::Value =
+            actix_test::call_and_read_body_json(&app, replace).await;
+        let seq = replace_response["seq"].as_u64().unwrap();
+
+        let acknowledged_publish = actix_test::TestRequest::post()
+            .uri("/api/mcp/v1/browser/heartbeat")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(json!({
+                "session_id": "session-123",
+                "active_workspace_id": "workspace-1",
+                "lastSeq": seq,
+                "workspaces": [{
+                    "id": "workspace-1",
+                    "name": "Demo",
+                    "files": {
+                        "Cargo.toml": "[package]\nname = \"project\"\n",
+                        "src/lib.rs": "pub fn browser_edit() {}\n"
+                    },
+                    "lastOpenFile": "src/lib.rs",
+                    "updatedAt": now_ms() + 10_000
+                }]
+            }))
+            .to_request();
+        let acknowledged_publish_response =
+            actix_test::call_service(&app, acknowledged_publish).await;
+        assert_eq!(acknowledged_publish_response.status(), StatusCode::OK);
+
+        let read = actix_test::TestRequest::get()
+            .uri("/api/mcp/v1/projects/workspace-1/file?path=src%2Flib.rs")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+        let read_response: serde_json::Value =
+            actix_test::call_and_read_body_json(&app, read).await;
+        assert_eq!(read_response["content"], "pub fn browser_edit() {}\n");
     }
 }

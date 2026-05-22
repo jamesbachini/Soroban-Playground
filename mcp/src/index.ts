@@ -7,12 +7,51 @@ import { loadConfig } from "./config.js";
 import { IdeClient } from "./ideClient.js";
 import { applyUnifiedPatch } from "./utils/patch.js";
 
-const config = loadConfig();
-const client = new IdeClient(config);
+const SERVER_NAME = "soropg-mcp";
+const SERVER_VERSION = "0.1.0";
+
+function printHelp() {
+  console.log(`SoroPG MCP Server
+
+Usage:
+  soropg-mcp
+  npx soropg-mcp
+
+Environment:
+  SOROPG_API_KEY      Required API key from the SoroPG AI / MCP settings panel.
+  SOROPG_API_URL      Optional SoroPG API URL. Defaults to https://soropg.com.
+  SOROPG_PROJECT_ID   Optional default workspace/project id.
+  SOROPG_CONFIG       Optional path to a config JSON file.
+
+The server speaks MCP over stdio. Configure it in Claude Code, Codex, or another
+MCP client instead of running it in a normal interactive shell.`);
+}
+
+function shouldPrintHelp(args: string[]) {
+  return args.includes("--help") || args.includes("-h");
+}
+
+function shouldPrintVersion(args: string[]) {
+  return args.includes("--version") || args.includes("-v");
+}
+
+const args = process.argv.slice(2);
+if (shouldPrintHelp(args)) {
+  printHelp();
+  process.exit(0);
+}
+
+if (shouldPrintVersion(args)) {
+  console.log(SERVER_VERSION);
+  process.exit(0);
+}
 
 const projectIdSchema = z.object({
   projectId: z.string().optional().describe("SoroPG workspace/project id. Defaults to SOROPG_PROJECT_ID when set."),
 });
+
+let config: ReturnType<typeof loadConfig>;
+let client: IdeClient;
 
 function resolveProjectId(projectId?: string): string {
   const resolved = projectId || config.projectId;
@@ -49,9 +88,17 @@ async function runTool<T>(fn: () => Promise<T>) {
   }
 }
 
+try {
+  config = loadConfig();
+  client = new IdeClient(config);
+} catch (error) {
+  console.error((error as Error).message);
+  process.exit(1);
+}
+
 const server = new McpServer({
-  name: "soropg-mcp",
-  version: "0.1.0",
+  name: SERVER_NAME,
+  version: SERVER_VERSION,
 });
 
 server.tool(
@@ -154,5 +201,10 @@ server.tool(
   async ({ projectId, command }) => runTool(() => client.runCommand(resolveProjectId(projectId), command)),
 );
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+try {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+} catch (error) {
+  console.error((error as Error).message);
+  process.exit(1);
+}

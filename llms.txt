@@ -24,21 +24,20 @@ MCP server:
 
 MCP setup summary:
 1. Open SoroPG in a browser.
-2. Open the AI tab.
+2. Open the AI Assisted Development tab.
 3. Generate a User API Key and keep the browser tab open.
-4. Clone the repository if needed:
+4. Run a quick npx check if you want to confirm Node can start the MCP server:
 
 ```bash
-git clone https://github.com/jamesbachini/Soroban-Playground.git
-cd Soroban-Playground/mcp
-npm install
-npm run build
+npx soropg-mcp --help
 ```
+
+You do not need to keep this command running. The MCP client starts `soropg-mcp` from its config.
 
 5. Configure the MCP client to run:
 
 ```bash
-node /absolute/path/to/Soroban-Playground/mcp/dist/index.js
+npx -y soropg-mcp
 ```
 
 with these environment variables:
@@ -58,8 +57,8 @@ Generic MCP client config:
   "mcpServers": {
     "soropg": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/Soroban-Playground/mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "soropg-mcp"],
       "env": {
         "SOROPG_API_URL": "https://soropg.com",
         "SOROPG_API_KEY": "the-key-from-the-soropg-ai-tab"
@@ -75,15 +74,15 @@ Claude Code example:
 claude mcp add --transport stdio --scope user \
   --env SOROPG_API_URL=https://soropg.com \
   --env SOROPG_API_KEY=the-key-from-the-soropg-ai-tab \
-  soropg -- node /absolute/path/to/Soroban-Playground/mcp/dist/index.js
+  soropg -- npx -y soropg-mcp
 ```
 
 Codex `~/.codex/config.toml` example:
 
 ```toml
 [mcp_servers.soropg]
-command = "node"
-args = ["/absolute/path/to/Soroban-Playground/mcp/dist/index.js"]
+command = "npx"
+args = ["-y", "soropg-mcp"]
 env = { SOROPG_API_URL = "https://soropg.com", SOROPG_API_KEY = "the-key-from-the-soropg-ai-tab" }
 ```
 

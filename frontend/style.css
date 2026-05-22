@@ -334,6 +334,7 @@ textarea::placeholder {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  position: relative;
   box-shadow: var(--surface-shadow);
   min-height: 200px;
   overflow: hidden;
@@ -1098,6 +1099,187 @@ textarea::placeholder {
   flex-direction: column;
   gap: 16px;
   padding-bottom: 24px;
+}
+
+.editor-ai-shortcut {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 5;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--button-bg);
+  color: var(--button-text);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.ai-tab-bar {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--editor-bg);
+}
+
+.ai-tab {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-dim);
+  padding: 8px 12px;
+}
+
+.ai-tab:hover:not(:disabled) {
+  box-shadow: none;
+}
+
+.ai-tab.active {
+  background: var(--button-bg);
+  color: var(--button-text);
+}
+
+.ai-tab-view {
+  display: none;
+}
+
+.ai-tab-view.active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ai-assistant-shell {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--method-console-bg);
+  box-shadow: var(--card-outline);
+  overflow: hidden;
+}
+
+.ai-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--card-bg);
+}
+
+.ai-terminal-header h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.ai-terminal-state {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-dim);
+  background: var(--editor-bg);
+  padding: 5px 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+}
+
+.ai-terminal-state.running {
+  color: var(--success-color);
+}
+
+.ai-terminal-output {
+  min-height: 260px;
+  max-height: 460px;
+  overflow: auto;
+  padding: 14px 16px;
+  background: #05070a;
+  color: var(--console-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+body[data-theme="light"] .ai-terminal-output {
+  background: #0b1020;
+}
+
+.ai-terminal-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ai-terminal-line.user {
+  color: #8fb4ff;
+}
+
+.ai-terminal-line.system,
+.ai-terminal-line.tool {
+  color: var(--console-text);
+}
+
+.ai-terminal-line.assistant {
+  color: #f4f7ff;
+}
+
+.ai-terminal-line.error {
+  color: #ff8b8b;
+}
+
+.ai-terminal-line.muted {
+  color: #7a8798;
+}
+
+.ai-terminal-line.pending::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 12px;
+  margin-left: 4px;
+  background: currentColor;
+  animation: ai-terminal-cursor 1s steps(1) infinite;
+  vertical-align: -2px;
+}
+
+@keyframes ai-terminal-cursor {
+  50% { opacity: 0; }
+}
+
+.ai-terminal-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--border-color);
+  background: var(--card-bg);
+}
+
+.ai-terminal-prompt {
+  color: var(--success-color);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-weight: 700;
+}
+
+.ai-terminal-form input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.ai-terminal-form button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .ai-hero {

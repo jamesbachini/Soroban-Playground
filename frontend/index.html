@@ -86,6 +86,9 @@
             </div>
           </div>
           <div id="editor"></div>
+          <button id="editor-ai-shortcut" class="editor-ai-shortcut" type="button" title="Open AI Assistant" aria-label="Open AI Assistant">
+            <i class="fas fa-wand-magic-sparkles"></i>
+          </button>
           <div id="academy-main-view" aria-label="SoroPG Academy">
             <div class="academy-page">
               <header class="academy-page-header">
@@ -337,164 +340,189 @@
           </div>
 
           <div class="panel" id="ai-panel">
-            <h1><i class="fas fa-wand-magic-sparkles accent"></i> AI Access</h1>
+            <h1><i class="fas fa-wand-magic-sparkles accent"></i> AI Assisted Development</h1>
             <div class="panel-content ai-panel-content">
-              <section class="ai-hero">
-                <div class="ai-hero-copy">
-                  <span class="ai-eyebrow">Model Context Protocol</span>
-                  <h2>Connect Claude Code, Codex, or another AI agent to this browser workspace.</h2>
-                  <p>SoroPG keeps the contract project in the browser. The local MCP server gives your coding agent controlled access to read files, edit files, and run build, test, or audit commands through this app.</p>
-                </div>
-                <div class="ai-connection-card">
-                  <div class="ai-connection-heading">
-                    <span id="mcp-connection-dot" class="ai-status-dot"></span>
+              <div class="ai-tab-bar" role="tablist" aria-label="AI sections">
+                <button class="ai-tab active" type="button" data-ai-tab="assistant" role="tab" aria-selected="true">AI Assistant</button>
+                <button class="ai-tab" type="button" data-ai-tab="mcp" role="tab" aria-selected="false">MCP Setup</button>
+              </div>
+
+              <section class="ai-tab-view active" id="ai-assistant-view" data-ai-view="assistant">
+                <div class="ai-assistant-shell">
+                  <div class="ai-terminal-header">
                     <div>
-                      <strong id="mcp-connection-state">Not configured</strong>
-                      <small id="mcp-connection-detail">Generate a key to start the browser bridge.</small>
+                      <span class="ai-eyebrow">Workspace Agent</span>
+                      <h2>Ask the assistant to edit the active contract.</h2>
                     </div>
+                    <span id="ai-assistant-state" class="ai-terminal-state">idle</span>
                   </div>
-                  <div class="ai-metric-grid">
-                    <div>
-                      <span>API URL</span>
-                      <strong id="mcp-api-url">-</strong>
-                    </div>
-                    <div>
-                      <span>Workspaces</span>
-                      <strong id="mcp-workspace-count">0</strong>
-                    </div>
-                    <div>
-                      <span>Active</span>
-                      <strong id="mcp-active-workspace">-</strong>
-                    </div>
-                    <div>
-                      <span>Last sync</span>
-                      <strong id="mcp-last-sync">Never</strong>
-                    </div>
+                  <div id="ai-terminal-output" class="ai-terminal-output" aria-live="polite">
+                    <div class="ai-terminal-line system">$ SoroPG assistant ready</div>
+                    <div class="ai-terminal-line muted">Uses the active browser workspace and updates the editor when tools finish.</div>
                   </div>
+                  <form id="ai-assistant-form" class="ai-terminal-form">
+                    <span class="ai-terminal-prompt">$</span>
+                    <input id="ai-assistant-input" type="text" autocomplete="off" placeholder="add a subtract function to this smart contract" />
+                    <button id="ai-assistant-submit" class="primary-button" type="submit"><i class="fas fa-arrow-up"></i></button>
+                  </form>
                 </div>
               </section>
 
-              <section class="ai-setup-grid">
-                <div class="ai-card ai-card-primary">
-                  <div class="ai-card-heading">
-                    <span class="ai-step-number">1</span>
-                    <div>
-                      <h3>Enable Browser Access</h3>
-                      <p>Create a private key for this browser session. Keep this tab open while agents work.</p>
-                    </div>
+              <section class="ai-tab-view" id="ai-mcp-view" data-ai-view="mcp">
+                <section class="ai-hero">
+                  <div class="ai-hero-copy">
+                    <span class="ai-eyebrow">Model Context Protocol</span>
+                    <h2>Connect Claude Code, Codex, or another AI agent to this browser workspace.</h2>
+                    <p>SoroPG keeps the contract project in the browser. The MCP server gives your coding agent controlled access to read files, edit files, and run build, test, or audit commands through this app.</p>
                   </div>
-                  <label for="mcp-api-key">User API Key</label>
-                  <div class="ai-key-row">
-                    <input type="text" id="mcp-api-key" readonly placeholder="Generate a key to enable MCP access" />
-                    <button id="generate-mcp-key" class="primary-button" type="button" title="Generate or reset MCP key">
-                      <i class="fas fa-key"></i> Generate
-                    </button>
-                  </div>
-                  <div id="mcp-status" class="settings-status" role="status" aria-live="polite"></div>
-                </div>
-
-                <div class="ai-card">
-                  <div class="ai-card-heading">
-                    <span class="ai-step-number">2</span>
-                    <div>
-                      <h3>Build the Local Server</h3>
-                      <p>Install the MCP bridge once on the machine where your AI coding tool runs.</p>
-                    </div>
-                  </div>
-                  <div class="ai-code-block">
-                    <button class="ai-copy-button" type="button" data-copy-target="mcp-install-command" title="Copy install command"><i class="fas fa-copy"></i></button>
-                    <pre id="mcp-install-command">cd /path/to/Soroban-Playground/mcp
-npm install
-npm run build</pre>
-                  </div>
-                  <label for="mcp-server-path">Built server file</label>
-                  <input type="text" id="mcp-server-path" placeholder="/path/to/Soroban-Playground/mcp/dist/index.js" />
-                </div>
-              </section>
-
-              <section class="ai-config-section">
-                <div class="ai-section-heading">
-                  <div>
-                    <h3>Client Configuration</h3>
-                    <p>Pick the format your agent supports, then copy it into your client. Replace the server path if your checkout lives somewhere else.</p>
-                  </div>
-                </div>
-                <div class="ai-config-grid">
-                  <article class="ai-config-card">
-                    <div class="ai-config-card-heading">
-                      <i class="fas fa-terminal"></i>
+                  <div class="ai-connection-card">
+                    <div class="ai-connection-heading">
+                      <span id="mcp-connection-dot" class="ai-status-dot"></span>
                       <div>
-                        <h4>Claude Code</h4>
-                        <p>User-scoped stdio server</p>
+                        <strong id="mcp-connection-state">Not configured</strong>
+                        <small id="mcp-connection-detail">Generate a key to start the browser bridge.</small>
                       </div>
-                      <button class="ai-copy-button" type="button" data-copy-target="mcp-claude-command" title="Copy Claude Code command"><i class="fas fa-copy"></i></button>
                     </div>
-                    <pre id="mcp-claude-command"></pre>
-                  </article>
-
-                  <article class="ai-config-card">
-                    <div class="ai-config-card-heading">
-                      <i class="fas fa-code"></i>
+                    <div class="ai-metric-grid">
                       <div>
-                        <h4>Codex</h4>
-                        <p>Append to ~/.codex/config.toml</p>
+                        <span>API URL</span>
+                        <strong id="mcp-api-url">-</strong>
                       </div>
-                      <button class="ai-copy-button" type="button" data-copy-target="mcp-codex-config" title="Copy Codex config"><i class="fas fa-copy"></i></button>
-                    </div>
-                    <pre id="mcp-codex-config"></pre>
-                  </article>
-
-                  <article class="ai-config-card ai-config-card-wide">
-                    <div class="ai-config-card-heading">
-                      <i class="fas fa-plug"></i>
                       <div>
-                        <h4>Generic MCP JSON</h4>
-                        <p>Claude Desktop, Cursor, Windsurf, VS Code, and other MCP clients</p>
+                        <span>Workspaces</span>
+                        <strong id="mcp-workspace-count">0</strong>
                       </div>
-                      <button id="copy-mcp-config" class="ai-copy-button" type="button" title="Copy generic MCP JSON"><i class="fas fa-copy"></i></button>
+                      <div>
+                        <span>Active</span>
+                        <strong id="mcp-active-workspace">-</strong>
+                      </div>
+                      <div>
+                        <span>Last sync</span>
+                        <strong id="mcp-last-sync">Never</strong>
+                      </div>
                     </div>
-                    <textarea id="mcp-config-preview" readonly rows="9" spellcheck="false"></textarea>
-                  </article>
-                </div>
-              </section>
+                  </div>
+                </section>
 
-              <section class="ai-reference-grid">
-                <div class="ai-card">
-                  <div class="ai-card-heading">
-                    <span class="ai-step-number">3</span>
-                    <div>
-                      <h3>Verify It Works</h3>
-                      <p>After adding the server, restart your AI client or run its MCP reload command.</p>
+                <section class="ai-setup-grid">
+                  <div class="ai-card ai-card-primary">
+                    <div class="ai-card-heading">
+                      <span class="ai-step-number">1</span>
+                      <div>
+                        <h3>Enable Browser Access</h3>
+                        <p>Create a private key for this browser session. Keep this tab open while agents work.</p>
+                      </div>
                     </div>
+                    <label for="mcp-api-key">User API Key</label>
+                    <div class="ai-key-row">
+                      <input type="text" id="mcp-api-key" readonly placeholder="Generate a key to enable MCP access" />
+                      <button id="generate-mcp-key" class="primary-button" type="button" title="Generate or reset MCP key">
+                        <i class="fas fa-key"></i> Generate
+                      </button>
+                    </div>
+                    <div id="mcp-status" class="settings-status" role="status" aria-live="polite"></div>
                   </div>
-                  <ul class="ai-check-list">
-                    <li><i class="fas fa-circle-check"></i> In Claude Code, run <code>/mcp</code> and confirm <code>soropg</code> is connected.</li>
-                    <li><i class="fas fa-circle-check"></i> Ask the agent to run <code>soropg_list_projects</code>.</li>
-                    <li><i class="fas fa-circle-check"></i> Keep this SoroPG browser tab open so workspace edits can sync.</li>
-                  </ul>
-                </div>
 
-                <div class="ai-card">
-                  <div class="ai-card-heading">
-                    <span class="ai-step-number">4</span>
+                  <div class="ai-card">
+                    <div class="ai-card-heading">
+                      <span class="ai-step-number">2</span>
+                      <div>
+                        <h3>Check MCP Server</h3>
+                        <p>Use npx with Node.js 20 or newer. This quick check does not need to stay running; your AI client starts the server from the config below.</p>
+                      </div>
+                    </div>
+                    <div class="ai-code-block">
+                      <button class="ai-copy-button" type="button" data-copy-target="mcp-install-command" title="Copy npx check command"><i class="fas fa-copy"></i></button>
+                      <pre id="mcp-install-command">npx soropg-mcp --help</pre>
+                    </div>
+                    <label for="mcp-server-path">Optional local development server file</label>
+                    <input type="text" id="mcp-server-path" placeholder="/path/to/Soroban-Playground/mcp/dist/index.js" />
+                  </div>
+                </section>
+
+                <section class="ai-config-section">
+                  <div class="ai-section-heading">
                     <div>
-                      <h3>Available Tools</h3>
-                      <p>The server exposes focused workspace operations.</p>
+                      <h3>Client Configuration</h3>
+                      <p>Pick the format your agent supports, then copy it into your client.</p>
                     </div>
                   </div>
-                  <div class="ai-tool-tags">
-                    <span>list projects</span>
-                    <span>read files</span>
-                    <span>create files</span>
-                    <span>replace files</span>
-                    <span>apply patch</span>
-                    <span>move files</span>
-                    <span>delete files</span>
-                    <span>build</span>
-                    <span>test</span>
-                    <span>audit</span>
+                  <div class="ai-config-grid">
+                    <article class="ai-config-card">
+                      <div class="ai-config-card-heading">
+                        <i class="fas fa-terminal"></i>
+                        <div>
+                          <h4>Claude Code</h4>
+                          <p>User-scoped stdio server</p>
+                        </div>
+                        <button class="ai-copy-button" type="button" data-copy-target="mcp-claude-command" title="Copy Claude Code command"><i class="fas fa-copy"></i></button>
+                      </div>
+                      <pre id="mcp-claude-command"></pre>
+                    </article>
+
+                    <article class="ai-config-card">
+                      <div class="ai-config-card-heading">
+                        <i class="fas fa-code"></i>
+                        <div>
+                          <h4>Codex</h4>
+                          <p>Append to ~/.codex/config.toml</p>
+                        </div>
+                        <button class="ai-copy-button" type="button" data-copy-target="mcp-codex-config" title="Copy Codex config"><i class="fas fa-copy"></i></button>
+                      </div>
+                      <pre id="mcp-codex-config"></pre>
+                    </article>
+
+                    <article class="ai-config-card ai-config-card-wide">
+                      <div class="ai-config-card-heading">
+                        <i class="fas fa-plug"></i>
+                        <div>
+                          <h4>Generic MCP JSON</h4>
+                          <p>Claude Desktop, Cursor, Windsurf, VS Code, and other MCP clients</p>
+                        </div>
+                        <button id="copy-mcp-config" class="ai-copy-button" type="button" title="Copy generic MCP JSON"><i class="fas fa-copy"></i></button>
+                      </div>
+                      <textarea id="mcp-config-preview" readonly rows="9" spellcheck="false"></textarea>
+                    </article>
                   </div>
-                </div>
+                </section>
+
+                <section class="ai-reference-grid">
+                  <div class="ai-card">
+                    <div class="ai-card-heading">
+                      <span class="ai-step-number">3</span>
+                      <div>
+                        <h3>Verify It Works</h3>
+                        <p>After adding the server, restart your AI client or run its MCP reload command.</p>
+                      </div>
+                    </div>
+                    <ul class="ai-check-list">
+                      <li><i class="fas fa-circle-check"></i> In Claude Code, run <code>/mcp</code> and confirm <code>soropg</code> is connected.</li>
+                      <li><i class="fas fa-circle-check"></i> Ask the agent to run <code>soropg_list_projects</code>.</li>
+                      <li><i class="fas fa-circle-check"></i> Keep this SoroPG browser tab open so workspace edits can sync.</li>
+                    </ul>
+                  </div>
+
+                  <div class="ai-card">
+                    <div class="ai-card-heading">
+                      <span class="ai-step-number">4</span>
+                      <div>
+                        <h3>Available Tools</h3>
+                        <p>The server exposes focused workspace operations.</p>
+                      </div>
+                    </div>
+                    <div class="ai-tool-tags">
+                      <span>list projects</span>
+                      <span>read files</span>
+                      <span>create files</span>
+                      <span>replace files</span>
+                      <span>move files</span>
+                      <span>delete files</span>
+                      <span>build</span>
+                      <span>test</span>
+                      <span>audit</span>
+                    </div>
+                  </div>
+                </section>
               </section>
             </div>
           </div>

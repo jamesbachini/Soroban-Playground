@@ -27,6 +27,7 @@ export default defineConfig({
 						{ label: 'Build, Test, and Audit', slug: 'build-test-audit' },
 						{ label: 'Deploy Contracts', slug: 'deploy' },
 						{ label: 'Explore Contracts', slug: 'explore' },
+						{ label: 'AI Assistants', slug: 'ai' },
 						{ label: 'Wallets and Networks', slug: 'wallets-and-networks' },
 						{ label: 'Share and Import Projects', slug: 'share-and-import' },
 					],

@@ -1,0 +1,7 @@
+node_modules/
+src/
+test/
+*.tgz
+tsconfig.json
+package-lock.json
+skill.md

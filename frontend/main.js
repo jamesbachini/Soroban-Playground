@@ -258,12 +258,16 @@ function generateMcpApiKey() {
 }
 
 function getMcpServerPath() {
-  return localStorage.getItem(MCP_SERVER_PATH_STORAGE_KEY) || DEFAULT_MCP_SERVER_PATH;
+  return localStorage.getItem(MCP_SERVER_PATH_STORAGE_KEY) || '';
 }
 
 function setMcpServerPath(path) {
   const trimmed = String(path || '').trim();
-  localStorage.setItem(MCP_SERVER_PATH_STORAGE_KEY, trimmed || DEFAULT_MCP_SERVER_PATH);
+  if (trimmed) {
+    localStorage.setItem(MCP_SERVER_PATH_STORAGE_KEY, trimmed);
+  } else {
+    localStorage.removeItem(MCP_SERVER_PATH_STORAGE_KEY);
+  }
 }
 
 function escapeTomlString(value) {
@@ -295,12 +299,14 @@ function getMcpConfigSnippet() {
   const apiKey = getMcpApiKey();
   const apiUrl = window.location.origin;
   const serverPath = getMcpServerPath();
+  const serverConfig = serverPath
+    ? { command: "node", args: [serverPath] }
+    : { command: "npx", args: ["-y", "soropg-mcp"] };
   return JSON.stringify({
     mcpServers: {
       soropg: {
         type: "stdio",
-        command: "node",
-        args: [serverPath],
+        ...serverConfig,
         env: {
           SOROPG_API_URL: apiUrl,
           SOROPG_API_KEY: apiKey || "generate-a-key-in-soropg",
@@ -312,6 +318,13 @@ function getMcpConfigSnippet() {
 
 function getMcpInstallCommand() {
   const serverPath = getMcpServerPath();
+  if (!serverPath) {
+    return [
+      'npx soropg-mcp --help',
+      '# Your AI client will start it with:',
+      'npx -y soropg-mcp',
+    ].join('\n');
+  }
   const mcpDir = serverPath.endsWith('/dist/index.js')
     ? serverPath.slice(0, -'/dist/index.js'.length)
     : '/path/to/Soroban-Playground/mcp';
@@ -326,11 +339,12 @@ function getClaudeMcpCommand() {
   const apiKey = getMcpApiKey() || 'generate-a-key-in-soropg';
   const apiUrl = window.location.origin;
   const serverPath = getMcpServerPath();
+  const command = serverPath ? `node ${shellQuote(serverPath)}` : 'npx -y soropg-mcp';
   return [
     'claude mcp add --transport stdio --scope user \\',
     `  --env SOROPG_API_URL=${shellQuote(apiUrl)} \\`,
     `  --env SOROPG_API_KEY=${shellQuote(apiKey)} \\`,
-    `  soropg -- node ${shellQuote(serverPath)}`,
+    `  soropg -- ${command}`,
   ].join('\n');
 }
 
@@ -338,12 +352,15 @@ function getCodexMcpConfig() {
   const apiKey = getMcpApiKey() || 'generate-a-key-in-soropg';
   const apiUrl = window.location.origin;
   const serverPath = getMcpServerPath();
-  return [
+  const lines = [
     '[mcp_servers.soropg]',
-    'command = "node"',
-    `args = ["${escapeTomlString(serverPath)}"]`,
+    serverPath ? 'command = "node"' : 'command = "npx"',
+    serverPath
+      ? `args = ["${escapeTomlString(serverPath)}"]`
+      : 'args = ["-y", "soropg-mcp"]',
     `env = { SOROPG_API_URL = "${escapeTomlString(apiUrl)}", SOROPG_API_KEY = "${escapeTomlString(apiKey)}" }`,
-  ].join('\n');
+  ];
+  return lines.join('\n');
 }
 
 function updateMcpConnectionUi(stateOverride = null, detailOverride = '') {
@@ -452,6 +469,177 @@ function setupMcpSettings() {
   }
 }
 
+let isAiAssistantRunning = false;
+
+function activateAiTab(tabName) {
+  document.querySelectorAll('.ai-tab').forEach((tab) => {
+    const active = tab.dataset.aiTab === tabName;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('.ai-tab-view').forEach((view) => {
+    view.classList.toggle('active', view.dataset.aiView === tabName);
+  });
+}
+
+function appendAiTerminalLine(text, className = 'system') {
+  const output = document.getElementById('ai-terminal-output');
+  if (!output) return null;
+  output.querySelectorAll('.ai-terminal-line.pending').forEach((line) => {
+    line.classList.remove('pending');
+  });
+  const line = document.createElement('div');
+  line.className = `ai-terminal-line ${className}`;
+  line.textContent = text;
+  output.appendChild(line);
+  output.scrollTop = output.scrollHeight;
+  return line;
+}
+
+function setAiAssistantRunning(running) {
+  isAiAssistantRunning = running;
+  const input = document.getElementById('ai-assistant-input');
+  const submit = document.getElementById('ai-assistant-submit');
+  const state = document.getElementById('ai-assistant-state');
+  if (input) input.disabled = running;
+  if (submit) submit.disabled = running;
+  if (state) {
+    state.textContent = running ? 'running' : 'idle';
+    state.classList.toggle('running', running);
+  }
+}
+
+function handleAiAssistantEvent(payload) {
+  const event = payload?.event;
+  const data = payload?.data || {};
+  if (event === 'status') {
+    appendAiTerminalLine(`> ${data.message || 'working'}`, 'system pending');
+  } else if (event === 'tool_start') {
+    appendAiTerminalLine(`tool: ${data.name}`, 'tool pending');
+  } else if (event === 'tool_result') {
+    const marker = data.ok ? 'ok' : 'error';
+    const suffix = data.message ? ` - ${data.message}` : '';
+    appendAiTerminalLine(`tool: ${data.name} ${marker}${suffix}`, data.ok ? 'tool' : 'error');
+  } else if (event === 'assistant_message') {
+    appendAiTerminalLine(data.message || '(no message)', 'assistant');
+  } else if (event === 'complete') {
+    appendAiTerminalLine(`> ${data.message || 'Done'}`, 'system');
+  } else if (event === 'error') {
+    appendAiTerminalLine(`error: ${data.message || 'Assistant request failed'}`, 'error');
+  }
+}
+
+async function readAiAssistantStream(response) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    appendAiTerminalLine(await response.text(), response.ok ? 'assistant' : 'error');
+    return;
+  }
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    lines.forEach((line) => {
+      if (!line.trim()) return;
+      try {
+        handleAiAssistantEvent(JSON.parse(line));
+      } catch (error) {
+        appendAiTerminalLine(line, 'assistant');
+      }
+    });
+  }
+  if (buffer.trim()) {
+    try {
+      handleAiAssistantEvent(JSON.parse(buffer));
+    } catch (error) {
+      appendAiTerminalLine(buffer, 'assistant');
+    }
+  }
+}
+
+async function submitAiAssistantPrompt(message) {
+  let apiKey = getMcpApiKey();
+  if (!apiKey) {
+    apiKey = generateMcpApiKey();
+    localStorage.setItem(MCP_API_KEY_STORAGE_KEY, apiKey);
+    refreshMcpSettingsUi();
+    appendAiTerminalLine('> Generated a browser access key for this assistant session.', 'system');
+  }
+  if (!activeWorkspaceId) {
+    appendAiTerminalLine('error: No active workspace is open.', 'error');
+    return;
+  }
+
+  saveCurrentFile();
+  await publishMcpWorkspaces();
+  const response = await fetch('/api/ai/assistant', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      session_id: getMcpSessionId(),
+      active_workspace_id: activeWorkspaceId,
+      message,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    try {
+      const payload = JSON.parse(text);
+      appendAiTerminalLine(`error: ${payload.error || text}`, 'error');
+    } catch (error) {
+      appendAiTerminalLine(`error: ${text || response.statusText}`, 'error');
+    }
+    return;
+  }
+
+  await readAiAssistantStream(response);
+  await pollMcpChanges();
+}
+
+function setupAiAssistant() {
+  document.querySelectorAll('.ai-tab').forEach((tab) => {
+    tab.addEventListener('click', () => activateAiTab(tab.dataset.aiTab || 'assistant'));
+  });
+  activateAiTab('assistant');
+
+  const shortcut = document.getElementById('editor-ai-shortcut');
+  if (shortcut) {
+    shortcut.addEventListener('click', () => {
+      activateAiTab('assistant');
+      activatePanel('ai-panel', { splitRatio: 0.44 });
+    });
+  }
+
+  const form = document.getElementById('ai-assistant-form');
+  const input = document.getElementById('ai-assistant-input');
+  if (form && input) {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const message = input.value.trim();
+      if (!message || isAiAssistantRunning) return;
+      input.value = '';
+      appendAiTerminalLine(`$ ${message}`, 'user');
+      setAiAssistantRunning(true);
+      try {
+        await submitAiAssistantPrompt(message);
+      } catch (error) {
+        appendAiTerminalLine(`error: ${error?.message || 'Assistant request failed'}`, 'error');
+      } finally {
+        setAiAssistantRunning(false);
+        input.focus();
+      }
+    });
+  }
+}
+
 function scheduleMcpPublish() {
   refreshMcpSettingsUi();
   if (isApplyingMcpUpdate || isPublishingMcpSnapshot || !getMcpApiKey()) return;
@@ -490,6 +678,7 @@ async function publishMcpWorkspaces() {
       body: JSON.stringify({
         session_id: getMcpSessionId(),
         active_workspace_id: activeWorkspaceId,
+        lastSeq: mcpLastSeq,
         workspaces: workspacePayload,
       }),
     });
@@ -520,12 +709,11 @@ async function pollMcpChanges() {
     });
     if (!response.ok) return;
     const payload = await response.json();
-    if (typeof payload.seq === 'number') {
-      mcpLastSeq = payload.seq;
-    }
+    const nextSeq = typeof payload.seq === 'number' ? payload.seq : mcpLastSeq;
     if (Array.isArray(payload.projects) && payload.projects.length) {
       applyMcpProjectUpdates(payload.projects);
     }
+    mcpLastSeq = nextSeq;
   } catch (error) {
     console.warn('MCP change polling failed:', error);
   }
@@ -709,7 +897,13 @@ function saveCurrentFile() {
     return;
   }
 
-  files[currentFile] = editor.getValue();
+  const currentContent = editor.getValue();
+  const didChange = files[currentFile] !== currentContent || workspace.lastOpenFile !== currentFile;
+  if (!didChange) {
+    return;
+  }
+
+  files[currentFile] = currentContent;
   workspace.files = files;
   workspace.lastOpenFile = currentFile;
   workspace.updatedAt = Date.now();
@@ -5002,6 +5196,7 @@ async function init() {
     });
   }
   startMcpBridge();
+  setupAiAssistant();
   setLocalNetworkInputs(localNetworkConfig);
   const saveLocalNetworkConfigButton = document.getElementById('save-local-network-config');
   if (saveLocalNetworkConfigButton) {
@@ -5099,6 +5294,9 @@ document.querySelectorAll('.sidebar-icon').forEach(icon => {
       return;
     }
     const resetSplit = panelId === 'create-panel';
+    if (panelId === 'ai-panel') {
+      activateAiTab('assistant');
+    }
     activatePanel(panelId, { resetSplit });
   });
 });
