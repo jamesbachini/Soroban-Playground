@@ -99,14 +99,14 @@
               <div class="academy-hero-grid">
                 <section class="academy-course-hero">
                   <div class="academy-course-copy">
-                    <p class="academy-eyebrow">Featured Course</p>
-                    <h2>Build Smart Contracts on Stellar</h2>
-                    <p>Master Soroban smart contract development from the ground up.</p>
+                    <p id="academy-featured-course" class="academy-eyebrow">Featured Course</p>
+                    <h2 id="academy-featured-title">Build Smart Contracts on Stellar</h2>
+                    <p id="academy-featured-summary">Master Soroban smart contract development from the ground up.</p>
                     <div class="academy-tags">
-                      <span class="academy-tag academy-tag-success">Beginner to Intermediate</span>
-                      <span class="academy-tag">8 lessons</span>
-                      <span class="academy-tag">3h 20m</span>
-                      <span class="academy-tag">Written + Video</span>
+                      <span id="academy-featured-level" class="academy-tag academy-tag-success">Beginner</span>
+                      <span id="academy-featured-count" class="academy-tag">10 lessons</span>
+                      <span id="academy-featured-time" class="academy-tag">First 3 available</span>
+                      <span id="academy-featured-format" class="academy-tag">Written + Practice</span>
                     </div>
                     <div class="academy-hero-progress-row">
                       <span>Your Progress</span>
@@ -139,7 +139,7 @@
                     </div>
                   </div>
                   <div class="academy-video-caption">
-                    <span>Lesson 1: Your First Hello World Contract</span>
+                    <span id="academy-current-video-title">Lesson 1: Your First Hello World Contract</span>
                     <strong id="academy-video-progress" class="academy-inline-progress">Not started</strong>
                   </div>
                 </section>
@@ -153,83 +153,17 @@
                     <button type="button">All Lessons <i class="fas fa-chevron-down"></i></button>
                   </div>
                 </div>
-                <div class="academy-lesson-grid">
-                  <div class="academy-lesson-list">
-                    <div class="academy-course-row done">
-                      <span class="academy-lesson-number">1</span>
-                      <i class="fas fa-play"></i>
-                      <strong>Intro to Soroban & Stellar</strong>
-                      <span>Video</span>
-                      <span>18m</span>
-                      <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="academy-course-row done">
-                      <span class="academy-lesson-number">2</span>
-                      <i class="fas fa-file-lines"></i>
-                      <strong>Setting Up the Dev Environment</strong>
-                      <span>Written</span>
-                      <span>15m</span>
-                      <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="academy-course-row active">
-                      <span class="academy-lesson-number">3</span>
-                      <i class="fas fa-play"></i>
-                      <strong>Your First Hello World Contract</strong>
-                      <span>Video</span>
-                      <span>22m</span>
-                      <i class="far fa-circle"></i>
-                    </div>
-                    <div class="academy-course-row">
-                      <span class="academy-lesson-number">4</span>
-                      <i class="fas fa-file-lines"></i>
-                      <strong>Storage, Types & State</strong>
-                      <span>Written</span>
-                      <span>25m</span>
-                      <i class="far fa-circle"></i>
-                    </div>
-                  </div>
-                  <div class="academy-lesson-list">
-                    <div class="academy-course-row">
-                      <span class="academy-lesson-number">5</span>
-                      <i class="fas fa-file-lines"></i>
-                      <strong>Authorization & Access Control</strong>
-                      <span>Video</span>
-                      <span>28m</span>
-                      <i class="far fa-circle"></i>
-                    </div>
-                    <div class="academy-course-row">
-                      <span class="academy-lesson-number">6</span>
-                      <i class="fas fa-file-lines"></i>
-                      <strong>Testing Contracts</strong>
-                      <span>Written</span>
-                      <span>22m</span>
-                      <i class="far fa-circle"></i>
-                    </div>
-                    <div class="academy-course-row">
-                      <span class="academy-lesson-number">7</span>
-                      <i class="fas fa-play"></i>
-                      <strong>Deploying to Testnet</strong>
-                      <span>Video</span>
-                      <span>20m</span>
-                      <i class="far fa-circle"></i>
-                    </div>
-                    <div class="academy-course-row">
-                      <span class="academy-lesson-number">8</span>
-                      <i class="fas fa-play"></i>
-                      <strong>Building a Token or Escrow Contract</strong>
-                      <span>Video</span>
-                      <span>30m</span>
-                      <i class="far fa-circle"></i>
-                    </div>
-                  </div>
-                </div>
+                <div id="academy-curriculum-list" class="academy-lesson-grid"></div>
                 <div class="academy-legend">
                   <span><i class="fas fa-play"></i> Video Lesson</span>
                   <span><i class="fas fa-file-lines"></i> Written Lesson</span>
                   <span><i class="fas fa-check-circle"></i> Completed</span>
                   <span><i class="far fa-circle"></i> In Progress</span>
+                  <span><i class="fas fa-lock"></i> Coming Soon</span>
                 </div>
               </section>
+
+              <section id="academy-lesson-guide" class="academy-lesson-guide"></section>
             </div>
           </div>
         </div>
@@ -356,14 +290,24 @@
                     </div>
                     <span id="ai-assistant-state" class="ai-terminal-state">idle</span>
                   </div>
-                  <div id="ai-terminal-output" class="ai-terminal-output" aria-live="polite">
-                    <div class="ai-terminal-line system">$ SoroPG assistant ready</div>
-                    <div class="ai-terminal-line muted">Uses the active browser workspace and updates the editor when tools finish.</div>
-                  </div>
-                  <form id="ai-assistant-form" class="ai-terminal-form">
-                    <span class="ai-terminal-prompt">$</span>
-                    <input id="ai-assistant-input" type="text" autocomplete="off" placeholder="add a subtract function to this smart contract" />
-                    <button id="ai-assistant-submit" class="primary-button" type="submit"><i class="fas fa-arrow-up"></i></button>
+                  <form id="ai-assistant-form" class="ai-terminal-form" autocomplete="off">
+                    <div id="ai-terminal-output" class="ai-terminal-output" role="log" aria-live="polite" aria-label="Assistant terminal output">
+                      <div class="ai-terminal-line system">$ SoroPG assistant ready</div>
+                      <div class="ai-terminal-line muted">Uses the active browser workspace and updates the editor when tools finish.</div>
+                    </div>
+                    <div class="ai-terminal-entry">
+                      <span class="ai-terminal-prompt" aria-hidden="true">$</span>
+                      <div
+                        id="ai-assistant-input"
+                        class="ai-terminal-input"
+                        role="textbox"
+                        contenteditable="true"
+                        aria-label="Assistant prompt"
+                        aria-multiline="true"
+                        spellcheck="false"
+                        data-placeholder="how can I help?"></div>
+                      <button id="ai-assistant-submit" class="primary-button" type="submit" title="Send prompt" aria-label="Send prompt"><i class="fas fa-arrow-up"></i></button>
+                    </div>
                   </form>
                 </div>
               </section>
@@ -372,8 +316,12 @@
                 <section class="ai-hero">
                   <div class="ai-hero-copy">
                     <span class="ai-eyebrow">Model Context Protocol</span>
-                    <h2>Connect Claude Code, Codex, or another AI agent to this browser workspace.</h2>
-                    <p>SoroPG keeps the contract project in the browser. The MCP server gives your coding agent controlled access to read files, edit files, and run build, test, or audit commands through this app.</p>
+                    <h2>Connect an AI agent to this browser workspace.</h2>
+                    <p>Generate a browser key, add the npx server to your MCP client, and keep this tab open while the agent works.</p>
+                    <a class="ai-doc-link" href="https://soropg.com/docs/ai" target="_blank" rel="noopener">
+                      <i class="fas fa-arrow-up-right-from-square"></i>
+                      Full MCP docs
+                    </a>
                   </div>
                   <div class="ai-connection-card">
                     <div class="ai-connection-heading">
@@ -404,13 +352,13 @@
                   </div>
                 </section>
 
-                <section class="ai-setup-grid">
-                  <div class="ai-card ai-card-primary">
+                <section class="ai-mcp-simple-grid">
+                  <article class="ai-card ai-card-primary ai-mcp-key-card">
                     <div class="ai-card-heading">
                       <span class="ai-step-number">1</span>
                       <div>
-                        <h3>Enable Browser Access</h3>
-                        <p>Create a private key for this browser session. Keep this tab open while agents work.</p>
+                        <h3>Generate a Browser Key</h3>
+                        <p>This key lets your local MCP client reach the open workspace in this tab.</p>
                       </div>
                     </div>
                     <label for="mcp-api-key">User API Key</label>
@@ -421,107 +369,28 @@
                       </button>
                     </div>
                     <div id="mcp-status" class="settings-status" role="status" aria-live="polite"></div>
-                  </div>
+                  </article>
 
-                  <div class="ai-card">
+                  <article class="ai-config-card ai-mcp-config-card">
                     <div class="ai-card-heading">
                       <span class="ai-step-number">2</span>
                       <div>
-                        <h3>Check MCP Server</h3>
-                        <p>Use npx with Node.js 20 or newer. This quick check does not need to stay running; your AI client starts the server from the config below.</p>
+                        <h3>Add the MCP Server</h3>
+                        <p>Use Node.js 20 or newer. Your client starts the server with <code>npx soropg-mcp</code>. See the <a href="https://soropg.com/docs/ai" target="_blank" rel="noopener">setup docs</a> for Codex, Claude Code, and other MCP clients.</p>
                       </div>
                     </div>
-                    <div class="ai-code-block">
-                      <button class="ai-copy-button" type="button" data-copy-target="mcp-install-command" title="Copy npx check command"><i class="fas fa-copy"></i></button>
-                      <pre id="mcp-install-command">npx soropg-mcp --help</pre>
-                    </div>
-                    <label for="mcp-server-path">Optional local development server file</label>
-                    <input type="text" id="mcp-server-path" placeholder="/path/to/Soroban-Playground/mcp/dist/index.js" />
-                  </div>
-                </section>
-
-                <section class="ai-config-section">
-                  <div class="ai-section-heading">
-                    <div>
-                      <h3>Client Configuration</h3>
-                      <p>Pick the format your agent supports, then copy it into your client.</p>
-                    </div>
-                  </div>
-                  <div class="ai-config-grid">
-                    <article class="ai-config-card">
-                      <div class="ai-config-card-heading">
+                    <div class="ai-command-pill">
+                      <span>
                         <i class="fas fa-terminal"></i>
-                        <div>
-                          <h4>Claude Code</h4>
-                          <p>User-scoped stdio server</p>
-                        </div>
-                        <button class="ai-copy-button" type="button" data-copy-target="mcp-claude-command" title="Copy Claude Code command"><i class="fas fa-copy"></i></button>
-                      </div>
-                      <pre id="mcp-claude-command"></pre>
-                    </article>
-
-                    <article class="ai-config-card">
-                      <div class="ai-config-card-heading">
-                        <i class="fas fa-code"></i>
-                        <div>
-                          <h4>Codex</h4>
-                          <p>Append to ~/.codex/config.toml</p>
-                        </div>
-                        <button class="ai-copy-button" type="button" data-copy-target="mcp-codex-config" title="Copy Codex config"><i class="fas fa-copy"></i></button>
-                      </div>
-                      <pre id="mcp-codex-config"></pre>
-                    </article>
-
-                    <article class="ai-config-card ai-config-card-wide">
-                      <div class="ai-config-card-heading">
-                        <i class="fas fa-plug"></i>
-                        <div>
-                          <h4>Generic MCP JSON</h4>
-                          <p>Claude Desktop, Cursor, Windsurf, VS Code, and other MCP clients</p>
-                        </div>
-                        <button id="copy-mcp-config" class="ai-copy-button" type="button" title="Copy generic MCP JSON"><i class="fas fa-copy"></i></button>
-                      </div>
-                      <textarea id="mcp-config-preview" readonly rows="9" spellcheck="false"></textarea>
-                    </article>
-                  </div>
-                </section>
-
-                <section class="ai-reference-grid">
-                  <div class="ai-card">
-                    <div class="ai-card-heading">
-                      <span class="ai-step-number">3</span>
-                      <div>
-                        <h3>Verify It Works</h3>
-                        <p>After adding the server, restart your AI client or run its MCP reload command.</p>
-                      </div>
+                        <code id="mcp-command">npx soropg-mcp</code>
+                      </span>
+                      <button class="ai-copy-button" type="button" data-copy-target="mcp-command" title="Copy MCP command" aria-label="Copy MCP command"><i class="fas fa-copy"></i></button>
                     </div>
-                    <ul class="ai-check-list">
-                      <li><i class="fas fa-circle-check"></i> In Claude Code, run <code>/mcp</code> and confirm <code>soropg</code> is connected.</li>
-                      <li><i class="fas fa-circle-check"></i> Ask the agent to run <code>soropg_list_projects</code>.</li>
-                      <li><i class="fas fa-circle-check"></i> Keep this SoroPG browser tab open so workspace edits can sync.</li>
-                    </ul>
-                  </div>
-
-                  <div class="ai-card">
-                    <div class="ai-card-heading">
-                      <span class="ai-step-number">4</span>
-                      <div>
-                        <h3>Available Tools</h3>
-                        <p>The server exposes focused workspace operations.</p>
-                      </div>
+                    <div class="ai-mcp-footnote">
+                      <i class="fas fa-circle-check"></i>
+                      <span>Restart or reload your MCP client, then ask it to run <code>soropg_list_projects</code>.</span>
                     </div>
-                    <div class="ai-tool-tags">
-                      <span>list projects</span>
-                      <span>read files</span>
-                      <span>create files</span>
-                      <span>replace files</span>
-                      <span>move files</span>
-                      <span>delete files</span>
-                      <span>build</span>
-                      <span>test</span>
-                      <span>audit</span>
-                    </div>
-                  </div>
+                  </article>
                 </section>
               </section>
             </div>
@@ -728,8 +597,8 @@
                   <span>Course Progress</span>
                 </div>
                 <div class="academy-learning-stats">
-                  <span><i class="fas fa-book-open"></i><strong>1 / 8</strong> Lessons</span>
-                  <span><i class="far fa-clock"></i><strong>25m</strong> Total Time</span>
+                  <span><i class="fas fa-book-open"></i><strong id="academy-lesson-count">0 / 3</strong> Lessons</span>
+                  <span><i class="far fa-clock"></i><strong id="academy-total-time">95m</strong> Total Time</span>
                   <span><i class="fas fa-check"></i><strong id="academy-completed-count">0</strong> Lessons Completed</span>
                 </div>
               </section>
@@ -765,17 +634,18 @@
 
               <section class="academy-bottom-card academy-live-card">
                 <div class="academy-bottom-heading">
-                  <h2>Live Environment</h2>
-                  <p>Practice and test in a real Soroban environment.</p>
+                  <h2 id="academy-live-title">Live Environment</h2>
+                  <p id="academy-live-description">Practice and test in a real Soroban environment.</p>
                 </div>
-                <div class="academy-env-box">
+                <div id="academy-env-box" class="academy-env-box">
                   <div><span>Network:</span><strong><i class="fas fa-circle"></i> Testnet</strong></div>
                   <div><span>Account:</span><strong>Browser wallet</strong></div>
                 </div>
-                <div class="academy-verify-row">
+                <div id="academy-verify-row" class="academy-verify-row">
                   <input type="text" id="academy-contract-id" placeholder="Paste Testnet contract ID (C...)" autocomplete="off" />
                   <button id="academy-verify-contract" type="button"><i class="fas fa-check-circle"></i> Verify</button>
                 </div>
+                <button id="academy-mark-complete" class="academy-mark-complete" type="button" hidden><i class="fas fa-check-circle"></i> Mark Complete</button>
                 <div id="academy-verification-status" class="academy-status" role="status" aria-live="polite"></div>
                 <a id="academy-verified-link" class="academy-verified-link" href="#" target="_blank" rel="noopener">View on Stellar.Expert <i class="fas fa-arrow-up-right-from-square"></i></a>
               </section>

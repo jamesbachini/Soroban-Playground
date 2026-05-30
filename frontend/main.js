@@ -51,27 +51,255 @@ const LEGACY_FILES_STORAGE_KEY = 'soroban-files';
 const WORKSPACE_SCHEMA_VERSION = 1;
 const MCP_API_KEY_STORAGE_KEY = 'soropg-mcp-api-key';
 const MCP_SESSION_STORAGE_KEY = 'soropg-mcp-session-id';
-const MCP_SERVER_PATH_STORAGE_KEY = 'soropg-mcp-server-path';
 const MCP_HEARTBEAT_MS = 25_000;
 const MCP_POLL_MS = 4_000;
 const MCP_PUBLISH_DEBOUNCE_MS = 1_000;
-const DEFAULT_MCP_SERVER_PATH = '/path/to/Soroban-Playground/mcp/dist/index.js';
 const MAIN_SOURCE_CANDIDATES = ['src/lib.rs', 'lib.rs'];
 const ACADEMY_TESTNET_RPC_URL = 'https://soroban-testnet.stellar.org';
 const ACADEMY_TESTNET_EXPERT_BASE = 'https://stellar.expert/explorer/testnet/contract';
 const ACADEMY_LESSONS = Object.freeze({
   'foundations-hello-world': Object.freeze({
     id: 'foundations-hello-world',
-    title: 'Hello World on Testnet',
+    number: 1,
+    title: 'Hello World: Build, Test, and Deploy',
     course: 'Foundations',
+    format: 'Written + Practice',
+    duration: '35m',
+    level: 'Beginner',
+    summary: 'Create a basic Soroban contract in SoroPG, understand the Rust contract structure, run your first unit test, build the WASM, deploy to testnet, and invoke the contract from the IDE.',
     githubUrl: 'https://github.com/stellar/soroban-examples/tree/main/hello_world',
     preferredFile: 'src/lib.rs',
     expectedMethods: Object.freeze(['hello']),
+    primaryAction: 'import',
+    completionMode: 'deploy',
     videoId: '',
     videoTitle: 'Hello World contract walkthrough',
+    objectives: Object.freeze([
+      'Identify the contract struct, impl block, exported function, and Soroban SDK types in a Rust contract.',
+      'Run the included unit test before changing deployment state.',
+      'Build a WASM artifact, deploy it to Stellar Testnet, and verify the exported hello function.',
+      'Use the IDE contract explorer to invoke the deployed function with a symbol argument.',
+    ]),
+    sections: Object.freeze([
+      Object.freeze({
+        title: '1. Import the starter contract',
+        body: 'Open the course material to load Stellar\'s hello world example into a fresh SoroPG workspace. Start in src/lib.rs and find the HelloContract type, the #[contractimpl] block, and the hello(env, to) function.',
+        action: 'Open Course Material',
+      }),
+      Object.freeze({
+        title: '2. Read the Rust contract shape',
+        body: 'The contract is intentionally small: Env gives access to ledger APIs, Symbol represents a compact contract-friendly string, and Vec<Symbol> is the return value. Notice that public contract functions are ordinary Rust associated functions exposed through the macro.',
+        action: 'Inspect src/lib.rs',
+      }),
+      Object.freeze({
+        title: '3. Run the unit test',
+        body: 'Switch to the Test panel and run the template test. The test registers the contract in a simulated environment and calls hello with a symbol. Treat this as the fast feedback loop before every build.',
+        action: 'Run Unit Tests',
+      }),
+      Object.freeze({
+        title: '4. Build, deploy, and invoke',
+        body: 'Build the WASM, connect or create a testnet wallet, deploy the contract, then paste the contract id back into Academy. After verification, open Explore, load the contract id, and invoke hello from the generated interface.',
+        action: 'Deploy Contract',
+      }),
+    ]),
+    practice: Object.freeze([
+      'Change the returned greeting symbol, rerun tests, and confirm the test catches any mismatch.',
+      'Deploy only after tests and build both pass.',
+      'Invoke hello with your own name-like symbol from the Explore panel.',
+    ]),
+  }),
+  'ai-assisted-development': Object.freeze({
+    id: 'ai-assisted-development',
+    number: 2,
+    title: 'AI-Assisted Contract Development',
+    course: 'AI Workflow',
+    format: 'Written + Practice',
+    duration: '30m',
+    level: 'Beginner',
+    summary: 'Use the built-in AI assistant to add new functions, refactor contract code, explain compiler errors, generate tests, and speed up the edit-build-test loop without losing control of the code.',
+    githubUrl: 'https://github.com/stellar/soroban-examples/tree/main/hello_world',
+    preferredFile: 'src/lib.rs',
+    expectedMethods: Object.freeze([]),
+    primaryAction: 'ai-assistant',
+    completionMode: 'manual',
+    videoId: '',
+    videoTitle: 'AI-assisted contract development workflow',
+    objectives: Object.freeze([
+      'Use the assistant as an editor and reviewer while keeping every code change visible in the workspace.',
+      'Ask for small, testable contract changes instead of broad rewrites.',
+      'Use compiler errors and failing tests as precise prompts for the next assistant turn.',
+      'Generate or refine tests before accepting behavior changes.',
+    ]),
+    sections: Object.freeze([
+      Object.freeze({
+        title: '1. Start from working code',
+        body: 'Use the hello world workspace from Lesson 1 or any current contract that already builds. Run tests once before asking for changes so you know the baseline is clean.',
+        action: 'Use Current Workspace',
+      }),
+      Object.freeze({
+        title: '2. Ask for one narrow edit',
+        body: 'Open AI Assistant and ask for a concrete addition such as "add a goodbye function that returns [bye, name] and update the tests". Keep prompts scoped to one behavior so the diff is easy to review.',
+        action: 'Open AI Assistant',
+      }),
+      Object.freeze({
+        title: '3. Review before you run',
+        body: 'Read the changed Rust code in the editor. Check exported method names, SDK types, and test expectations. If something looks unclear, ask the assistant to explain the exact line instead of accepting it blindly.',
+        action: 'Review the diff',
+      }),
+      Object.freeze({
+        title: '4. Close the loop with tests',
+        body: 'Run tests, then use any compiler or assertion error as the next prompt. A useful pattern is: paste the error, say what you expected, and ask for the smallest fix.',
+        action: 'Run Unit Tests',
+      }),
+    ]),
+    practice: Object.freeze([
+      'Ask the assistant to add one exported function and one unit test for it.',
+      'Ask it to explain a compiler error in plain language, then make the smallest fix.',
+      'Ask for a refactor that improves naming without changing public behavior.',
+    ]),
+  }),
+  'agentic-ai-mcp': Object.freeze({
+    id: 'agentic-ai-mcp',
+    number: 3,
+    title: 'SoroPG + Agentic AI = Magic: Claude Code or Codex via MCP',
+    course: 'AI Workflow',
+    format: 'Written + Setup',
+    duration: '30m',
+    level: 'Intermediate',
+    summary: 'Install and connect an MCP server so external agentic coding tools can read, edit, and improve SoroPG projects, turning the browser IDE into an AI-native contract development workspace.',
+    githubUrl: '',
+    preferredFile: 'src/lib.rs',
+    expectedMethods: Object.freeze([]),
+    primaryAction: 'mcp-setup',
+    completionMode: 'manual',
+    videoId: '',
+    videoTitle: 'Connecting SoroPG to agentic coding tools',
+    objectives: Object.freeze([
+      'Understand the browser tab as the bridge between SoroPG workspaces and an external MCP client.',
+      'Generate a SoroPG browser key and add the npx MCP server to Claude Code, Codex, or another MCP client.',
+      'Confirm the agent can list projects before allowing edits.',
+      'Use agentic tools for multi-file improvements while keeping SoroPG as the live contract workspace.',
+    ]),
+    sections: Object.freeze([
+      Object.freeze({
+        title: '1. Open the MCP setup panel',
+        body: 'The MCP setup screen shows the browser bridge status, the API URL, active workspace, last sync time, and the JSON config your local client needs.',
+        action: 'Open MCP Setup',
+      }),
+      Object.freeze({
+        title: '2. Generate a browser key',
+        body: 'Generate a key in SoroPG. This authorizes your local MCP server to reach the workspaces in this open browser tab, so keep the tab open while the agent works.',
+        action: 'Generate Key',
+      }),
+      Object.freeze({
+        title: '3. Install the MCP server in your client',
+        body: 'Use Node.js 20 or newer and configure your MCP client to run npx -y soropg-mcp. Use the setup docs for your client, reload the client, then ask it to run soropg_list_projects.',
+        action: 'Open Setup Docs',
+      }),
+      Object.freeze({
+        title: '4. Let the agent make a controlled edit',
+        body: 'Ask Claude Code or Codex to inspect the active project, explain the contract, and make one small improvement. Return to SoroPG, review the changed files, then run tests and build.',
+        action: 'Run Agent Task',
+      }),
+    ]),
+    practice: Object.freeze([
+      'Ask the external agent to list SoroPG projects and identify the active workspace.',
+      'Ask it to add or improve one test, then verify the result in SoroPG.',
+      'Ask it to summarize every file it changed before you deploy anything.',
+    ]),
+  }),
+  'soroban-state-storage-types': Object.freeze({
+    id: 'soroban-state-storage-types',
+    number: 4,
+    title: 'State, Storage, and Data Types in Soroban',
+    course: 'Core Soroban',
+    format: 'Coming soon',
+    duration: 'Coming soon',
+    level: 'Intermediate',
+    summary: 'Learn how contracts store data using instance, persistent, and temporary storage; build a counter or profile contract; and understand DataKey, Address, Symbol, Vec, Map, and custom contract types.',
+    comingSoon: true,
+  }),
+  'authorization-auth-systems': Object.freeze({
+    id: 'authorization-auth-systems',
+    number: 5,
+    title: 'Authorization: Building authentication systems',
+    course: 'Core Soroban',
+    format: 'Coming soon',
+    duration: 'Coming soon',
+    level: 'Intermediate',
+    summary: 'Add real access control with require_auth, admin-only functions, user-owned state, and safe initialization patterns so students understand who is allowed to do what on-chain.',
+    comingSoon: true,
+  }),
+  'openzeppelin-token': Object.freeze({
+    id: 'openzeppelin-token',
+    number: 6,
+    title: 'Building a Token with OpenZeppelin',
+    course: 'Applied Contracts',
+    format: 'Coming soon',
+    duration: 'Coming soon',
+    level: 'Intermediate',
+    summary: 'Use the OpenZeppelin wizard to create a fungible stablecoin token that can be swapped 1:1 with USDC.',
+    comingSoon: true,
+  }),
+  'events-errors-ux': Object.freeze({
+    id: 'events-errors-ux',
+    number: 7,
+    title: 'Events, Errors, and Better Contract UX',
+    course: 'Core Soroban',
+    format: 'Coming soon',
+    duration: 'Coming soon',
+    level: 'Intermediate',
+    summary: 'Add structured events for indexing and debugging, replace panics with custom errors, and design contract functions that are easier for frontends, explorers, and AI tools to understand.',
+    comingSoon: true,
+  }),
+  'testing-soroban-contracts': Object.freeze({
+    id: 'testing-soroban-contracts',
+    number: 8,
+    title: 'Testing Soroban Contracts',
+    course: 'Quality',
+    format: 'Coming soon',
+    duration: 'Coming soon',
+    level: 'Intermediate',
+    summary: 'Write useful unit tests with soroban-sdk test utilities, mock authorization, test failures, inspect emitted events, simulate ledger time, and build confidence before deploying to testnet.',
+    comingSoon: true,
+  }),
+  'stellar-contract-security': Object.freeze({
+    id: 'stellar-contract-security',
+    number: 9,
+    title: 'Stellar Smart Contracts Security',
+    course: 'Security',
+    format: 'Coming soon',
+    duration: 'Coming soon',
+    level: 'Advanced',
+    summary: 'Review the most common Soroban mistakes: missing auth, reinitialization, unchecked arithmetic, bad storage keys, unsafe cross-contract calls, TTL/archival issues, and poor input validation.',
+    comingSoon: true,
+  }),
+  'playground-to-production': Object.freeze({
+    id: 'playground-to-production',
+    number: 10,
+    title: 'From Playground to Production',
+    course: 'Production',
+    format: 'Coming soon',
+    duration: 'Coming soon',
+    level: 'Advanced',
+    summary: 'Let\'s build something useful and look at an end-to-end workflow for preparing a contract for users: optimize WASM size, deploy to testnet, invoke functions, profile resource usage, handle common CLI/SDK issues, and create a final project that can extend into a real dApp.',
+    comingSoon: true,
   }),
 });
+const ACADEMY_LESSON_ORDER = Object.freeze([
+  'foundations-hello-world',
+  'ai-assisted-development',
+  'agentic-ai-mcp',
+  'soroban-state-storage-types',
+  'authorization-auth-systems',
+  'openzeppelin-token',
+  'events-errors-ux',
+  'testing-soroban-contracts',
+  'stellar-contract-security',
+  'playground-to-production',
+]);
 const ACTIVE_ACADEMY_LESSON_ID = 'foundations-hello-world';
+let activeAcademyLessonId = ACTIVE_ACADEMY_LESSON_ID;
 
 let workspaces = [];
 let activeWorkspaceId = null;
@@ -257,29 +485,6 @@ function generateMcpApiKey() {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-function getMcpServerPath() {
-  return localStorage.getItem(MCP_SERVER_PATH_STORAGE_KEY) || '';
-}
-
-function setMcpServerPath(path) {
-  const trimmed = String(path || '').trim();
-  if (trimmed) {
-    localStorage.setItem(MCP_SERVER_PATH_STORAGE_KEY, trimmed);
-  } else {
-    localStorage.removeItem(MCP_SERVER_PATH_STORAGE_KEY);
-  }
-}
-
-function escapeTomlString(value) {
-  return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
-function shellQuote(value) {
-  const raw = String(value || '');
-  if (/^[A-Za-z0-9_/:.,@%+=-]+$/.test(raw)) return raw;
-  return `'${raw.replace(/'/g, `'\\''`)}'`;
-}
-
 function formatMcpTime(timestamp) {
   if (!timestamp) return 'Never';
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -293,74 +498,6 @@ function setMcpStatus(message, isError = false) {
     statusEl.classList.toggle('success', Boolean(message) && !isError && Boolean(getMcpApiKey()));
   }
   updateMcpConnectionUi(isError ? 'error' : null, message);
-}
-
-function getMcpConfigSnippet() {
-  const apiKey = getMcpApiKey();
-  const apiUrl = window.location.origin;
-  const serverPath = getMcpServerPath();
-  const serverConfig = serverPath
-    ? { command: "node", args: [serverPath] }
-    : { command: "npx", args: ["-y", "soropg-mcp"] };
-  return JSON.stringify({
-    mcpServers: {
-      soropg: {
-        type: "stdio",
-        ...serverConfig,
-        env: {
-          SOROPG_API_URL: apiUrl,
-          SOROPG_API_KEY: apiKey || "generate-a-key-in-soropg",
-        },
-      },
-    },
-  }, null, 2);
-}
-
-function getMcpInstallCommand() {
-  const serverPath = getMcpServerPath();
-  if (!serverPath) {
-    return [
-      'npx soropg-mcp --help',
-      '# Your AI client will start it with:',
-      'npx -y soropg-mcp',
-    ].join('\n');
-  }
-  const mcpDir = serverPath.endsWith('/dist/index.js')
-    ? serverPath.slice(0, -'/dist/index.js'.length)
-    : '/path/to/Soroban-Playground/mcp';
-  return [
-    `cd ${shellQuote(mcpDir)}`,
-    'npm install',
-    'npm run build',
-  ].join('\n');
-}
-
-function getClaudeMcpCommand() {
-  const apiKey = getMcpApiKey() || 'generate-a-key-in-soropg';
-  const apiUrl = window.location.origin;
-  const serverPath = getMcpServerPath();
-  const command = serverPath ? `node ${shellQuote(serverPath)}` : 'npx -y soropg-mcp';
-  return [
-    'claude mcp add --transport stdio --scope user \\',
-    `  --env SOROPG_API_URL=${shellQuote(apiUrl)} \\`,
-    `  --env SOROPG_API_KEY=${shellQuote(apiKey)} \\`,
-    `  soropg -- ${command}`,
-  ].join('\n');
-}
-
-function getCodexMcpConfig() {
-  const apiKey = getMcpApiKey() || 'generate-a-key-in-soropg';
-  const apiUrl = window.location.origin;
-  const serverPath = getMcpServerPath();
-  const lines = [
-    '[mcp_servers.soropg]',
-    serverPath ? 'command = "node"' : 'command = "npx"',
-    serverPath
-      ? `args = ["${escapeTomlString(serverPath)}"]`
-      : 'args = ["-y", "soropg-mcp"]',
-    `env = { SOROPG_API_URL = "${escapeTomlString(apiUrl)}", SOROPG_API_KEY = "${escapeTomlString(apiKey)}" }`,
-  ];
-  return lines.join('\n');
 }
 
 function updateMcpConnectionUi(stateOverride = null, detailOverride = '') {
@@ -386,7 +523,7 @@ function updateMcpConnectionUi(stateOverride = null, detailOverride = '') {
   }
   if (detail) {
     detail.textContent = detailOverride || (key
-      ? 'Start the local MCP server from your AI client and keep this tab open.'
+      ? 'Add the npx MCP server to your client and keep this tab open.'
       : 'Generate a key to start the browser bridge.');
   }
   if (dot) {
@@ -401,18 +538,8 @@ function updateMcpConnectionUi(stateOverride = null, detailOverride = '') {
 
 function refreshMcpSettingsUi() {
   const keyInput = document.getElementById('mcp-api-key');
-  const pathInput = document.getElementById('mcp-server-path');
-  const preview = document.getElementById('mcp-config-preview');
-  const installCommand = document.getElementById('mcp-install-command');
-  const claudeCommand = document.getElementById('mcp-claude-command');
-  const codexConfig = document.getElementById('mcp-codex-config');
   const key = getMcpApiKey();
   if (keyInput) keyInput.value = key;
-  if (pathInput && pathInput.value !== getMcpServerPath()) pathInput.value = getMcpServerPath();
-  if (preview) preview.value = getMcpConfigSnippet();
-  if (installCommand) installCommand.textContent = getMcpInstallCommand();
-  if (claudeCommand) claudeCommand.textContent = getClaudeMcpCommand();
-  if (codexConfig) codexConfig.textContent = getCodexMcpConfig();
   updateMcpConnectionUi();
   if (!key) {
     setMcpStatus('Generate a key to expose this browser session to MCP clients.');
@@ -434,14 +561,6 @@ function setupMcpSettings() {
     });
   }
 
-  const pathInput = document.getElementById('mcp-server-path');
-  if (pathInput) {
-    pathInput.addEventListener('input', () => {
-      setMcpServerPath(pathInput.value);
-      refreshMcpSettingsUi();
-    });
-  }
-
   document.querySelectorAll('.ai-copy-button[data-copy-target]').forEach((button) => {
     button.addEventListener('click', async () => {
       const target = document.getElementById(button.dataset.copyTarget);
@@ -456,17 +575,6 @@ function setupMcpSettings() {
     });
   });
 
-  const copyButton = document.getElementById('copy-mcp-config');
-  if (copyButton) {
-    copyButton.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(getMcpConfigSnippet());
-        setMcpStatus('MCP config copied.');
-      } catch (error) {
-        setMcpStatus('Could not copy automatically. Select the config text instead.', true);
-      }
-    });
-  }
 }
 
 let isAiAssistantRunning = false;
@@ -482,6 +590,14 @@ function activateAiTab(tabName) {
   });
 }
 
+function scrollAiTerminalToBottom() {
+  const output = document.getElementById('ai-terminal-output');
+  if (!output) return;
+  requestAnimationFrame(() => {
+    output.scrollTop = output.scrollHeight;
+  });
+}
+
 function appendAiTerminalLine(text, className = 'system') {
   const output = document.getElementById('ai-terminal-output');
   if (!output) return null;
@@ -492,8 +608,25 @@ function appendAiTerminalLine(text, className = 'system') {
   line.className = `ai-terminal-line ${className}`;
   line.textContent = text;
   output.appendChild(line);
-  output.scrollTop = output.scrollHeight;
+  scrollAiTerminalToBottom();
   return line;
+}
+
+function getAiAssistantInputValue() {
+  const input = document.getElementById('ai-assistant-input');
+  return (input?.innerText || '').replace(/\u00a0/g, ' ').trim();
+}
+
+function clearAiAssistantInput() {
+  const input = document.getElementById('ai-assistant-input');
+  if (input) input.textContent = '';
+}
+
+function focusAiAssistantInput() {
+  const input = document.getElementById('ai-assistant-input');
+  if (!input || input.getAttribute('contenteditable') !== 'true') return;
+  input.focus();
+  scrollAiTerminalToBottom();
 }
 
 function setAiAssistantRunning(running) {
@@ -501,7 +634,10 @@ function setAiAssistantRunning(running) {
   const input = document.getElementById('ai-assistant-input');
   const submit = document.getElementById('ai-assistant-submit');
   const state = document.getElementById('ai-assistant-state');
-  if (input) input.disabled = running;
+  if (input) {
+    input.setAttribute('contenteditable', running ? 'false' : 'true');
+    input.setAttribute('aria-disabled', running ? 'true' : 'false');
+  }
   if (submit) submit.disabled = running;
   if (state) {
     state.textContent = running ? 'running' : 'idle';
@@ -614,18 +750,35 @@ function setupAiAssistant() {
   if (shortcut) {
     shortcut.addEventListener('click', () => {
       activateAiTab('assistant');
-      activatePanel('ai-panel', { splitRatio: 0.44 });
+      activatePanel('ai-panel', { splitRatio: 0.36 });
     });
   }
 
   const form = document.getElementById('ai-assistant-form');
   const input = document.getElementById('ai-assistant-input');
   if (form && input) {
+    form.addEventListener('click', (event) => {
+      if (event.target.closest('button')) return;
+      focusAiAssistantInput();
+    });
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+      event.preventDefault();
+      form.requestSubmit();
+    });
+
+    input.addEventListener('paste', (event) => {
+      event.preventDefault();
+      const text = event.clipboardData?.getData('text/plain') || '';
+      document.execCommand('insertText', false, text);
+    });
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const message = input.value.trim();
+      const message = getAiAssistantInputValue();
       if (!message || isAiAssistantRunning) return;
-      input.value = '';
+      clearAiAssistantInput();
       appendAiTerminalLine(`$ ${message}`, 'user');
       setAiAssistantRunning(true);
       try {
@@ -634,7 +787,7 @@ function setupAiAssistant() {
         appendAiTerminalLine(`error: ${error?.message || 'Assistant request failed'}`, 'error');
       } finally {
         setAiAssistantRunning(false);
-        input.focus();
+        focusAiAssistantInput();
       }
     });
   }
@@ -1921,7 +2074,11 @@ function saveAcademyProgress() {
   localStorage.setItem(ACADEMY_PROGRESS_KEY, JSON.stringify(academyProgress));
 }
 
-function getAcademyLesson(lessonId = ACTIVE_ACADEMY_LESSON_ID) {
+function getAcademyLessons() {
+  return ACADEMY_LESSON_ORDER.map((lessonId) => ACADEMY_LESSONS[lessonId]).filter(Boolean);
+}
+
+function getAcademyLesson(lessonId = activeAcademyLessonId) {
   return ACADEMY_LESSONS[lessonId] || ACADEMY_LESSONS[ACTIVE_ACADEMY_LESSON_ID];
 }
 
@@ -1959,6 +2116,196 @@ function setAcademyStepState(elementId, done, doneText, pendingText) {
   element.classList.toggle('complete', Boolean(done));
 }
 
+function getAcademyLessonCompletion(lesson) {
+  return Boolean(getAcademyLessonProgress(lesson.id).completedAt);
+}
+
+function getAcademyAvailableLessons() {
+  return getAcademyLessons().filter((lesson) => !lesson.comingSoon);
+}
+
+function getAcademyCourseProgressPercent() {
+  const availableLessons = getAcademyAvailableLessons();
+  if (!availableLessons.length) return 0;
+  const completedCount = availableLessons.filter(getAcademyLessonCompletion).length;
+  return Math.round((completedCount / availableLessons.length) * 100);
+}
+
+function setElementText(elementId, value) {
+  const element = document.getElementById(elementId);
+  if (element) element.textContent = value;
+}
+
+function createAcademyElement(tagName, className = '', text = '') {
+  const element = document.createElement(tagName);
+  if (className) element.className = className;
+  if (text) element.textContent = text;
+  return element;
+}
+
+function renderAcademyCurriculum() {
+  const container = document.getElementById('academy-curriculum-list');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const lessons = getAcademyLessons();
+  const columns = [lessons.slice(0, 5), lessons.slice(5)];
+
+  columns.forEach((columnLessons) => {
+    const list = createAcademyElement('div', 'academy-lesson-list');
+    columnLessons.forEach((lesson) => {
+      const progress = getAcademyLessonProgress(lesson.id);
+      const completed = Boolean(progress.completedAt);
+      const active = lesson.id === activeAcademyLessonId;
+      const row = createAcademyElement('button', 'academy-course-row');
+      row.type = 'button';
+      row.dataset.lessonId = lesson.id;
+      row.classList.toggle('active', active);
+      row.classList.toggle('done', completed);
+      row.classList.toggle('coming-soon', Boolean(lesson.comingSoon));
+      row.setAttribute('aria-pressed', active ? 'true' : 'false');
+
+      const iconClass = lesson.comingSoon ? 'fas fa-lock' : lesson.format?.includes('Video') ? 'fas fa-play' : 'fas fa-file-lines';
+      const statusIcon = lesson.comingSoon ? 'far fa-clock' : completed ? 'fas fa-check-circle' : active ? 'fas fa-circle' : 'far fa-circle';
+      row.innerHTML = `
+        <span class="academy-lesson-number">${lesson.number}</span>
+        <i class="${iconClass}" aria-hidden="true"></i>
+        <strong></strong>
+        <span></span>
+        <span></span>
+        <i class="${statusIcon}" aria-hidden="true"></i>
+      `;
+      row.querySelector('strong').textContent = lesson.title;
+      const detailSpans = row.querySelectorAll('span:not(.academy-lesson-number)');
+      detailSpans[0].textContent = lesson.comingSoon ? 'Soon' : lesson.format;
+      detailSpans[1].textContent = lesson.duration;
+      row.addEventListener('click', () => selectAcademyLesson(lesson.id));
+      list.appendChild(row);
+    });
+    container.appendChild(list);
+  });
+}
+
+function renderAcademyLessonGuide(lesson) {
+  const guide = document.getElementById('academy-lesson-guide');
+  if (!guide) return;
+
+  guide.innerHTML = '';
+  const heading = createAcademyElement('div', 'academy-guide-heading');
+  const headingCopy = createAcademyElement('div');
+  const eyebrow = createAcademyElement('span', 'academy-eyebrow', `Lesson ${lesson.number} - ${lesson.course}`);
+  const title = createAcademyElement('h2', '', lesson.title);
+  const summary = createAcademyElement('p', '', lesson.summary);
+  headingCopy.append(eyebrow, title, summary);
+  const state = createAcademyElement('span', 'academy-guide-state', lesson.comingSoon ? 'Coming soon' : getAcademyLessonCompletion(lesson) ? 'Completed' : 'Available');
+  if (lesson.comingSoon) state.classList.add('coming-soon');
+  if (getAcademyLessonCompletion(lesson)) state.classList.add('complete');
+  heading.append(headingCopy, state);
+  guide.appendChild(heading);
+
+  if (lesson.comingSoon) {
+    const soon = createAcademyElement('div', 'academy-coming-soon-note');
+    soon.innerHTML = '<i class="far fa-clock" aria-hidden="true"></i><span>This lesson is planned and will be added to the Academy soon.</span>';
+    guide.appendChild(soon);
+    return;
+  }
+
+  const body = createAcademyElement('div', 'academy-guide-body');
+  const outcomes = createAcademyElement('section', 'academy-guide-section');
+  outcomes.appendChild(createAcademyElement('h3', '', 'Learning Goals'));
+  const goalsList = createAcademyElement('ul');
+  lesson.objectives.forEach((objective) => {
+    goalsList.appendChild(createAcademyElement('li', '', objective));
+  });
+  outcomes.appendChild(goalsList);
+
+  const steps = createAcademyElement('section', 'academy-guide-section academy-guide-steps');
+  steps.appendChild(createAcademyElement('h3', '', 'Lesson Path'));
+  lesson.sections.forEach((section) => {
+    const article = createAcademyElement('article', 'academy-guide-step');
+    article.appendChild(createAcademyElement('h4', '', section.title));
+    article.appendChild(createAcademyElement('p', '', section.body));
+    article.appendChild(createAcademyElement('span', 'academy-guide-action', section.action));
+    steps.appendChild(article);
+  });
+
+  const practice = createAcademyElement('section', 'academy-guide-section');
+  practice.appendChild(createAcademyElement('h3', '', 'Practice Checklist'));
+  const practiceList = createAcademyElement('ul');
+  lesson.practice.forEach((item) => {
+    practiceList.appendChild(createAcademyElement('li', '', item));
+  });
+  practice.appendChild(practiceList);
+
+  body.append(outcomes, steps, practice);
+  guide.appendChild(body);
+}
+
+function renderAcademyTooling(lesson) {
+  const isComingSoon = Boolean(lesson.comingSoon);
+  const primaryButton = document.getElementById('academy-import-code');
+  const testButton = document.getElementById('academy-run-tests');
+  const compileButton = document.getElementById('academy-compile-code');
+  const deployButton = document.getElementById('academy-open-deploy');
+  const verifyRow = document.getElementById('academy-verify-row');
+  const verifyButton = document.getElementById('academy-verify-contract');
+  const markButton = document.getElementById('academy-mark-complete');
+  const contractInput = document.getElementById('academy-contract-id');
+  const envBox = document.getElementById('academy-env-box');
+  const liveTitle = document.getElementById('academy-live-title');
+  const liveDescription = document.getElementById('academy-live-description');
+
+  if (primaryButton) {
+    const primaryLabel = primaryButton.querySelector('strong');
+    const primaryHelp = primaryButton.querySelector('small');
+    if (lesson.primaryAction === 'ai-assistant') {
+      if (primaryLabel) primaryLabel.textContent = 'Open AI Assistant';
+      if (primaryHelp) primaryHelp.textContent = 'Prompt the workspace assistant';
+    } else if (lesson.primaryAction === 'mcp-setup') {
+      if (primaryLabel) primaryLabel.textContent = 'Open MCP Setup';
+      if (primaryHelp) primaryHelp.textContent = 'Connect Claude Code or Codex';
+    } else {
+      if (primaryLabel) primaryLabel.textContent = 'Open Course Material';
+      if (primaryHelp) primaryHelp.textContent = 'Load lesson files into the editor';
+    }
+    primaryButton.disabled = isComingSoon;
+  }
+
+  [testButton, compileButton, deployButton].forEach((button) => {
+    if (button) button.disabled = isComingSoon;
+  });
+
+  if (deployButton) {
+    const label = deployButton.querySelector('strong');
+    const help = deployButton.querySelector('small');
+    if (lesson.primaryAction === 'mcp-setup') {
+      if (label) label.textContent = 'Review Workspace';
+      if (help) help.textContent = 'Return to the file editor';
+    } else {
+      if (label) label.textContent = 'Deploy Contract';
+      if (help) help.textContent = 'Open the Testnet deploy flow';
+    }
+  }
+
+  const needsDeployment = lesson.completionMode === 'deploy';
+  if (envBox) envBox.hidden = isComingSoon || !needsDeployment;
+  if (verifyRow) verifyRow.hidden = isComingSoon || !needsDeployment;
+  if (verifyButton) verifyButton.disabled = isComingSoon || !needsDeployment;
+  if (contractInput && activeAcademyLessonId !== lesson.id) contractInput.value = '';
+  if (markButton) {
+    markButton.hidden = isComingSoon || needsDeployment;
+    markButton.disabled = isComingSoon;
+  }
+  if (liveTitle) liveTitle.textContent = isComingSoon ? 'Coming Soon' : needsDeployment ? 'Live Environment' : 'Lesson Completion';
+  if (liveDescription) {
+    liveDescription.textContent = isComingSoon
+      ? 'This lesson is planned and will be added soon.'
+      : needsDeployment
+      ? 'Practice and test in a real Soroban environment.'
+      : 'Mark this lesson complete after you finish the checklist.';
+  }
+}
+
 function renderAcademyProgress() {
   const lesson = getAcademyLesson();
   const progress = getAcademyLessonProgress(lesson.id);
@@ -1966,7 +2313,10 @@ function renderAcademyProgress() {
   const videoStarted = Boolean(progress.videoStartedAt);
   const codeImported = Boolean(progress.codeImportedAt);
   const completedSteps = [videoStarted, codeImported, completed].filter(Boolean).length;
-  const percent = Math.round((completedSteps / 3) * 100);
+  const lessonPercent = lesson.comingSoon ? 0 : Math.round((completedSteps / 3) * 100);
+  const coursePercent = getAcademyCourseProgressPercent();
+  const availableLessons = getAcademyAvailableLessons();
+  const completedCount = availableLessons.filter(getAcademyLessonCompletion).length;
 
   const percentEl = document.getElementById('academy-progress-percent');
   const bottomPercentEl = document.getElementById('academy-bottom-progress-percent');
@@ -1977,19 +2327,35 @@ function renderAcademyProgress() {
   const verifiedLink = document.getElementById('academy-verified-link');
   const contractInput = document.getElementById('academy-contract-id');
 
-  if (percentEl) percentEl.textContent = `${percent}%`;
-  if (bottomPercentEl) bottomPercentEl.textContent = `${percent}%`;
-  if (completedCountEl) completedCountEl.textContent = completed ? '1' : '0';
-  if (ringEl) ringEl.style.background = `conic-gradient(var(--accent-color) ${percent * 3.6}deg, rgba(255, 255, 255, 0.12) ${percent * 3.6}deg)`;
-  if (fillEl) fillEl.style.width = `${percent}%`;
+  setElementText('academy-featured-course', lesson.course);
+  setElementText('academy-featured-title', lesson.title);
+  setElementText('academy-featured-summary', lesson.summary);
+  setElementText('academy-featured-level', lesson.level);
+  setElementText('academy-featured-count', `${getAcademyLessons().length} lessons`);
+  setElementText('academy-featured-time', 'First 3 available');
+  setElementText('academy-featured-format', lesson.format);
+  setElementText('academy-current-video-title', `Lesson ${lesson.number}: ${lesson.videoTitle || lesson.title}`);
+  setElementText('academy-lesson-count', `${completedCount} / ${availableLessons.length}`);
+  setElementText('academy-total-time', '95m');
+
+  if (percentEl) percentEl.textContent = `${coursePercent}%`;
+  if (bottomPercentEl) bottomPercentEl.textContent = `${coursePercent}%`;
+  if (completedCountEl) completedCountEl.textContent = String(completedCount);
+  if (ringEl) ringEl.style.background = `conic-gradient(var(--accent-color) ${coursePercent * 3.6}deg, rgba(255, 255, 255, 0.12) ${coursePercent * 3.6}deg)`;
+  if (fillEl) fillEl.style.width = `${coursePercent}%`;
   if (stateEl) {
-    stateEl.textContent = completed ? 'Completed' : percent > 0 ? 'In progress' : 'Not started';
+    stateEl.textContent = lesson.comingSoon ? 'Coming soon' : completed ? 'Completed' : lessonPercent > 0 ? 'In progress' : 'Not started';
     stateEl.classList.toggle('complete', completed);
   }
 
   setAcademyStepState('academy-video-progress', videoStarted, 'Started', 'Not started');
   setAcademyStepState('academy-import-progress', codeImported, 'Code imported', 'Code not imported');
-  setAcademyStepState('academy-complete-progress', completed, 'Deployment verified', 'Deployment not verified');
+  setAcademyStepState(
+    'academy-complete-progress',
+    completed,
+    lesson.completionMode === 'deploy' ? 'Deployment verified' : 'Lesson completed',
+    lesson.completionMode === 'deploy' ? 'Deployment not verified' : 'Checklist not completed',
+  );
 
   if (progress.contractId && contractInput && !contractInput.value) {
     contractInput.value = progress.contractId;
@@ -2002,6 +2368,9 @@ function renderAcademyProgress() {
       verifiedLink.classList.remove('visible');
     }
   }
+  renderAcademyCurriculum();
+  renderAcademyLessonGuide(lesson);
+  renderAcademyTooling(lesson);
 }
 
 function loadYouTubeIframeApi() {
@@ -2031,11 +2400,16 @@ async function initAcademyVideo() {
   const stage = document.getElementById('academy-video-stage');
   if (!stage) return;
 
+  if (academyYoutubePlayer && typeof academyYoutubePlayer.destroy === 'function') {
+    academyYoutubePlayer.destroy();
+    academyYoutubePlayer = null;
+  }
+
   if (!lesson.videoId) {
     stage.innerHTML = `
       <div class="academy-video-placeholder">
         <i class="fab fa-youtube"></i>
-        <span>Video will appear here after a YouTube id is added to the lesson metadata.</span>
+        <span>${lesson.comingSoon ? 'This lesson is coming soon.' : 'Written lesson ready. Video will appear here when available.'}</span>
       </div>
     `;
     return;
@@ -2069,11 +2443,45 @@ async function initAcademyVideo() {
   }
 }
 
+function selectAcademyLesson(lessonId) {
+  activeAcademyLessonId = ACADEMY_LESSONS[lessonId] ? lessonId : ACTIVE_ACADEMY_LESSON_ID;
+  setAcademyStatus('');
+  renderAcademyProgress();
+  initAcademyVideo();
+}
+
+function openAcademyPrimaryTool() {
+  const lesson = getAcademyLesson();
+  if (lesson.comingSoon) return;
+
+  if (lesson.primaryAction === 'ai-assistant') {
+    activateAiTab('assistant');
+    activatePanel('ai-panel', { splitRatio: 0.36 });
+    return;
+  }
+
+  if (lesson.primaryAction === 'mcp-setup') {
+    activateAiTab('mcp');
+    activatePanel('ai-panel', { splitRatio: 0.44 });
+    return;
+  }
+
+  importAcademyLessonCode();
+}
+
 async function importAcademyLessonCode() {
   const lesson = getAcademyLesson();
+  if (lesson.comingSoon) {
+    setAcademyStatus('This lesson is coming soon.');
+    return;
+  }
+  if (!lesson.githubUrl) {
+    openAcademyPrimaryTool();
+    return;
+  }
   const button = document.getElementById('academy-import-code');
   if (button) button.disabled = true;
-  setAcademyStatus('Importing hello world from GitHub...');
+  setAcademyStatus(`Importing ${lesson.title} from GitHub...`);
   try {
     await loadWorkspaceFromGithub(lesson.githubUrl, { createNew: true });
     setAcademyLessonProgress(lesson.id, { codeImportedAt: Date.now() });
@@ -2088,16 +2496,24 @@ async function importAcademyLessonCode() {
 }
 
 async function runAcademyTests() {
+  if (getAcademyLesson().comingSoon) return;
   activatePanel('test-panel', { splitRatio: 0.38 });
   await runTests();
 }
 
 async function compileAcademyCode() {
+  if (getAcademyLesson().comingSoon) return;
   activatePanel('build-panel', { splitRatio: 0.38 });
   await compileCode();
 }
 
 function openAcademyDeploy() {
+  const lesson = getAcademyLesson();
+  if (lesson.comingSoon) return;
+  if (lesson.primaryAction === 'mcp-setup') {
+    activatePanel('create-panel', { resetSplit: true });
+    return;
+  }
   setActiveNetwork('TESTNET', { persist: true, logToDeployConsole: true });
   activatePanel('deploy-panel', { splitRatio: 0.38 });
 }
@@ -2117,6 +2533,7 @@ function isValidContractId(contractId) {
 
 async function verifyAcademyContract() {
   const lesson = getAcademyLesson();
+  if (lesson.comingSoon || lesson.completionMode !== 'deploy') return;
   const input = document.getElementById('academy-contract-id');
   const button = document.getElementById('academy-verify-contract');
   const contractId = input?.value.trim();
@@ -2135,7 +2552,7 @@ async function verifyAcademyContract() {
       networkPassphrase: StellarSdk.Networks.TESTNET,
     });
     const methodNames = client.spec.funcs().map((fn) => fn.name().toString());
-    const missingMethods = lesson.expectedMethods.filter((method) => !methodNames.includes(method));
+    const missingMethods = (lesson.expectedMethods || []).filter((method) => !methodNames.includes(method));
     if (missingMethods.length) {
       throw new Error(`Contract found, but it is missing: ${missingMethods.join(', ')}.`);
     }
@@ -2152,6 +2569,16 @@ async function verifyAcademyContract() {
   }
 }
 
+function completeAcademyLesson() {
+  const lesson = getAcademyLesson();
+  if (lesson.comingSoon || lesson.completionMode === 'deploy') return;
+  setAcademyLessonProgress(lesson.id, {
+    completedAt: Date.now(),
+    videoStartedAt: getAcademyLessonProgress(lesson.id).videoStartedAt || Date.now(),
+  });
+  setAcademyStatus('Lesson marked complete.', 'success');
+}
+
 function setupAcademy() {
   renderAcademyProgress();
   initAcademyVideo();
@@ -2162,14 +2589,16 @@ function setupAcademy() {
   const compileButton = document.getElementById('academy-compile-code');
   const deployButton = document.getElementById('academy-open-deploy');
   const verifyButton = document.getElementById('academy-verify-contract');
+  const markButton = document.getElementById('academy-mark-complete');
   const contractInput = document.getElementById('academy-contract-id');
 
-  if (importButton) importButton.addEventListener('click', importAcademyLessonCode);
-  if (continueButton) continueButton.addEventListener('click', importAcademyLessonCode);
+  if (importButton) importButton.addEventListener('click', openAcademyPrimaryTool);
+  if (continueButton) continueButton.addEventListener('click', openAcademyPrimaryTool);
   if (testButton) testButton.addEventListener('click', runAcademyTests);
   if (compileButton) compileButton.addEventListener('click', compileAcademyCode);
   if (deployButton) deployButton.addEventListener('click', openAcademyDeploy);
   if (verifyButton) verifyButton.addEventListener('click', verifyAcademyContract);
+  if (markButton) markButton.addEventListener('click', completeAcademyLesson);
   if (contractInput) {
     contractInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
@@ -5297,7 +5726,10 @@ document.querySelectorAll('.sidebar-icon').forEach(icon => {
     if (panelId === 'ai-panel') {
       activateAiTab('assistant');
     }
-    activatePanel(panelId, { resetSplit });
+    activatePanel(panelId, {
+      resetSplit,
+      splitRatio: panelId === 'ai-panel' ? 0.36 : null,
+    });
   });
 });
 

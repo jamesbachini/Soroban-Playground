@@ -20,13 +20,15 @@ MCP server:
 - Skill/instructions file: `mcp/skill.md`
 - Runtime: Node.js 20 or newer.
 - Transport: stdio.
+- Package: `soropg-mcp`, started with `npx` by the MCP client.
 - Purpose: connect Claude Code, Codex, Claude Desktop, Cursor, Windsurf, VS Code, or another MCP-compatible client to the user's open SoroPG browser workspace.
+- The published package does not need a local Soroban Playground clone and does not need to run from the repository.
 
 MCP setup summary:
 1. Open SoroPG in a browser.
-2. Open the AI Assisted Development tab.
-3. Generate a User API Key and keep the browser tab open.
-4. Run a quick npx check if you want to confirm Node can start the MCP server:
+2. Open the AI Assisted Development tab, then MCP Setup.
+3. Generate a User API Key and keep the browser tab open while the assistant is connected.
+4. Run a quick npx check if you want to confirm Node can start the published MCP server:
 
 ```bash
 npx soropg-mcp --help
@@ -34,15 +36,16 @@ npx soropg-mcp --help
 
 You do not need to keep this command running. The MCP client starts `soropg-mcp` from its config.
 
-5. Configure the MCP client with these environment variables:
+5. Configure the MCP client to start `soropg-mcp` with the API key:
 
 ```bash
-SOROPG_API_URL=https://soropg.com
 SOROPG_API_KEY=the-key-from-the-soropg-ai-tab
 ```
 
-Optional environment variable:
+Optional environment variables:
+- `SOROPG_API_URL`: defaults to `https://soropg.com`; set this for local development servers.
 - `SOROPG_PROJECT_ID`: pin the agent to a specific workspace after running `soropg_list_projects`.
+- `SOROPG_CONFIG`: path to a JSON config file. The default config path is `~/.config/soropg-mcp/config.json`.
 
 Generic MCP client config:
 
@@ -54,7 +57,6 @@ Generic MCP client config:
       "command": "npx",
       "args": ["-y", "soropg-mcp"],
       "env": {
-        "SOROPG_API_URL": "https://soropg.com",
         "SOROPG_API_KEY": "the-key-from-the-soropg-ai-tab"
       }
     }
@@ -66,7 +68,6 @@ Claude Code example:
 
 ```bash
 claude mcp add --transport stdio --scope user \
-  --env SOROPG_API_URL=https://soropg.com \
   --env SOROPG_API_KEY=the-key-from-the-soropg-ai-tab \
   soropg -- npx -y soropg-mcp
 ```
@@ -77,7 +78,7 @@ Codex `~/.codex/config.toml` example:
 [mcp_servers.soropg]
 command = "npx"
 args = ["-y", "soropg-mcp"]
-env = { SOROPG_API_URL = "https://soropg.com", SOROPG_API_KEY = "the-key-from-the-soropg-ai-tab" }
+env = { SOROPG_API_KEY = "the-key-from-the-soropg-ai-tab" }
 ```
 
 Available MCP tools:
