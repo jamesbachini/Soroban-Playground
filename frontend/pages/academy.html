@@ -1,0 +1,152 @@
+<div id="academy-main-view" aria-label="SoroPG Academy">
+            <div class="academy-page">
+              <header class="academy-page-header">
+                <h1>Academy</h1>
+                <p>Learn Soroban smart contract development with hands-on written and video lessons.</p>
+              </header>
+
+              <div class="academy-hero-grid">
+                <section class="academy-course-hero">
+                  <div class="academy-course-copy">
+                    <p id="academy-featured-course" class="academy-eyebrow">Featured Course</p>
+                    <h2 id="academy-featured-title">Build Smart Contracts on Stellar</h2>
+                    <p id="academy-featured-summary">Master Soroban smart contract development from the ground up.</p>
+                    <div class="academy-tags">
+                      <span id="academy-featured-level" class="academy-tag academy-tag-success">Beginner</span>
+                      <span id="academy-featured-count" class="academy-tag">10 lessons</span>
+                      <span id="academy-featured-time" class="academy-tag">First 3 available</span>
+                      <span id="academy-featured-format" class="academy-tag">Written + Practice</span>
+                    </div>
+                    <div class="academy-hero-progress-row">
+                      <span>Your Progress</span>
+                      <strong id="academy-progress-percent">0%</strong>
+                    </div>
+                    <div class="academy-progress-track">
+                      <div id="academy-progress-fill" class="academy-progress-fill"></div>
+                    </div>
+                    <div class="academy-hero-actions">
+                      <button id="academy-continue-course" type="button"><i class="fas fa-play"></i> Continue Course</button>
+                      <button class="academy-icon-button" type="button" title="Save course" aria-label="Save course"><i class="far fa-bookmark"></i></button>
+                    </div>
+                  </div>
+                  <div class="academy-course-mark" aria-hidden="true">
+                    <img src="./soroban.svg" alt="" />
+                  </div>
+                </section>
+
+                <section class="academy-continue-card">
+                  <div class="academy-card-heading">
+                    <div>
+                      <h2>Continue Watching</h2>
+                    </div>
+                    <span>Pick up where you left off</span>
+                  </div>
+                  <div id="academy-video-stage" class="academy-video-stage">
+                    <div class="academy-video-placeholder">
+                      <i class="fab fa-youtube"></i>
+                      <span>Video placeholder</span>
+                    </div>
+                  </div>
+                  <div class="academy-video-caption">
+                    <span id="academy-current-video-title">Lesson 1: Your First Hello World Contract</span>
+                    <strong id="academy-video-progress" class="academy-inline-progress">Not started</strong>
+                  </div>
+                </section>
+              </div>
+
+              <section class="academy-curriculum-board">
+                <div class="academy-curriculum-head">
+                  <h2>Course Curriculum</h2>
+                  <div class="academy-curriculum-tools">
+                    <div class="academy-search"><i class="fas fa-search"></i><span>Search lessons...</span></div>
+                    <button type="button">All Lessons <i class="fas fa-chevron-down"></i></button>
+                  </div>
+                </div>
+                <div id="academy-curriculum-list" class="academy-lesson-grid"></div>
+                <div class="academy-legend">
+                  <span><i class="fas fa-play"></i> Video Lesson</span>
+                  <span><i class="fas fa-file-lines"></i> Written Lesson</span>
+                  <span><i class="fas fa-check-circle"></i> Completed</span>
+                  <span><i class="far fa-circle"></i> In Progress</span>
+                  <span><i class="fas fa-lock"></i> Coming Soon</span>
+                </div>
+              </section>
+
+              <section id="academy-lesson-guide" class="academy-lesson-guide"></section>
+            </div>
+          </div>
+
+<div class="panel" id="academy-panel">
+            <div class="academy-bottom-grid">
+              <section class="academy-bottom-card academy-learning-card">
+                <h2>Your Learning</h2>
+                <div class="academy-learning-progress">
+                  <div class="academy-ring">
+                    <span id="academy-bottom-progress-percent">0%</span>
+                  </div>
+                  <span>Course Progress</span>
+                </div>
+                <div class="academy-learning-stats">
+                  <span><i class="fas fa-book-open"></i><strong id="academy-lesson-count">0 / 3</strong> Lessons</span>
+                  <span><i class="far fa-clock"></i><strong id="academy-total-time">95m</strong> Total Time</span>
+                  <span><i class="fas fa-check"></i><strong id="academy-completed-count">0</strong> Lessons Completed</span>
+                </div>
+              </section>
+
+              <section class="academy-bottom-card academy-tools-card">
+                <div class="academy-bottom-heading">
+                  <h2>Course Tools</h2>
+                  <p>Load materials, explore examples, and practice as you learn.</p>
+                </div>
+                <div class="academy-tool-grid">
+                  <button id="academy-import-code" class="academy-tool-button primary" type="button">
+                    <i class="far fa-folder-open"></i>
+                    <span><strong>Open Course Material</strong><small>Load lesson files into the editor</small></span>
+                  </button>
+                  <button id="academy-run-tests" class="academy-tool-button" type="button">
+                    <i class="fas fa-code"></i>
+                    <span><strong>Run Unit Tests</strong><small>Execute the hello world tests</small></span>
+                  </button>
+                  <button id="academy-compile-code" class="academy-tool-button" type="button">
+                    <i class="far fa-file-code"></i>
+                    <span><strong>Compile Contract</strong><small>Build the WASM artifact</small></span>
+                  </button>
+                  <button id="academy-open-deploy" class="academy-tool-button" type="button">
+                    <i class="fas fa-rocket"></i>
+                    <span><strong>Deploy Contract</strong><small>Open the Testnet deploy flow</small></span>
+                  </button>
+                </div>
+                <div class="academy-progress-checks">
+                  <span id="academy-import-progress" class="academy-step">Code not imported</span>
+                  <span id="academy-complete-progress" class="academy-step">Deployment not verified</span>
+                </div>
+              </section>
+
+              <section class="academy-bottom-card academy-live-card">
+                <div class="academy-bottom-heading">
+                  <h2 id="academy-live-title">Live Environment</h2>
+                  <p id="academy-live-description">Practice and test in a real Soroban environment.</p>
+                </div>
+                <div id="academy-env-box" class="academy-env-box">
+                  <div><span>Network:</span><strong><i class="fas fa-circle"></i> Testnet</strong></div>
+                  <div><span>Account:</span><strong>Browser wallet</strong></div>
+                </div>
+                <div id="academy-verify-row" class="academy-verify-row">
+                  <input type="text" id="academy-contract-id" placeholder="Paste Testnet contract ID (C...)" autocomplete="off" />
+                  <button id="academy-verify-contract" type="button"><i class="fas fa-check-circle"></i> Verify</button>
+                </div>
+                <button id="academy-mark-complete" class="academy-mark-complete" type="button" hidden><i class="fas fa-check-circle"></i> Mark Complete</button>
+                <div id="academy-verification-status" class="academy-status" role="status" aria-live="polite"></div>
+                <a id="academy-verified-link" class="academy-verified-link" href="#" target="_blank" rel="noopener">View on Stellar.Expert <i class="fas fa-arrow-up-right-from-square"></i></a>
+              </section>
+
+              <section class="academy-bottom-card academy-quick-card">
+                <div class="academy-bottom-heading">
+                  <h2>Quick Actions</h2>
+                  <p>Jump to what you need.</p>
+                </div>
+                <a href="https://developers.stellar.org/" target="_blank" rel="noopener"><i class="fas fa-book-open"></i><span><strong>View Documentation</strong><small>Open Soroban docs</small></span></a>
+                <a href="https://github.com/jamesbachini/Soroban-Playground" target="_blank" rel="noopener"><i class="fa-brands fa-github"></i><span><strong>Report an Issue</strong><small>Let us know if something is off</small></span></a>
+              </section>
+            </div>
+          </div>

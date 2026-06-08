@@ -1,0 +1,480 @@
+.wallet-funding-status {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.wallet-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.wallet-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wallet-icon {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--accent-color);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wallet-icon i {
+  color: var(--accent-color);
+  font-size: 16px;
+}
+
+.wallet-icon.connected {
+  border-color: var(--success-color);
+}
+
+.wallet-icon.connected i {
+  color: var(--success-color);
+  background: none;
+  -webkit-text-fill-color: var(--success-color);
+}
+
+.wallet-icon.disconnected {
+  border-color: var(--danger-color);
+}
+
+.wallet-icon.disconnected i {
+  color: var(--danger-color);
+  background: none;
+  -webkit-text-fill-color: var(--danger-color);
+}
+
+.wallet-connect {
+  display: inline-block;
+}
+
+.wallet-menu {
+  position: relative;
+}
+
+.wallet-menu-toggle {
+  background: var(--wallet-menu-toggle-bg);
+  color: var(--wallet-menu-toggle-text);
+  border: 1px solid var(--border-color);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: none;
+  transform: none;
+}
+
+.wallet-menu-toggle i {
+  font-size: 14px;
+}
+
+.wallet-menu-toggle:hover:not(:disabled) {
+  background: var(--wallet-menu-toggle-hover-bg);
+  box-shadow: none;
+  transform: none;
+}
+
+.wallet-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: var(--wallet-menu-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px;
+  display: none;
+  min-width: 180px;
+  z-index: 10;
+  box-shadow: var(--panel-control-shadow);
+}
+
+.wallet-menu.open .wallet-menu-panel {
+  display: block;
+}
+
+.wallet-menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--wallet-menu-item-text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: none;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wallet-menu-item:hover {
+  background: var(--wallet-menu-item-hover-bg);
+  transform: none;
+  box-shadow: none;
+}
+
+.wallet-menu-panel .wallet-menu-item {
+  margin-bottom: 0;
+}
+
+.wallet-menu-item:disabled {
+  color: var(--wallet-disabled-text);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.wallet-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wallet-status-text {
+  font-size: 12px;
+  color: var(--wallet-muted-text);
+  font-family: Consolas, "Fira Code", "Source Code Pro", monospace;
+}
+
+.wallet-status-address {
+  font-size: 12px;
+  color: var(--wallet-muted-text);
+  font-family: Consolas, "Fira Code", "Source Code Pro", monospace;
+}
+
+.wallet-keys {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--wallet-key-text);
+  font-family: Consolas, "Fira Code", "Source Code Pro", monospace;
+  white-space: pre-wrap;
+}
+
+.method-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  max-width: 100%;
+  border: 1px solid var(--method-border);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: var(--method-box-bg);
+  box-shadow: var(--method-box-shadow);
+  overflow: hidden;
+}
+
+.method-left, .method-right {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  padding: 8px 12px;
+}
+
+.method-left {
+  background: var(--method-left-bg);
+  border-right: 1px solid var(--method-border);
+  overflow: hidden;
+}
+
+.method-right {
+  background: var(--method-right-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.method-right .console {
+  flex: 1;
+  min-height: 32px;
+  max-height: none;
+  height: auto;
+  overflow-y: auto;
+  overflow-x: auto;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.method-right .console pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  margin: 0;
+  max-width: 100%;
+}
+
+.method-right .console a,
+.method-right .console code,
+.method-right .console div {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.method-right .console a,
+.method-right .console code {
+  white-space: normal;
+}
+
+.arg-row {
+  margin-bottom: 3px;
+}
+
+.method-box h3 {
+  color: var(--accent-color);
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  letter-spacing: 0.2px;
+}
+
+.method-box .arg-label {
+  display: none;
+}
+
+.method-box input[type="text"],
+.method-box textarea {
+  width: 100%;
+  max-width: 280px;
+  padding: 4px 8px;
+  margin: 0;
+  height: 26px;
+  line-height: 18px;
+  background: var(--editor-bg);
+  border: 1px solid var(--border-color);
+  color: var(--input-text);
+  border-radius: 6px;
+}
+
+.method-box textarea {
+  min-height: 48px;
+  height: auto;
+  line-height: 18px;
+  resize: vertical;
+}
+
+.method-box button {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.method-call-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  padding: 5px 10px;
+}
+
+.method-call-button i {
+  font-size: 12px;
+}
+
+.method-box .console {
+  padding: 6px 8px;
+  border-radius: 8px;
+  margin-top: 6px;
+  background: var(--method-console-bg);
+}
+
+.method-compact .method-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.method-compact .method-left h3 {
+  margin: 0;
+  font-size: 14px;
+  min-width: var(--method-title-width);
+  flex: 0 0 var(--method-title-width);
+}
+
+.method-compact .arg-row {
+  margin-bottom: 0;
+}
+
+.arg-row-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.arg-row-inline label {
+  font-size: 12px;
+  color: var(--text-dim);
+  order: 0;
+  white-space: nowrap;
+}
+
+.arg-row-inline input,
+.arg-row-inline textarea {
+  order: 1;
+  min-width: 300px;
+  width: 300px;
+  max-width: 380px;
+}
+
+.method-multi .method-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.method-multi .arg-row-multi {
+  display: grid;
+  grid-template-columns: var(--method-title-width) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  width: 100%;
+}
+
+.method-multi .method-title-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.method-multi .method-title-cell h3 {
+  margin: 0;
+  font-size: 14px;
+  text-align: left;
+}
+
+.method-multi .method-title-spacer {
+  display: block;
+  height: 0;
+}
+
+.method-multi .method-field-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.method-multi .method-field-cell input[type="text"],
+.method-multi .method-field-cell textarea {
+  flex: 0 0 300px;
+  min-width: 300px;
+  max-width: 380px;
+}
+
+.method-multi .method-call-button {
+  margin: 0;
+}
+
+.method-compact button {
+  margin-top: 0;
+}
+
+.method-no-args .method-left {
+  justify-content: space-between;
+}
+
+@media (max-width: 980px) {
+  .ws-sidebar {
+    width: 170px;
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 900px) {
+  .method-box {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .method-left {
+    border-right: none;
+    border-bottom: 1px solid var(--method-border);
+  }
+
+  .method-compact .method-left h3 {
+    min-width: 140px;
+    flex-basis: 140px;
+  }
+  .arg-row-inline input,
+  .arg-row-inline textarea {
+    min-width: 220px;
+    width: 220px;
+  }
+  .method-multi .method-field-cell input[type="text"],
+  .method-multi .method-field-cell textarea {
+    flex: 0 0 220px;
+    min-width: 220px;
+    width: 220px;
+  }
+  :root {
+    --method-title-width: 140px;
+  }
+}
+
+#wallet-button-deploy,
+#wallet-button-explore {
+  display: inline-block !important;
+  margin-right: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+#wallet-button-deploy stellar-wallets-button,
+#wallet-button-explore stellar-wallets-button,
+#wallet-button-deploy .stellar-wallets-kit,
+#wallet-button-explore .stellar-wallets-kit {
+  display: inline-block !important;
+  margin: 0 !important;
+}
+
+#wallet-button-deploy button,
+#wallet-button-explore button,
+#wallet-button-deploy stellar-wallets-button button,
+#wallet-button-explore stellar-wallets-button button {
+  background: var(--button-bg) !important;
+  color: var(--button-text) !important;
+  border: 1px solid var(--button-border) !important;
+  padding: 9px 18px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  transition: background 0.2s ease, box-shadow 0.2s ease !important;
+  display: inline-block !important;
+  margin: 0 !important;
+  font-family: "Noto Sans", monospace, sans-serif !important;
+  box-shadow: var(--button-shadow) !important;
+}
+
+#wallet-button-deploy button:hover,
+#wallet-button-explore button:hover,
+#wallet-button-deploy stellar-wallets-button button:hover,
+#wallet-button-explore stellar-wallets-button button:hover {
+  background: var(--button-bg-hover) !important;
+  box-shadow: var(--button-shadow-hover) !important;
+}
+
+#wallet-button-deploy button:disabled,
+#wallet-button-explore button:disabled,
+#wallet-button-deploy stellar-wallets-button button:disabled,
+#wallet-button-explore stellar-wallets-button button:disabled {
+  background-color: var(--button-disabled-bg) !important;
+  border-color: var(--button-disabled-bg) !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+@media (max-width: 768px) {
+  .deploy-controls button, .explore-controls button {
+    margin-bottom: 3px;
+  }
+}

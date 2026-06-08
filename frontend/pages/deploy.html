@@ -1,0 +1,73 @@
+<div class="panel" id="deploy-panel">
+            <h1><i class="fas fa-rocket accent"></i> Deploy</h1>
+            <div class="panel-content">
+              <div class="info-card">
+                <p>Deploy your compiled WASM file to the Stellar network.</p>
+              </div>
+              <div class="deploy-controls">
+                <div class="wallet-toolbar" data-context="deploy">
+                  <div class="wallet-toolbar-row">
+                    <div class="wallet-icon" aria-hidden="true">
+                      <i class="fas fa-wallet"></i>
+                    </div>
+                    <button type="button" class="wallet-generate">Generate Wallet</button>
+                    <div id="wallet-button-deploy" class="wallet-connect"></div>
+                    <div class="wallet-menu">
+                      <button type="button" class="wallet-menu-toggle" aria-haspopup="true" aria-expanded="false" title="Wallet options">
+                        <i class="fas fa-ellipsis-h"></i>
+                      </button>
+                      <div class="wallet-menu-panel" role="menu">
+                        <button type="button" class="wallet-menu-item wallet-load-secret" role="menuitem">Import Keys</button>
+                        <button type="button" class="wallet-menu-item wallet-export-keys" role="menuitem">Export Keys</button>
+                        <button type="button" class="wallet-menu-item wallet-fund" role="menuitem">Fund Wallet</button>
+                        <button type="button" class="wallet-menu-item wallet-disconnect" role="menuitem">Disconnect</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="wallet-status">
+                    <span class="wallet-status-text"></span>
+                    <span class="wallet-status-address"></span>
+                    <div class="wallet-funding-status"></div>
+                    <div class="wallet-keys"></div>
+                  </div>
+                </div>
+                <br />
+                <div class="box">
+                  <div>
+                    <button id="deploy-button" disabled>Deploy WASM</button>
+                  </div>
+                  <div>
+                    <label for="deploy-network">Network: </label>
+                    <select id="deploy-network">
+                      <option value="TESTNET" selected>Testnet</option>
+                      <option value="LOCAL">Local</option>
+                      <option value="FUTURENET">Futurenet</option>
+                      <option value="PUBLIC">Mainnet</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <div id="args-container"></div>
+                  <div class="add-arg-container">
+                    <button id="add-arg-btn" type="button">Add Constructor Argument</button>
+                  </div>
+                </div>
+                <div id="deploy-console" class="console"></div>
+              </div>
+              <div class="deploy-tips">
+                <h3>Deployment Tips</h3>
+                <div class="tip">
+                  <i class="fas fa-coins accent"></i>
+                  <span>Deploying a contract requires XLM to cover network fees.</span>
+                </div>
+                <div class="tip">
+                  <i class="fas fa-server accent"></i>
+                  <span>Consider deploying to testnet first; when you generate a wallet it will automatically receive testnet and futurenet XLM.</span>
+                </div>
+                <div class="tip">
+                  <i class="fas fa-shield-alt accent"></i>
+                  <span>Friends don't let friends test in production</span>
+                </div>
+              </div>
+            </div>
+          </div>

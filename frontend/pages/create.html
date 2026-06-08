@@ -1,0 +1,42 @@
+<div class="panel active" id="create-panel">
+            <div class="ws-layout">
+              <div class="ws-body">
+                <div class="ws-sidebar">
+                  <div class="ws-section-header">
+                    <span class="ws-section-title"><i class="fas fa-layer-group"></i> Workspaces</span>
+                    <button id="new-workspace" class="ws-action-btn ws-action-btn-sm" title="New Workspace"><i class="fas fa-plus"></i></button>
+                  </div>
+                  <div id="workspace-list" class="ws-list"></div>
+                </div>
+                <div class="ws-main">
+                  <div class="ws-section-header">
+                    <span class="ws-section-title"><i class="fas fa-file-code"></i> Files</span>
+                    <div class="ws-file-actions">
+                      <button id="add-workspace-file" class="ws-action-btn ws-action-btn-sm" title="New File"><i class="fas fa-file-circle-plus"></i></button>
+                      <button id="upload-workspace-files" class="ws-action-btn ws-action-btn-sm" title="Upload Files"><i class="fas fa-file-arrow-up"></i></button>
+                      <button id="upload-workspace-folder" class="ws-action-btn ws-action-btn-sm" title="Upload Folder"><i class="fas fa-folder-open"></i></button>
+                      <button id="download-workspace" class="ws-action-btn ws-action-btn-sm" title="Download ZIP"><i class="fas fa-file-archive"></i></button>
+                      <button id="upload-workspace-zip" class="ws-action-btn ws-action-btn-sm" title="Upload ZIP"><i class="fas fa-file-archive"></i></button>
+                      <div class="ws-import-group">
+                        <button id="ws-import-toggle" class="ws-action-btn ws-action-btn-sm" title="Import from GitHub"><i class="fa-brands fa-github"></i></button>
+                        <div id="ws-import-popover" class="ws-import-popover">
+                          <input type="text" id="github-workspace-url" placeholder="https://github.com/stellar/soroban-examples/tree/main/auth" />
+                          <button id="import-github-workspace" class="ws-action-btn ws-action-btn-sm ws-import-btn"><i class="fa-brands fa-github"></i> Import</button>
+                        </div>
+                      </div>
+                      <button id="delete-workspace" class="ws-action-btn ws-action-btn-sm ws-action-btn-danger" title="Delete Workspace"><i class="fas fa-trash"></i></button>
+                    </div>
+                  </div>
+                  <div id="workspace-dropzone" class="ws-dropzone">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <span>Drop files here</span>
+                  </div>
+                  <div id="workspace-files" class="ws-files"></div>
+                </div>
+              </div>
+              <div id="workspace-status" class="settings-status" role="status" aria-live="polite"></div>
+            </div>
+            <input type="file" id="workspace-file-input" multiple hidden />
+            <input type="file" id="workspace-folder-input" webkitdirectory directory multiple hidden />
+            <input type="file" id="workspace-zip-input" accept=".zip" hidden />
+          </div>

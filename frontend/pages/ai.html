@@ -1,0 +1,122 @@
+<div class="panel" id="ai-panel">
+            <h1><i class="fas fa-wand-magic-sparkles accent"></i> AI Assisted Development</h1>
+            <div class="panel-content ai-panel-content">
+              <div class="ai-tab-bar" role="tablist" aria-label="AI sections">
+                <button class="ai-tab active" type="button" data-ai-tab="assistant" role="tab" aria-selected="true">AI Assistant</button>
+                <button class="ai-tab" type="button" data-ai-tab="mcp" role="tab" aria-selected="false">MCP Setup</button>
+              </div>
+
+              <section class="ai-tab-view active" id="ai-assistant-view" data-ai-view="assistant">
+                <div class="ai-assistant-shell">
+                  <div class="ai-terminal-header">
+                    <div>
+                      <span class="ai-eyebrow">Workspace Agent</span>
+                      <h2>Ask the assistant to edit the active contract.</h2>
+                    </div>
+                    <span id="ai-assistant-state" class="ai-terminal-state">idle</span>
+                  </div>
+                  <form id="ai-assistant-form" class="ai-terminal-form" autocomplete="off">
+                    <div id="ai-terminal-output" class="ai-terminal-output" role="log" aria-live="polite" aria-label="Assistant terminal output">
+                      <div class="ai-terminal-line system">$ SoroPG assistant ready</div>
+                      <div class="ai-terminal-line muted">Uses the active browser workspace and updates the editor when tools finish.</div>
+                    </div>
+                    <div class="ai-terminal-entry">
+                      <span class="ai-terminal-prompt" aria-hidden="true">$</span>
+                      <div
+                        id="ai-assistant-input"
+                        class="ai-terminal-input"
+                        role="textbox"
+                        contenteditable="true"
+                        aria-label="Assistant prompt"
+                        aria-multiline="true"
+                        spellcheck="false"
+                        data-placeholder="how can I help?"></div>
+                      <button id="ai-assistant-submit" class="primary-button" type="submit" title="Send prompt" aria-label="Send prompt"><i class="fas fa-arrow-up"></i></button>
+                    </div>
+                  </form>
+                </div>
+              </section>
+
+              <section class="ai-tab-view" id="ai-mcp-view" data-ai-view="mcp">
+                <section class="ai-hero">
+                  <div class="ai-hero-copy">
+                    <span class="ai-eyebrow">Model Context Protocol</span>
+                    <h2>Connect an AI agent to this browser workspace.</h2>
+                    <p>Generate a browser key, add the npx server to your MCP client, and keep this tab open while the agent works.</p>
+                    <a class="ai-doc-link" href="https://soropg.com/docs/ai" target="_blank" rel="noopener">
+                      <i class="fas fa-arrow-up-right-from-square"></i>
+                      Full MCP docs
+                    </a>
+                  </div>
+                  <div class="ai-connection-card">
+                    <div class="ai-connection-heading">
+                      <span id="mcp-connection-dot" class="ai-status-dot"></span>
+                      <div>
+                        <strong id="mcp-connection-state">Not configured</strong>
+                        <small id="mcp-connection-detail">Generate a key to start the browser bridge.</small>
+                      </div>
+                    </div>
+                    <div class="ai-metric-grid">
+                      <div>
+                        <span>API URL</span>
+                        <strong id="mcp-api-url">-</strong>
+                      </div>
+                      <div>
+                        <span>Workspaces</span>
+                        <strong id="mcp-workspace-count">0</strong>
+                      </div>
+                      <div>
+                        <span>Active</span>
+                        <strong id="mcp-active-workspace">-</strong>
+                      </div>
+                      <div>
+                        <span>Last sync</span>
+                        <strong id="mcp-last-sync">Never</strong>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="ai-mcp-simple-grid">
+                  <article class="ai-card ai-card-primary ai-mcp-key-card">
+                    <div class="ai-card-heading">
+                      <span class="ai-step-number">1</span>
+                      <div>
+                        <h3>Generate a Browser Key</h3>
+                        <p>This key lets your local MCP client reach the open workspace in this tab.</p>
+                      </div>
+                    </div>
+                    <label for="mcp-api-key">User API Key</label>
+                    <div class="ai-key-row">
+                      <input type="text" id="mcp-api-key" readonly placeholder="Generate a key to enable MCP access" />
+                      <button id="generate-mcp-key" class="primary-button" type="button" title="Generate or reset MCP key">
+                        <i class="fas fa-key"></i> Generate
+                      </button>
+                    </div>
+                    <div id="mcp-status" class="settings-status" role="status" aria-live="polite"></div>
+                  </article>
+
+                  <article class="ai-config-card ai-mcp-config-card">
+                    <div class="ai-card-heading">
+                      <span class="ai-step-number">2</span>
+                      <div>
+                        <h3>Add the MCP Server</h3>
+                        <p>Use Node.js 20 or newer. Your client starts the server with <code>npx soropg-mcp</code>. See the <a href="https://soropg.com/docs/ai" target="_blank" rel="noopener">setup docs</a> for Codex, Claude Code, and other MCP clients.</p>
+                      </div>
+                    </div>
+                    <div class="ai-command-pill">
+                      <span>
+                        <i class="fas fa-terminal"></i>
+                        <code id="mcp-command">npx soropg-mcp</code>
+                      </span>
+                      <button class="ai-copy-button" type="button" data-copy-target="mcp-command" title="Copy MCP command" aria-label="Copy MCP command"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <div class="ai-mcp-footnote">
+                      <i class="fas fa-circle-check"></i>
+                      <span>Restart or reload your MCP client, then ask it to run <code>soropg_list_projects</code>.</span>
+                    </div>
+                  </article>
+                </section>
+              </section>
+            </div>
+          </div>

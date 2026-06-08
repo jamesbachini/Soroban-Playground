@@ -1,0 +1,25 @@
+<div class="panel" id="test-panel">
+            <h1><i class="fas fa-vial accent"></i> Test Your Smart Contract</h1>
+            <div class="panel-content">
+              <div class="info-card">
+                <p>In this section, you can run "cargo test" to check your smart contract functionality before deployment.</p>
+              </div>
+              <div class="build-controls">
+                <button id="run-tests"><i class="fas fa-play"></i> Run Unit Tests</button>
+                <button id="scout-audit"><i class="fas fa-shield-alt"></i> Scout Audit</button>
+                <span id="test-status" class="status"></span>
+              </div>
+              <div id="test-console" class="console"></div>
+              <br />
+              <div class="test-tips dim">
+                <div class="tip">
+                  <i class="fas fa-info-circle accent"></i>
+                  <span>Note cargo test can take a couple of minutes to run</span>
+                </div>
+                <div class="tip">
+                  <i class="fas fa-check-circle accent"></i>
+                  <span>Large test suites may timeout, use stellar-cli for production testing</span>
+                </div>
+              </div>
+            </div>
+          </div>
