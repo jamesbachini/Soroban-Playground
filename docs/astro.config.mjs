@@ -11,6 +11,14 @@ export default defineConfig({
 			title: 'SoroPG Docs',
 			description: 'Developer documentation for SoroPG, the Soroban Playground.',
 			customCss: ['/src/styles/soropg.css'],
+			logo: {
+				src: './src/assets/soroban.svg',
+				alt: 'SoroPG',
+			},
+			components: {
+				Sidebar: './src/components/DocsSidebar.astro',
+				TableOfContents: './src/components/DocsTableOfContents.astro',
+			},
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/jamesbachini/Soroban-Playground' }],
 			sidebar: [
 				{
@@ -28,17 +36,17 @@ export default defineConfig({
 						{ label: 'Deploy Contracts', slug: 'deploy' },
 						{ label: 'Explore Contracts', slug: 'explore' },
 						{ label: 'AI Assistants', slug: 'ai' },
-						{
-							label: 'Academy',
-							items: [
-								{ label: 'Academy Overview', slug: 'academy' },
-								{ label: 'Hello World', slug: 'academy/hello-world-build-test-deploy' },
-								{ label: 'AI-Assisted Development', slug: 'academy/ai-assisted-contract-development' },
-								{ label: 'Agentic AI via MCP', slug: 'academy/agentic-ai-mcp' },
-							],
-						},
 						{ label: 'Wallets and Networks', slug: 'wallets-and-networks' },
 						{ label: 'Share and Import Projects', slug: 'share-and-import' },
+					],
+				},
+				{
+					label: 'Academy',
+					items: [
+						{ label: 'Academy Overview', slug: 'academy' },
+						{ label: 'Hello World', slug: 'academy/hello-world-build-test-deploy' },
+						{ label: 'AI-Assisted Development', slug: 'academy/ai-assisted-contract-development' },
+						{ label: 'Agentic AI via MCP', slug: 'academy/agentic-ai-mcp' },
 					],
 				},
 				{

@@ -1,0 +1,177 @@
+---
+import DefaultTableOfContents from '@astrojs/starlight/components/TableOfContents.astro';
+import { Icon } from '@astrojs/starlight/components';
+
+const { toc, entry, id } = Astro.locals.starlightRoute;
+const repoBase = 'https://github.com/jamesbachini/Soroban-Playground';
+
+function getSourcePath(filePath: string, routeId: string) {
+  const normalizedPath = filePath.replaceAll('\\', '/');
+  const docsContentPath = 'docs/src/content/docs/';
+  const sourceContentPath = 'src/content/docs/';
+  const docsContentIndex = normalizedPath.indexOf(docsContentPath);
+
+  if (docsContentIndex >= 0) {
+    return `docs/src/content/docs/${normalizedPath.slice(docsContentIndex + docsContentPath.length)}`;
+  }
+
+  const sourceContentIndex = normalizedPath.indexOf(sourceContentPath);
+  if (sourceContentIndex >= 0) {
+    return `docs/src/content/docs/${normalizedPath.slice(sourceContentIndex + sourceContentPath.length)}`;
+  }
+
+  const routePath = routeId ? routeId.replace(/\/$/, '') : 'index';
+  return `docs/src/content/docs/${routePath}.md`;
+}
+
+const sourcePath = getSourcePath(entry.filePath, id);
+const rawUrl = `https://raw.githubusercontent.com/jamesbachini/Soroban-Playground/main/${sourcePath}`;
+const editUrl = `https://github.dev/jamesbachini/Soroban-Playground/blob/main/${sourcePath}`;
+const issueUrl = `${repoBase}/issues/new?title=${encodeURIComponent(`Docs feedback: ${id || 'overview'}`)}&body=${encodeURIComponent(
+  `Page: ${sourcePath}\n\nDescribe the issue:\n`
+)}`;
+---
+
+{
+  toc && (
+    <>
+      <div
+        class="docs-page-actions"
+        data-docs-actions
+        data-source-path={sourcePath}
+        data-raw-url={rawUrl}
+      >
+        <button class="docs-page-action" type="button" data-copy-markdown>
+          <Icon name="document" size="0.95rem" />
+          <span>Copy To Markdown</span>
+        </button>
+        <a class="docs-page-action" href={editUrl} target="_blank" rel="noopener noreferrer">
+          <Icon name="pen" size="0.95rem" />
+          <span>Edit In Github</span>
+        </a>
+        <a class="docs-page-action" href={issueUrl} target="_blank" rel="noopener noreferrer">
+          <Icon name="comment-alt" size="0.95rem" />
+          <span>Report Issue</span>
+        </a>
+      </div>
+      <DefaultTableOfContents />
+    </>
+  )
+}
+
+<script>
+  const normalizeText = (text) => text.replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').trim();
+
+  const escapeMarkdownCell = (text) => normalizeText(text).replace(/\|/g, '\\|');
+
+  const nodeToMarkdown = (node, context = {}) => {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+    const element = node;
+    const children = () => Array.from(element.childNodes).map((child) => nodeToMarkdown(child, context)).join('');
+    const blockChildren = () =>
+      Array.from(element.childNodes)
+        .map((child) => nodeToMarkdown(child, context))
+        .map((text) => text.trim())
+        .filter(Boolean)
+        .join('\n\n');
+
+    const tagName = element.tagName.toLowerCase();
+
+    if (/h[1-6]/.test(tagName)) {
+      return `${'#'.repeat(Number(tagName[1]))} ${normalizeText(element.textContent || '')}\n`;
+    }
+
+    if (tagName === 'p') return `${normalizeText(children())}\n`;
+    if (tagName === 'strong' || tagName === 'b') return `**${children()}**`;
+    if (tagName === 'em' || tagName === 'i') return `_${children()}_`;
+    if (tagName === 'code' && element.closest('pre')) return element.textContent || '';
+    if (tagName === 'code') return `\`${element.textContent || ''}\``;
+
+    if (tagName === 'pre') {
+      const code = element.querySelector('code');
+      const languageClass = Array.from(code?.classList || []).find((className) => className.startsWith('language-'));
+      const language = languageClass ? languageClass.replace('language-', '') : '';
+      return `\`\`\`${language}\n${(code?.textContent || element.textContent || '').trimEnd()}\n\`\`\`\n`;
+    }
+
+    if (tagName === 'a') {
+      const href = element.getAttribute('href');
+      const label = normalizeText(children());
+      return href ? `[${label}](${href})` : label;
+    }
+
+    if (tagName === 'ul' || tagName === 'ol') {
+      return `${Array.from(element.children)
+        .map((child, index) => nodeToMarkdown(child, { ...context, ordered: tagName === 'ol', index }))
+        .join('')}\n`;
+    }
+
+    if (tagName === 'li') {
+      const marker = context.ordered ? `${context.index + 1}.` : '-';
+      return `${marker} ${blockChildren().replace(/\n/g, '\n  ')}\n`;
+    }
+
+    if (tagName === 'blockquote') {
+      return `${blockChildren()
+        .split('\n')
+        .map((line) => `> ${line}`)
+        .join('\n')}\n`;
+    }
+
+    if (tagName === 'table') {
+      const rows = Array.from(element.querySelectorAll('tr')).map((row) =>
+        Array.from(row.children).map((cell) => escapeMarkdownCell(cell.textContent || ''))
+      );
+      if (!rows.length) return '';
+      const [head, ...body] = rows;
+      return `| ${head.join(' | ')} |\n| ${head.map(() => '---').join(' | ')} |\n${body
+        .map((row) => `| ${row.join(' | ')} |`)
+        .join('\n')}\n`;
+    }
+
+    if (tagName === 'hr') return '---\n';
+    if (tagName === 'br') return '\n';
+
+    return blockChildren();
+  };
+
+  const renderedPageToMarkdown = () => {
+    const title = document.querySelector('h1')?.textContent || document.title;
+    const content = document.querySelector('.sl-markdown-content');
+    const markdown = content ? nodeToMarkdown(content) : '';
+    return normalizeText(`# ${title}\n\n${markdown}`);
+  };
+
+  document.querySelectorAll('[data-docs-actions]').forEach((actions) => {
+    const copyButton = actions.querySelector('[data-copy-markdown]');
+    const rawUrl = actions.getAttribute('data-raw-url');
+    const sourcePath = actions.getAttribute('data-source-path');
+
+    copyButton?.addEventListener('click', async () => {
+      const originalText = copyButton.textContent;
+      copyButton.textContent = 'Copying...';
+
+      try {
+        let markdown = '';
+        if (rawUrl) {
+          const response = await fetch(rawUrl);
+          if (response.ok) markdown = await response.text();
+        }
+
+        if (!markdown.trim()) markdown = renderedPageToMarkdown();
+
+        await navigator.clipboard.writeText(markdown.trim());
+        copyButton.textContent = 'Copied';
+      } catch (error) {
+        console.error(`Unable to copy markdown for ${sourcePath || 'this page'}`, error);
+        copyButton.textContent = 'Copy Failed';
+      } finally {
+        window.setTimeout(() => {
+          copyButton.textContent = originalText;
+        }, 1800);
+      }
+    });
+  });
+</script>

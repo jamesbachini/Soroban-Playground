@@ -65,9 +65,53 @@ body {
   font-weight: 700;
 }
 
+.site-title img {
+  height: 1.65rem;
+}
+
 .sl-markdown-content a,
 .right-sidebar a[aria-current='true'] {
   color: var(--sl-color-text-accent);
+}
+
+.docs-page-actions {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1.15rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+.docs-page-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2rem;
+  width: 100%;
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: 6px;
+  background: var(--sl-color-bg-inline-code);
+  color: var(--sl-color-text);
+  font: inherit;
+  font-size: var(--sl-text-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.docs-page-action svg {
+  flex-shrink: 0;
+  color: var(--sl-color-text-accent);
+}
+
+.docs-page-action:hover,
+.docs-page-action:focus-visible {
+  border-color: var(--sl-color-accent);
+  color: var(--sl-color-white);
+  background: var(--sl-color-accent-low);
 }
 
 .sidebar a[aria-current='page'],
