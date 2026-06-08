@@ -1128,10 +1128,6 @@ function activatePanel(panelId, options = {}) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
 
   panelEl.classList.add('active');
-  const mainContent = document.getElementById('main-content');
-  if (mainContent) {
-    mainContent.classList.toggle('academy-mode', panelId === 'academy-panel');
-  }
   const panelKey = panelId.replace('-panel', '');
   const sidebarIcon = document.querySelector(`.sidebar-icon[data-panel="${panelKey}"]`);
   if (sidebarIcon) sidebarIcon.classList.add('active');
@@ -1175,4 +1171,3 @@ async function loadContract(contractId) {
     console.error(err);
   }
 }
-

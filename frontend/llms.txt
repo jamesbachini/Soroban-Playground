@@ -9,6 +9,10 @@ Primary documentation:
 - Build, test, and audit: /docs/build-test-audit/
 - Deploying contracts: /docs/deploy/
 - Exploring and invoking contracts: /docs/explore/
+- Academy: /docs/academy/
+- Academy Hello World: /docs/academy/hello-world-build-test-deploy/
+- Academy AI-assisted development: /docs/academy/ai-assisted-contract-development/
+- Academy Agentic AI via MCP: /docs/academy/agentic-ai-mcp/
 - Wallets and networks: /docs/wallets-and-networks/
 - Sharing and importing projects: /docs/share-and-import/
 - Troubleshooting: /docs/troubleshooting/

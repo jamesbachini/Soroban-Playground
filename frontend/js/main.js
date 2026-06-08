@@ -53,14 +53,6 @@ async function loadPage(name) {
   template.innerHTML = await response.text();
   const fragment = template.content;
 
-  if (name === 'academy') {
-    const academyMain = fragment.getElementById('academy-main-view');
-    const academySlot = document.getElementById('academy-main-slot');
-    if (academyMain && academySlot) {
-      academySlot.replaceWith(academyMain);
-    }
-  }
-
   const panelContainer = document.getElementById('panel-container');
   fragment.querySelectorAll('.panel').forEach((panel) => {
     panelContainer.appendChild(panel);

@@ -310,6 +310,9 @@ async function init() {
   });
 }
 
+window.init = init;
+window.appReadyPromise = (window.editorReadyPromise || Promise.resolve()).then(() => init());
+
 document.querySelectorAll('.sidebar-icon').forEach(icon => {
   icon.addEventListener('click', function() {
     const panelId = this.getAttribute('data-panel') + '-panel';

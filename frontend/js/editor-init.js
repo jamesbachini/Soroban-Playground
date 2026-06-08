@@ -1,30 +1,36 @@
-require(['vs/editor/editor.main'], async function () {
-  editor = monaco.editor.create(document.getElementById('editor'), {
-    value: ``,
-    language: 'rust',
-    theme: getMonacoTheme(currentTheme),
-    automaticLayout: true,
-    fontSize: 14,
-    minimap: {
-      enabled: true
-    },
-    autoIndent: 'full',
-    contextmenu: true,
-    fontFamily: 'monospace',
-  });
+window.editorReadyPromise = new Promise((resolve, reject) => {
+  require(['vs/editor/editor.main'], async function () {
+    try {
+      editor = monaco.editor.create(document.getElementById('editor'), {
+        value: ``,
+        language: 'rust',
+        theme: getMonacoTheme(currentTheme),
+        automaticLayout: true,
+        fontSize: 14,
+        minimap: {
+          enabled: true
+        },
+        autoIndent: 'full',
+        contextmenu: true,
+        fontFamily: 'monospace',
+      });
 
-  await loadWorkspaceState();
+      await loadWorkspaceState();
 
-  editor.onDidChangeModelContent(() => {
-    saveCurrentFile();
-  });
+      editor.onDidChangeModelContent(() => {
+        saveCurrentFile();
+      });
 
-  initializeTabs();
-  renderWorkspaceManager();
-  init();
+      initializeTabs();
+      renderWorkspaceManager();
 
-  window.addEventListener('resize', () => {
-    checkMenuOverflow();
-  });
+      window.addEventListener('resize', () => {
+        checkMenuOverflow();
+      });
+
+      resolve(editor);
+    } catch (error) {
+      reject(error);
+    }
+  }, reject);
 });
-

@@ -326,6 +326,7 @@ textarea::placeholder {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-width: 0;
   position: relative;
 }
 
@@ -336,6 +337,7 @@ textarea::placeholder {
   flex-direction: column;
   position: relative;
   box-shadow: var(--surface-shadow);
+  min-width: 0;
   min-height: 200px;
   overflow: hidden;
 }
@@ -503,6 +505,38 @@ textarea::placeholder {
   height: 100%;
   width: 100%;
   flex-grow: 1;
+}
+
+.editor-ai-shortcut {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 42px;
+  min-width: 42px;
+  max-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  max-height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--button-bg);
+  color: var(--button-text);
+  line-height: 1;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.editor-ai-shortcut:hover:not(:disabled) {
+  background: var(--button-bg-hover);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+.editor-ai-shortcut:active:not(:disabled) {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.32);
 }
 
 #panel-container {
