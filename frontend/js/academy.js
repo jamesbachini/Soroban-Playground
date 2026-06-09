@@ -64,15 +64,29 @@ function getAcademyVideoHref(lesson) {
 }
 
 function setAcademyLessonProgress(lessonId, patch) {
+  const previousProgress = getAcademyLessonProgress(lessonId);
+  const wasCompleted = Boolean(previousProgress.completedAt);
   academyProgress = {
     ...academyProgress,
     [lessonId]: {
-      ...getAcademyLessonProgress(lessonId),
+      ...previousProgress,
       ...patch,
       updatedAt: Date.now(),
     },
   };
   saveAcademyProgress();
+  const currentProgress = getAcademyLessonProgress(lessonId);
+  if (!wasCompleted && currentProgress.completedAt) {
+    const lesson = ACADEMY_LESSONS[lessonId];
+    trackAnalyticsEvent('academy_lesson_completed', {
+      lesson_id: lessonId,
+      lesson_number: lesson?.number,
+      lesson_title: lesson?.title,
+      completion_mode: lesson?.completionMode || 'manual',
+      course_progress_percent: getAcademyCourseProgressPercent(),
+      contract_id: currentProgress.contractId || undefined,
+    });
+  }
   renderAcademy();
 }
 

@@ -139,6 +139,10 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
       document.getElementById('deploy-button').disabled = false;
       return;
     }
+    const deployStartTime = performance.now();
+    let deployStatus = 'failed';
+    let deployFailureReason = '';
+    let deployedContractAddress = '';
     const wasmBuffer = new Uint8Array(await file.arrayBuffer());
     try {
       const sourceAccount = await loadSourceAccount(publicKey);
@@ -217,18 +221,31 @@ document.getElementById('deploy-button').addEventListener('click', async () => {
         Contract ID: ${contractAddress}<br />
         ${contractExplorerMarkup(contractAddress)}
         SoroPG Explorer: <a href="#" onclick="loadContract('${contractAddress}'); return false;">Load Contract</a><br />`;
+          deployStatus = 'success';
+          deployedContractAddress = contractAddress;
         } else {
           document.getElementById('deploy-console').innerHTML += 'Transaction 2/2 failed.<br />';
+          deployFailureReason = 'create_contract_failed';
         }
       } else {
         document.getElementById('deploy-console').innerHTML += 'Transaction 1/2 failed.<br />';
+        deployFailureReason = 'upload_wasm_failed';
       }
-      document.getElementById('deploy-button').disabled = false;
     } catch (err) {
       console.error(err);
       document.getElementById('deploy-console').innerHTML += 'Error: ' + err.message;
+      deployFailureReason = 'error';
+    } finally {
       document.getElementById('deploy-button').disabled = false;
+      trackAnalyticsEvent('deployment_completed', {
+        status: deployStatus,
+        network: getAnalyticsNetworkName(network),
+        duration_seconds: elapsedSeconds(deployStartTime),
+        wasm_size_bytes: wasmBuffer.length,
+        constructor_args_count: document.getElementById('args-container')?.getElementsByClassName('arg-row').length || 0,
+        contract_id: deployedContractAddress || undefined,
+        failure_reason: deployFailureReason || undefined,
+      });
     }
   };
 });
-

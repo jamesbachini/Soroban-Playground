@@ -278,9 +278,7 @@ body[data-theme="light"] .ai-terminal-form {
 .ai-config-card {
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(108, 114, 200, 0.11), rgba(61, 220, 107, 0.035) 45%, rgba(0, 0, 0, 0) 70%),
-    var(--card-bg);
+  background: var(--card-bg);
   box-shadow: var(--card-outline);
 }
 
@@ -441,9 +439,7 @@ body[data-theme="light"] .ai-connection-card {
 }
 
 .ai-card-primary {
-  background:
-    linear-gradient(135deg, rgba(61, 220, 107, 0.11), rgba(108, 114, 200, 0.08) 55%, rgba(0, 0, 0, 0) 75%),
-    var(--card-bg);
+  background: var(--card-bg);
 }
 
 .ai-card-heading,

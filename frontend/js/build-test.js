@@ -4,6 +4,8 @@ async function compileCode() {
   compileButton.disabled = true;
   scrollButtonToPanelTop(compileButton);
   const startTime = performance.now();
+  let buildStatus = 'failed';
+  let buildFailureReason = '';
 
   // Save current file content and get all files
   saveCurrentFile();
@@ -27,6 +29,7 @@ async function compileCode() {
       const resultText = await response.text();
       appendConsoleText(consoleEl, resultText);
       statusEl.innerText = `Compilation failed: ${elapsedSeconds(startTime)}s`;
+      buildFailureReason = 'http_error';
       return;
     }
 
@@ -34,6 +37,7 @@ async function compileCode() {
       const resultText = await response.text();
       appendConsoleText(consoleEl, resultText);
       statusEl.innerText = `Compilation failed: ${elapsedSeconds(startTime)}s`;
+      buildFailureReason = 'empty_response';
       return;
     }
 
@@ -104,15 +108,23 @@ async function compileCode() {
       a.download = `${contractName}.wasm`;
       a.click();
       statusEl.innerText = `Compilation successful: ${elapsedSeconds(startTime)}s`;
+      buildStatus = 'success';
     } else {
       statusEl.innerText = `Compilation failed: ${elapsedSeconds(startTime)}s`;
+      buildFailureReason = 'missing_wasm';
     }
   } catch (err) {
     console.error(err);
     statusEl.innerText = `Compilation failed: ${elapsedSeconds(startTime)}s`;
+    buildFailureReason = 'network_error';
   } finally {
     clearInterval(interval);
     compileButton.disabled = false;
+    trackAnalyticsEvent('build_completed', {
+      status: buildStatus,
+      duration_seconds: elapsedSeconds(startTime),
+      failure_reason: buildFailureReason || undefined,
+    });
   }
 }
 
@@ -120,6 +132,7 @@ async function runTests() {
   await runTestPanelCommand({
     buttonId: 'run-tests',
     endpoint: '/test',
+    analyticsEventName: 'unit_tests_completed',
     startStatus: 'Running tests... (This may take a minute or two)',
     runningPrefix: 'Running tests...',
     errorMarker: 'Test Errors:',
@@ -156,11 +169,15 @@ async function runTestPanelCommand({
   runningPrefix,
   errorMarker,
   successStatus,
-  errorStatus
+  errorStatus,
+  analyticsEventName
 }) {
   const activeButton = document.getElementById(buttonId);
   setTestActionButtonsDisabled(true);
   scrollButtonToPanelTop(activeButton);
+  const startTime = performance.now();
+  let commandStatus = 'failed';
+  let failureReason = '';
 
   saveCurrentFile();
   const allFiles = { ...files };
@@ -185,6 +202,7 @@ async function runTestPanelCommand({
       const resultText = await response.text();
       appendConsoleText(consoleEl, resultText);
       statusEl.innerText = errorStatus;
+      failureReason = 'http_error';
       return;
     }
 
@@ -192,6 +210,7 @@ async function runTestPanelCommand({
       const resultText = await response.text();
       appendConsoleText(consoleEl, resultText);
       statusEl.innerText = errorStatus;
+      failureReason = 'empty_response';
       return;
     }
 
@@ -213,13 +232,22 @@ async function runTestPanelCommand({
       appendConsoleText(consoleEl, tail);
     }
 
+    commandStatus = hasErrors ? 'failed' : 'success';
+    if (hasErrors) failureReason = 'command_errors';
     statusEl.innerText = hasErrors ? errorStatus : successStatus;
   } catch (err) {
     statusEl.innerText = `Network error: ${err.message}`;
     console.error(err);
+    failureReason = 'network_error';
   } finally {
     clearInterval(interval);
     setTestActionButtonsDisabled(false);
+    if (analyticsEventName) {
+      trackAnalyticsEvent(analyticsEventName, {
+        status: commandStatus,
+        duration_seconds: elapsedSeconds(startTime),
+        failure_reason: failureReason || undefined,
+      });
+    }
   }
 }
-
