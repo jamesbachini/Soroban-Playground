@@ -79,7 +79,7 @@ const ACADEMY_LESSONS = Object.freeze({
       'Identify the contract struct, impl block, exported function, and Soroban SDK types in a Rust contract.',
       'Run the included unit test before changing deployment state.',
       'Build a WASM artifact, deploy it to Stellar Testnet, and verify the exported hello function.',
-      'Use the IDE contract explorer to invoke the deployed function with a symbol argument.',
+      'Use the IDE contract explorer to invoke the deployed function with a string argument.',
     ]),
     sections: Object.freeze([
       Object.freeze({
@@ -89,12 +89,12 @@ const ACADEMY_LESSONS = Object.freeze({
       }),
       Object.freeze({
         title: '2. Read the Rust contract shape',
-        body: 'The contract is intentionally small: Env gives access to ledger APIs, Symbol represents a compact contract-friendly string, and Vec<Symbol> is the return value. Notice that public contract functions are ordinary Rust associated functions exposed through the macro.',
+        body: 'The contract is intentionally small: Env gives access to ledger APIs, String represents text passed through the contract interface, and Vec<String> is the return value. Notice that public contract functions are ordinary Rust associated functions exposed through the macro.',
         action: 'Inspect src/lib.rs',
       }),
       Object.freeze({
         title: '3. Run the unit test',
-        body: 'Switch to the Test panel and run the template test. The test registers the contract in a simulated environment and calls hello with a symbol. Treat this as the fast feedback loop before every build.',
+        body: 'Switch to the Test panel and run the template test. The test registers the contract in a simulated environment and calls hello with a string. Treat this as the fast feedback loop before every build.',
         action: 'Run Unit Tests',
       }),
       Object.freeze({
@@ -104,9 +104,9 @@ const ACADEMY_LESSONS = Object.freeze({
       }),
     ]),
     practice: Object.freeze([
-      'Change the returned greeting symbol, rerun tests, and confirm the test catches any mismatch.',
+      'Change the returned greeting string, rerun tests, and confirm the test catches any mismatch.',
       'Deploy only after tests and build both pass.',
-      'Invoke hello with your own name-like symbol from the Explore panel.',
+      'Invoke hello with your own name-like string from the Explore panel.',
     ]),
   }),
   'ai-assisted-development': Object.freeze({

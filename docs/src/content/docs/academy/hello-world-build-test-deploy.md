@@ -9,7 +9,7 @@ You do not need a local Rust toolchain for this course. SoroPG sends builds and 
 
 ## What you will build
 
-The contract exposes one method named `hello`. The method accepts a `Symbol` and returns a `Vec<Symbol>` containing a greeting and the value you passed in.
+The contract exposes one method named `hello`. The method accepts a `String` and returns a `Vec<String>` containing a greeting and the value you passed in.
 
 This is intentionally small. The goal is to learn the development workflow before adding storage, authorization, or cross-contract calls.
 
@@ -26,18 +26,18 @@ SoroPG imports the example into a fresh workspace and leaves the editor visible 
 The important pieces are:
 
 - `#![no_std]` keeps the contract compatible with the constrained WASM environment.
-- `use soroban_sdk::{contract, contractimpl, symbol_short, vec, Env, Symbol, Vec};` imports the SDK macros and contract-friendly types.
+- `use soroban_sdk::{contract, contractimpl, vec, Env, String, Vec};` imports the SDK macros and contract-friendly types.
 - `#[contract]` marks the contract struct.
 - `#[contractimpl]` exposes functions in the `impl` block as contract methods.
 - `Env` gives the function access to host-provided ledger and contract APIs.
-- `Symbol` is a compact string-like value suited for contract interfaces.
-- `Vec<Symbol>` is the SDK vector type returned to callers.
+- `String` is the SDK string type used for contract interface text values.
+- `Vec<String>` is the SDK vector type returned to callers.
 
 The exported function is ordinary Rust syntax:
 
 ```rust
-pub fn hello(env: Env, to: Symbol) -> Vec<Symbol> {
-    vec![&env, symbol_short!("Hello"), to]
+pub fn hello(env: Env, to: String) -> Vec<String> {
+    vec![&env, String::from_str(&env, "Hello"), to]
 }
 ```
 
@@ -51,7 +51,7 @@ Before building or deploying, run the test.
 2. Click **Run Unit Tests**.
 3. Wait for the console to finish.
 
-The test registers the contract in a local simulated environment, calls `hello`, and checks the returned symbols. This is the fastest feedback loop. Use it before every build and deploy.
+The test registers the contract in a local simulated environment, calls `hello`, and checks the returned strings. This is the fastest feedback loop. Use it before every build and deploy.
 
 If the test fails, read the error from the bottom console and return to the editor. Common causes are changing the returned greeting without updating the expected value, renaming the contract type, or removing an SDK import that the macro still needs.
 
@@ -59,7 +59,7 @@ If the test fails, read the error from the bottom console and return to the edit
 
 Try one controlled edit before deploying:
 
-1. Change the greeting symbol from `Hello` to another short symbol.
+1. Change the greeting string from `Hello` to another string.
 2. Run tests.
 3. Update the test expectation if needed.
 4. Run tests again until they pass.
@@ -99,7 +99,7 @@ Academy checks Testnet and confirms that the deployed contract exposes the expec
 2. Open **Explore**.
 3. Paste the contract ID and load the contract.
 4. Find the `hello` method.
-5. Enter a symbol value such as `SoroPG`.
+5. Enter a string value such as `SoroPG`.
 6. Invoke the method.
 
 Explore renders forms from the contract interface. This final step proves that the deployed contract can be inspected and called after deployment.

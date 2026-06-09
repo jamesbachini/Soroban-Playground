@@ -25,7 +25,7 @@ Open **AI Assistant** from the Academy course page. Ask for a small change with 
 Good prompt:
 
 ```text
-Add a goodbye function that accepts a Symbol and returns [Goodbye, name].
+Add a goodbye function that accepts a String and returns [Goodbye, name].
 Update the unit tests for the new function.
 Keep the existing hello function unchanged.
 ```
@@ -71,7 +71,7 @@ Good follow-up:
 
 ```text
 Add a unit test for the new goodbye function.
-The test should register the contract, call goodbye with a Symbol, and assert the returned Vec.
+The test should register the contract, call goodbye with a String, and assert the returned Vec.
 ```
 
 Tests are the guardrail that lets you safely iterate with AI.

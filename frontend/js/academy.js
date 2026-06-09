@@ -135,7 +135,10 @@ function renderAcademyWelcome() {
     }[status];
 
     card.innerHTML = `
-      <span class="academy-course-number">${lesson.number}</span>
+      <span class="academy-course-icon">
+        <img src="/img/academy-icons/${lesson.number}.png" alt="" loading="lazy" onerror="this.remove()">
+        <span>${lesson.number}</span>
+      </span>
       <span class="academy-course-card-copy">
         <strong></strong>
         <small></small>
