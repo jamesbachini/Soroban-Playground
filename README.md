@@ -127,7 +127,8 @@ docker run --rm -v cargo-cache:/cache alpine sh -c "rm -rf /cache/target/debug /
 docker volume create cargo-cache
 docker build --pull --no-cache -f Dockerfile.sandbox -t wasm_sandbox .
 
-# build a release binary
+# Build the docs and release binary
+npm --prefix docs run build
 cargo build --release
 
 #  Enable that binary to bind to port 80
@@ -190,11 +191,10 @@ docker run -i -p 8000:8000 stellar/quickstart --local --limits unlimited --enabl
 ✅ Improve contract explorer - done v0.7.1
 ✅ More wallets supported - done v0.6.1
 ✅ Workspaces for file directories & multiple projects - done v0.7.7
-- AI Integration
-- Examples & Lessons
+✅ AI Integration
+✅ Examples & Lessons
 - Export bindings
 - Rust linter
-
 - History and undo system in localStorage
 
 ## License
