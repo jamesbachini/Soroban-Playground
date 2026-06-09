@@ -73,7 +73,7 @@ const ACADEMY_LESSONS = Object.freeze({
     expectedMethods: Object.freeze(['hello']),
     primaryAction: 'import',
     completionMode: 'deploy',
-    videoId: '',
+    videoId: 'iCYl0AqM4Tk',
     videoTitle: 'Hello World contract walkthrough',
     objectives: Object.freeze([
       'Identify the contract struct, impl block, exported function, and Soroban SDK types in a Rust contract.',
@@ -124,7 +124,7 @@ const ACADEMY_LESSONS = Object.freeze({
     expectedMethods: Object.freeze([]),
     primaryAction: 'ai-assistant',
     completionMode: 'manual',
-    videoId: '',
+    videoId: 'Q0xSM5Uz6bE',
     videoTitle: 'AI-assisted contract development workflow',
     objectives: Object.freeze([
       'Use the assistant as an editor and reviewer while keeping every code change visible in the workspace.',
@@ -175,7 +175,7 @@ const ACADEMY_LESSONS = Object.freeze({
     expectedMethods: Object.freeze([]),
     primaryAction: 'mcp-setup',
     completionMode: 'manual',
-    videoId: '',
+    videoId: 'ghqTJ0yW1O4',
     videoTitle: 'Connecting SoroPG to agentic coding tools',
     objectives: Object.freeze([
       'Understand the browser tab as the bridge between SoroPG workspaces and an external MCP client.',

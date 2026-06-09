@@ -24,6 +24,10 @@ function getAcademyLesson(lessonId = activeAcademyLessonId) {
   return ACADEMY_LESSONS[lessonId] || ACADEMY_LESSONS[ACTIVE_ACADEMY_LESSON_ID];
 }
 
+function getAcademyLessonDisplayTitle(lesson) {
+  return lesson?.number ? `${lesson.number}. ${lesson.title}` : lesson?.title || '';
+}
+
 function getAcademyLessonProgress(lessonId = activeAcademyLessonId) {
   return academyProgress[lessonId] || {};
 }
@@ -53,6 +57,10 @@ function getAcademyLessonStatus(lesson) {
 
 function getAcademyDocsHref(lesson) {
   return lesson.docsSlug ? `/docs/${lesson.docsSlug}/` : '/docs/academy/';
+}
+
+function getAcademyVideoHref(lesson) {
+  return lesson.videoId ? `https://www.youtube.com/watch?v=${lesson.videoId}` : '';
 }
 
 function setAcademyLessonProgress(lessonId, patch) {
@@ -125,7 +133,7 @@ function renderAcademyWelcome() {
     const card = createAcademyElement('button', `academy-course-card ${status}`);
     card.type = 'button';
     card.dataset.lessonId = lesson.id;
-    card.setAttribute('aria-label', `${lesson.title}, ${getAcademyStatusLabel(status)}`);
+    card.setAttribute('aria-label', `${getAcademyLessonDisplayTitle(lesson)}, ${getAcademyStatusLabel(status)}`);
 
     const statusIcon = {
       'completed': 'fas fa-check-circle',
@@ -146,7 +154,7 @@ function renderAcademyWelcome() {
       <span class="academy-card-meta"></span>
       <i class="${statusIcon}" aria-hidden="true"></i>
     `;
-    card.querySelector('strong').textContent = lesson.title;
+    card.querySelector('strong').textContent = getAcademyLessonDisplayTitle(lesson);
     card.querySelector('small').textContent = lesson.summary;
     card.querySelector('.academy-card-meta').textContent = lesson.comingSoon ? 'Coming soon' : `${lesson.duration} - ${lesson.level}`;
     card.addEventListener('click', () => selectAcademyLesson(lesson.id));
@@ -255,14 +263,15 @@ function renderAcademyCourse() {
   const status = getAcademyLessonStatus(lesson);
   const verifiedLink = document.getElementById('academy-verified-link');
   const contractInput = document.getElementById('academy-contract-id');
+  const youtubeLink = document.getElementById('academy-youtube-link');
 
   setElementText('academy-course-eyebrow', `Lesson ${lesson.number} - ${lesson.course}`);
-  setElementText('academy-course-title', lesson.title);
+  setElementText('academy-course-title', getAcademyLessonDisplayTitle(lesson));
   setElementText('academy-course-summary', lesson.summary);
   setElementText('academy-course-level', lesson.level || 'Course');
   setElementText('academy-course-duration', lesson.duration || 'Coming soon');
   setElementText('academy-course-format', lesson.format || 'Coming soon');
-  setElementText('academy-current-video-title', lesson.videoTitle || lesson.title);
+  setElementText('academy-current-video-title', lesson.videoTitle || getAcademyLessonDisplayTitle(lesson));
 
   const stateEl = document.getElementById('academy-lesson-state');
   if (stateEl) {
@@ -290,6 +299,16 @@ function renderAcademyCourse() {
       verifiedLink.classList.add('visible');
     } else {
       verifiedLink.classList.remove('visible');
+    }
+  }
+  if (youtubeLink) {
+    const videoHref = getAcademyVideoHref(lesson);
+    if (videoHref) {
+      youtubeLink.href = videoHref;
+      youtubeLink.hidden = false;
+    } else {
+      youtubeLink.href = '#';
+      youtubeLink.hidden = true;
     }
   }
 
