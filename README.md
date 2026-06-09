@@ -137,7 +137,16 @@ sudo setcap 'cap_net_bind_service=+ep' target/release/Soroban-Playground
 # Restart server
 sudo reboot
 ```
+# Updating NPM soropg-mcp
 
+npm login
+npm whoami
+npm test
+npm run build
+npm version patch
+npm pack --dry-run
+
+npm publish --access public
 
 ## Common Errors
 
