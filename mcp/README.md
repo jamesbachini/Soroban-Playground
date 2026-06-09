@@ -103,6 +103,10 @@ env = { SOROPG_API_KEY = "your-key-from-soropg" }
 - `soropg_move_file`
 - `soropg_run_command`
 
+`soropg_apply_patch` expects unified diff hunks for one target file. Include
+`@@ -old,+new @@` hunk headers. Do not send raw inserted `+` lines or Codex
+`*** Begin Patch` format; use `soropg_replace_file` for full-file rewrites.
+
 Allowed commands are `build`, `test`, and `audit`. `deploy` is present for
 tool compatibility but returns unsupported in v1 so wallet signing stays in the
 browser flow.

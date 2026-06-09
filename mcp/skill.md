@@ -155,7 +155,7 @@ After adding the MCP server:
 - `soropg_read_file`: read one file.
 - `soropg_create_file`: create a new file.
 - `soropg_replace_file`: replace a file's full contents.
-- `soropg_apply_patch`: apply a unified patch to a file.
+- `soropg_apply_patch`: apply unified diff hunks to a file. Include `@@ -old,+new @@` hunk headers; do not send raw inserted `+` lines or Codex `*** Begin Patch` format.
 - `soropg_delete_file`: delete a file.
 - `soropg_move_file`: move or rename a file.
 - `soropg_run_command`: run an allowed SoroPG command.

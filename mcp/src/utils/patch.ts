@@ -25,7 +25,9 @@ function parseHunks(patch: string): Hunk[] {
   }
 
   if (!hunks.length) {
-    throw new Error("Patch contains no unified diff hunks.");
+    throw new Error(
+      "Patch contains no unified diff hunks. Provide a unified diff with @@ -old,+new @@ hunk headers, not raw + lines or Codex *** Begin Patch format.",
+    );
   }
   return hunks;
 }

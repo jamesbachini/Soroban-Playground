@@ -156,11 +156,11 @@ server.tool(
 
 server.tool(
   "soropg_apply_patch",
-  "Apply a unified diff patch to one SoroPG project file.",
+  "Apply unified diff hunks to one SoroPG project file. The patch must include @@ -old,+new @@ hunk headers; raw inserted lines and Codex *** Begin Patch format are not accepted.",
   {
     ...projectIdSchema.shape,
     path: z.string(),
-    patch: z.string().describe("Unified diff hunk(s) for the target file."),
+    patch: z.string().describe("Unified diff hunk(s) for the target file, for example: @@ -1,3 +1,4 @@\\n context\\n-old\\n+new"),
   },
   async ({ projectId, path, patch }) => runTool(async () => {
     const resolvedProjectId = resolveProjectId(projectId);
