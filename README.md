@@ -145,7 +145,6 @@ npm test
 npm run build
 npm version patch
 npm pack --dry-run
-
 npm publish --access public
 
 ## Common Errors
