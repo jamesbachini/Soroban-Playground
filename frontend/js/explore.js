@@ -357,16 +357,30 @@ function parseJsonValue(raw) {
 
 function parseIntegerLike(value, label) {
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      throw new Error(`${label} must be a finite number.`);
+    if (!Number.isInteger(value)) {
+      throw new Error(`${label} must be an integer.`);
     }
     return value;
   }
   const str = String(value).trim();
-  if (!/^-?\\d+$/.test(str)) {
+  if (!/^-?\d+$/.test(str)) {
     throw new Error(`${label} must be an integer.`);
   }
   return BigInt(str);
+}
+
+function parseSmallInteger(value, label) {
+  if (typeof value === 'number') {
+    if (!Number.isInteger(value)) {
+      throw new Error(`${label} must be an integer.`);
+    }
+    return value;
+  }
+  const str = String(value).trim();
+  if (!/^-?\d+$/.test(str)) {
+    throw new Error(`${label} must be an integer.`);
+  }
+  return Number(str);
 }
 
 function parseStringValue(raw) {
@@ -476,7 +490,7 @@ function buildErrorScVal(value) {
       return StellarSdk.xdr.ScErrorCode._byValue[val];
     }
     if (typeof val === 'string') {
-      if (/^\\d+$/.test(val)) {
+      if (/^\d+$/.test(val)) {
         return StellarSdk.xdr.ScErrorCode._byValue[Number(val)];
       }
       const fn = StellarSdk.xdr.ScErrorCode[val];
@@ -528,10 +542,7 @@ function normalizeSpecValue(value, typeDef, spec, depth = 0) {
       return value;
     case 'scSpecTypeU32':
     case 'scSpecTypeI32':
-      if (typeof value === 'string' && /^-?\\d+$/.test(value)) {
-        return Number(value);
-      }
-      return value;
+      return parseSmallInteger(value, specTypeToString(typeDef, spec));
     case 'scSpecTypeBytes':
     case 'scSpecTypeBytesN': {
       if (value instanceof Uint8Array) return value;
@@ -622,7 +633,7 @@ function normalizeSpecValue(value, typeDef, spec, depth = 0) {
       const kind = entry.switch().name;
       if (kind === 'scSpecEntryUdtEnumV0') {
         if (typeof value === 'number') return value;
-        if (typeof value === 'string' && /^\\d+$/.test(value)) return Number(value);
+        if (typeof value === 'string' && /^\d+$/.test(value)) return Number(value);
         const cases = entry.udtEnumV0().cases();
         const match = cases.find(c => c.name().toString() === value || c.name().toString().toLowerCase() === String(value).toLowerCase());
         if (!match) {
@@ -633,7 +644,7 @@ function normalizeSpecValue(value, typeDef, spec, depth = 0) {
       if (kind === 'scSpecEntryUdtStructV0') {
         const fields = entry.udtStructV0().fields();
         const fieldNames = fields.map(field => field.name().toString());
-        const numericFields = fieldNames.every(name => /^\\d+$/.test(name));
+        const numericFields = fieldNames.every(name => /^\d+$/.test(name));
         if (Array.isArray(value)) {
           if (!numericFields) {
             throw new Error('Struct input must be a JSON object with named fields.');
@@ -721,11 +732,7 @@ function parseInputValue(raw, typeDef, spec) {
     return bytes;
   }
   if (name === 'scSpecTypeU32' || name === 'scSpecTypeI32') {
-    const num = Number(trimmed);
-    if (Number.isNaN(num)) {
-      throw new Error('Expected a number.');
-    }
-    return num;
+    return parseSmallInteger(trimmed, specTypeToString(typeDef, spec));
   }
   if ([
     'scSpecTypeU64',

@@ -180,6 +180,17 @@ async function resetCode() {
   }
 }
 
+function normalizeIntegerInput(value, type) {
+  const trimmed = String(value).trim();
+  if (!/^-?\d+$/.test(trimmed)) {
+    throw new Error(`Value "${value}" is not a valid integer for type ${type}.`);
+  }
+  if (type.startsWith('u') && trimmed.startsWith('-')) {
+    throw new Error(`Value "${value}" must be unsigned for type ${type}.`);
+  }
+  return trimmed;
+}
+
 function toScVal(val, type) {
   switch(type) {
     case 'string':
@@ -192,11 +203,7 @@ function toScVal(val, type) {
     case 'u64':
     case 'u128':
     case 'u256': {
-      const num = Number(val);
-      if (isNaN(num)) {
-        throw new Error(`Value "${val}" is not a valid number for type ${type}.`);
-      }
-      return StellarSdk.nativeToScVal(num, { type });
+      return StellarSdk.nativeToScVal(normalizeIntegerInput(val, type), { type });
     }
     case 'bool': {
       if (typeof val === "string") {
@@ -785,4 +792,3 @@ async function loadWorkspaceFromUrl(url, options = {}) {
 
   setWorkspaceStatus('Imported shared code into a workspace.');
 }
-
